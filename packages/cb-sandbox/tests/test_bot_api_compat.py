@@ -142,7 +142,8 @@ class TestMessageIdSurvivesReset:
 def test_error_envelope_carries_parameters_when_given() -> None:
     """`ResponseParameters` (`retry_after`/`migrate_to_chat_id`) wiring: no
     method in this file raises one today (no simulated flood control or chat
-    migration — see docs/SANDBOX.md), but the dispatch boundary must still
+    migration — see the README's divergence table), but the dispatch boundary
+    must still
     shape it correctly the day something does."""
     from cb_sandbox.telegram_api import _telegram_error
 

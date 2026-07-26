@@ -23,25 +23,30 @@ bun run dev      # :3001, proxies /api/* to the sandbox server (next.config.ts)
 app/page.tsx                 the three-pane shell; owns acting-user/chat/reply
                               state and the "did the bot answer yet" indicator
 components/chat/              chat list, message bubbles, composer, inline keyboard
-components/sandbox/           user switcher, membership controls, seed presets,
-                              the scenario lens, command palette, the API-call log
+components/chat/MessageMedia  photos, stickers, video, audio and documents, rendered
+                              from the real bytes the sandbox stores
+components/sandbox/           the feature rail, the scenario rail, user switcher,
+                              membership controls, seed presets, command palette,
+                              the API-call log
 lib/api.ts                    the ONE typed client for cb-sandbox's control API
+lib/lens.ts                   the ONE filter predicate — feature + scenario — that
+                              every pane goes through, so no two panes can disagree
+                              about what is currently being shown
 lib/format.ts                 the ONE set of formatting/colour helpers
-lib/commands.ts               typed access to the generated command palette data
-lib/commands.generated.json   generated — see "Command palette data" below
-lib/useSandbox.ts             snapshot + live state (SSE, with a polling fallback)
+lib/commands.ts               grouping and search over the palette served by /api/kit
+lib/useSandbox.ts             snapshot + kit + live state (SSE, with a polling fallback)
 lib/sanitizeHtml.tsx          renders the bot's <b>/<i>/<code>/<blockquote> HTML
 types.ts                      shapes shared with cb_sandbox/control_api.py
 ```
 
 `components/sandbox/ScenarioPanel.tsx` and `components/sandbox/ScenarioRail.tsx`
-sound like the same idea and are not. `ScenarioPanel` picks a **seed fixture**
-(`SeedFixture` in `types.ts` — a fixed starting world: users, a group, who's a
-member). `ScenarioRail` is the **scenario lens**: the server's `Scenario`, a
-named span of time layered on top of whatever world is already seeded, that
-every message and API call gets tagged with while it's the active one. The
-sidebar's section headers say "Seed data" and "Scenario" for exactly this
-reason — see `ScenarioRail.tsx`'s own header comment for the full story.
+sound like the same idea and are not. `ScenarioPanel` picks a **seed** (a fixed
+starting world: users, a group, who is a member — `SandboxSeed` in `types.ts`,
+served by `/api/kit`). `ScenarioRail` is the **scenario lens**: the server's
+`Scenario`, a named span of time layered on top of whatever world is already
+seeded, that every message and API call gets tagged with while it is the active
+one. The sidebar's section headers say "Seed data" and "Scenario" for exactly
+this reason — see `ScenarioRail.tsx`'s own header comment for the full story.
 
 There used to be a second, divergent copy of `lib/api.ts` and `lib/format.ts`
 under `components/sandbox/` (`api.ts`, `format.ts`), written by an agent that
@@ -77,22 +82,41 @@ suite and manual testers get to invent their own vocabulary, and nothing
 gates behaviour on the value). Don't "fix" this into a `Literal` without
 checking `state.py` first.
 
-## Command palette data
+## Nothing in here knows it is Cookiebot
 
-`lib/commands.generated.json` is generated, not hand-written:
+The bot's identity, its seed worlds, its features, its presets and its whole
+command palette arrive at runtime from `GET /api/kit`, which the server builds
+from `sandbox.config.json`. There is no generated JSON in this directory and no
+Cookiebot-specific array in any component — swap the config file, restart the
+sandbox, and this same client drives a different bot.
+
+That config is generated from the two places that already know the truth:
 
 ```bash
-./.venv/bin/python scripts/gen_sandbox_commands.py
+python scripts/cb.py sandbox-config
 ```
 
 It reads `cb_core.textmatch.COMMAND_ALIASES` (every trigger word the parser
 accepts, canonicalised) and `scripts/spec.py` (each feature's port status), so
-the palette always reflects what the bot actually recognises and whether it's
-actually wired up yet — a "planned" command shows as "not ported — expect
-silence" rather than reading as a bug when it doesn't reply. Regenerate it
-whenever `COMMAND_ALIASES` gains an alias or `scripts/spec.py` moves a
-feature's status. Not wired into `scripts/cb.py`'s gate: it produces a
-checked-in artifact for a tool outside the pytest/ruff pipeline.
+the palette always reflects what the bot actually recognises and whether it is
+wired up yet — a "planned" command shows as "not implemented — expect silence"
+rather than reading as a bug when it does not reply. Regenerate it whenever
+`COMMAND_ALIASES` gains an alias or a feature's status moves.
+
+## Two filters, one predicate
+
+The sidebar filters on two axes and they answer different questions:
+
+- **Feature** — "is this behaviour correct?", across every scenario that
+  touched it. This is how validation actually happens: one behaviour at a time,
+  not one test at a time. `FeatureRail.tsx`, sorted so failures and *untested*
+  features come first.
+- **Scenario** — "what did *this* check do?", drilled into one span.
+
+Both live in a single `Lens` object in `lib/lens.ts`, and every pane — the
+timeline, the API-call log, the scenario picker — filters through the same
+`matchesLens`. That is not tidiness: two panes silently applying different
+filters is a validation tool that lies.
 
 ## Notable UI decisions
 

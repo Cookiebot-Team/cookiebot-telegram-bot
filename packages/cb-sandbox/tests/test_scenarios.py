@@ -5,7 +5,7 @@ do in `state.py`.
 The property under test throughout is the one the whole feature exists for:
 after a long sandbox run, every message and every Bot API call can be sliced
 back apart by which scenario was open when it happened — see
-`docs/SANDBOX.md` and `SandboxScenario`'s docstring in `state.py`.
+the package README and `SandboxScenario`'s docstring in `state.py`.
 
 Builds a bare FastAPI app around just `control_api.router`, the same
 isolation `test_control_api.py` uses — `telegram_api.py` is another agent's

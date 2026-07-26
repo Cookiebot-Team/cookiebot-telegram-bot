@@ -207,7 +207,7 @@ class TestCounterSurvivesClear:
     restart `update_id`/`message_id` at their base values, which collided
     with ids cb-gateway's Valkey dedupe middleware already had recorded as
     delivered (see `SandboxStore.next_update_id`'s docstring and
-    `docs/SANDBOX.md`'s "Bot API compatibility" section). `db.clear()` is the
+    the README's "Bot API compatibility" section). `db.clear()` is the
     exact call `reset()` makes; `sandbox_counters` is the one table it must
     not touch.
     """
