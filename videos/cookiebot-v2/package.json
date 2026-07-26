@@ -1,0 +1,11 @@
+{
+  "name": "cookiebot-v2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.7.73 preview",
+    "check": "npx --yes hyperframes@0.7.73 check",
+    "render": "npx --yes hyperframes@0.7.73 render",
+    "publish": "npx --yes hyperframes@0.7.73 publish"
+  }
+}
