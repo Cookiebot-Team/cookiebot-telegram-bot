@@ -1,0 +1,38 @@
+<!-- Placeholder mark. Swap for the real Cookiebot avatar when it is available;
+     nothing depends on this file beyond the README header. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Cookiebot">
+  <defs>
+    <radialGradient id="dough" cx="38%" cy="32%" r="78%">
+      <stop offset="0%" stop-color="#e8b877"/>
+      <stop offset="60%" stop-color="#d19a52"/>
+      <stop offset="100%" stop-color="#a9722f"/>
+    </radialGradient>
+  </defs>
+
+  <!-- cookie -->
+  <circle cx="64" cy="64" r="52" fill="url(#dough)" stroke="#8a5c22" stroke-width="3"/>
+
+  <!-- bite -->
+  <circle cx="108" cy="30" r="18" fill="#0d1117"/>
+
+  <!-- chips -->
+  <g fill="#4a2c14">
+    <circle cx="46" cy="46" r="7"/>
+    <circle cx="78" cy="72" r="8"/>
+    <circle cx="44" cy="86" r="6"/>
+    <circle cx="86" cy="44" r="5"/>
+    <circle cx="62" cy="100" r="5"/>
+  </g>
+
+  <!-- antenna: the "bot" half -->
+  <g stroke="#8a5c22" stroke-width="4" stroke-linecap="round" fill="none">
+    <path d="M64 12 v-8"/>
+  </g>
+  <circle cx="64" cy="2" r="4" fill="#6fd3c7"/>
+
+  <!-- eyes -->
+  <g fill="#2b1a0c">
+    <circle cx="52" cy="62" r="4.5"/>
+    <circle cx="76" cy="58" r="4.5"/>
+  </g>
+</svg>

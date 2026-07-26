@@ -1,0 +1,265 @@
+# Development
+
+Everything a developer needs that does not belong in the README. Read
+[`AGENTS.md`](../AGENTS.md) first — it is the rulebook; this is the manual.
+
+## Requirements
+
+- Python 3.13+ (the workspace currently resolves to 3.14)
+- [uv](https://docs.astral.sh/uv/) — the only package manager used here
+- Docker **or** podman, for the database and dashboards (tests run fine without
+  either; `cb.py up` uses whichever is on PATH)
+- A C compiler, for the optional compiled hot path
+
+## Layout
+
+```
+AGENTS.md              rules for anyone writing code here
+scripts/cb.py          every task — there is no Makefile
+scripts/spec.py        the migration spec: one row per feature
+scripts/status.py      renders docs/MIGRATION-STATUS.md and checks it against reality
+packages/cb-core/      shared runtime: settings, telemetry, db, cache, storage, llm,
+                       tenancy, and the Cython-compiled hot modules
+packages/cb-api/       FastAPI service + alembic migrations (all Citus DDL)
+packages/cb-gateway/   aiogram ingest: webhook / polling / (reserved) websocket
+packages/cb-worker/    arq jobs: partitions, rollups, media GC, captcha expiry
+qa/                    acceptance suite — Gherkin + an in-process mock Telegram API
+qa/integration/        integration tests: real database, simulated users
+ops/                   otel collector, prometheus, tempo, grafana provisioning
+```
+
+## Tasks
+
+`scripts/cb.py` is the single definition of every task, so CI and your terminal
+run identical commands.
+
+```bash
+python scripts/cb.py --list          # all tasks
+python scripts/cb.py install         # uv sync --all-packages
+python scripts/cb.py up              # citus, valkey, otel, prometheus, tempo, grafana
+python scripts/cb.py migrate         # create and distribute the schema
+python scripts/cb.py types           # mypy + the compiled-module type audit
+python scripts/cb.py check           # the pre-push gate (lint, types, tests, bench, spec)
+```
+
+Services:
+
+```bash
+python scripts/cb.py gateway   # :8081  telegram ingest    metrics :9101
+python scripts/cb.py api       # :8000  /healthz /readyz    metrics :9102
+python scripts/cb.py worker    #        arq + cron          metrics :9103
+```
+
+## Testing — the pyramid
+
+| Layer | Where | Infrastructure | What belongs there |
+|---|---|---|---|
+| Unit | `packages/*/tests/` | none | pure functions, parsing, cooldown maths, model gating |
+| Integration | `qa/integration/` | Postgres/Citus | services against real rows, with seeded users and groups |
+| Acceptance | `qa/features/` + `qa/test_*.py` | mock Telegram | one scenario per QA feature, driving the real handler stack |
+
+```bash
+python scripts/cb.py test              # unit + acceptance, offline
+python scripts/cb.py test-integration  # needs a database
+python scripts/cb.py test-pyramid      # each layer separately, stops at the first failure
+```
+
+Integration tests skip cleanly when no database is reachable, so the offline
+suite always runs. They seed data through `qa/integration/factories.py` — a
+`World` with a disposable group and `SimulatedUser` members. Never hand-write
+INSERTs in a test: the point of that layer is that rows look like production's.
+
+## Configuration
+
+Everything is environment-driven; see `.env.example` for the full list.
+
+### Blob storage
+
+```bash
+CB_STORAGE_URI=gs://cookiebot-media     # or s3://bucket/prefix, file:///var/…, memory://
+```
+
+Credentials resolve exactly as each cloud's own SDK resolves them (`AWS_*` or an
+instance role; `GOOGLE_APPLICATION_CREDENTIALS` or workload identity). Handlers
+call `cb_core.storage.media()` — never a cloud SDK.
+
+### LLM providers
+
+```bash
+CB_LLM_TASKS='{"chat":{"provider":"anthropic","model":"claude-opus-5","effort":"low"},
+               "transcribe":{"provider":"openai","model":"whisper-1"}}'
+CB_OPENAI_BASE_URL=http://localhost:11434/v1   # ollama / vLLM / openrouter
+```
+
+Handlers ask for a *task*, never a model. Parameters are filtered per model by
+`cb_core/llm/catalog.py` — current Claude models reject `temperature`, so
+forwarding it blindly would break the default model.
+
+### Self-hosted Telegram Bot API
+
+Lifts uploads to 2 GB, removes the download cap and the per-bot rate limits, and
+allows a webhook pointed at a private address.
+
+```bash
+export TELEGRAM_API_ID=... TELEGRAM_API_HASH=...   # from my.telegram.org
+python scripts/cb.py selfhosted
+
+CB_TELEGRAM_API_BASE=http://localhost:8082
+CB_TELEGRAM_API_LOCAL=true      # getFile returns a disk path, not a URL
+CB_TELEGRAM_INGEST=polling      # no public URL needed in dev
+```
+
+## Database
+
+Postgres 17 + Citus, sharded on `group_id`, everything colocated with `groups`.
+The rules are in [`AGENTS.md`](../AGENTS.md) §4 and asserted by
+`qa/integration/test_citus_topology.py`, which reads `pg_dist_*` and `EXPLAIN`s
+the reply-path queries to check they touch exactly one shard.
+
+Migrations are raw SQL in `op.execute` so shard keys and colocation are visible
+in the diff. Both directions must work:
+
+```bash
+python scripts/cb.py migrate-check   # upgrade → downgrade → upgrade
+```
+
+Every service also converges the schema itself during startup
+(`cb_core/migrations.py`): one `SELECT` against `alembic_version`, and an
+`upgrade head` only when that revision is behind the code. Replicas serialise on
+a Postgres advisory lock, so N processes booting together produce one upgrade;
+a failed upgrade aborts startup rather than serving against a half-built schema.
+Set `CB_AUTO_MIGRATE=false` where a separate migration job owns the schema.
+
+Shard count is `CB_CITUS_SHARD_COUNT` (default 8), applied to the migration
+session in `migrations/env.py` rather than to the server, so local, CI and
+production distribute identically however Postgres was started. Eight, not
+Citus's default 32, because each shard is a table and each table adds a
+composite type: a catalog with ~1000 of them makes asyncpg's first
+introspection on a connection take seconds. Re-shard later with
+`alter_distributed_table(..., shard_count => N)` — no schema change.
+
+Three Citus rules the migrations had to learn, all of them silent until a real
+cluster runs the SQL:
+
+* a single node must be registered as a **worker**, not just as the coordinator,
+  or `create_distributed_table` fails with `replication_factor (1) exceeds
+  number of worker nodes (0)`;
+* `DO UPDATE SET` on a distributed table may only call **IMMUTABLE** functions —
+  use `excluded.<col>` and put the `now()` in the SELECT list;
+* a **correlated** subquery from a reference table into a distributed table is
+  rejected; write it uncorrelated (`NOT IN`) and Citus recursively plans it.
+
+Surrogate keys are UUIDv7 from `cb_core.ids.uuid7()` — never `uuid4`, never a
+sequence on a distributed table.
+
+## Importing v1 data
+
+v1's data lives in the Java backend's MongoDB. `cb_worker.importer` moves it into
+the v2 schema from either source:
+
+```bash
+docker compose --profile v1data up -d        # a local Mongo to import from
+CB_MONGO_URI=mongodb://localhost:27017 python scripts/cb.py import-mongo --dry-run
+CB_MONGO_DUMP_DIR=./dump/cookiebot          python scripts/cb.py import-mongo
+```
+
+Exactly one source may be configured; setting both is refused rather than silently
+preferring one, and the URI is never logged because it carries credentials.
+
+Every write is an upsert on the natural key, so the import is **idempotent** —
+that is what allows a cutover without a maintenance window: run it while v1 is
+still serving, then again at cutover to pick up the delta. `--dry-run` reports
+the counts it would write.
+
+The shapes come from the Java `@Document` entities, which AGENTS.md names as the
+source of truth for stored data. Three conversions are not obvious and are pinned
+by unit tests: every Mongo `_id` is a **String** holding a Telegram id, v1's
+`threadPosts` uses the string `"9999"` where v2 stores `NULL`, and
+`stickerSpamLimit` is a String in Java against an `int` column here.
+
+## The compiled hot path
+
+Four pure-CPU modules are compiled with Cython in pure-Python mode, so the same
+files import and test fine uncompiled.
+
+```bash
+python scripts/cb.py bench-baseline   # rebuild without cython, record the baseline
+python scripts/cb.py cython           # build the extensions in place
+python scripts/cb.py bench            # fails any compiled module below 1.5x
+```
+
+Measured (Python 3.14, arm64, best-of-5):
+
+| module | pure ns/op | compiled ns/op | speedup | verdict |
+|---|---|---|---|---|
+| `cooldowns` | 86 | 45.9 | **1.87–1.95×** | compiled |
+| `dedupe` | 104 | 71 | 1.40–1.47× | **ships pure** |
+| `textmatch` | 437 | 429 | 1.48–1.55× | **ships pure** |
+| `captcha` | 11529 | 11554 | 1.00× | **ships pure** |
+
+`dedupe` was previously recorded at 1.61× and compiled. That number came from a
+baseline `bench-baseline` never wrote: the in-place `.so` survived the pure
+reinstall, so the "uncompiled" run was the compiled one, and `bench_hot.py` only
+writes a baseline when nothing is compiled — it printed a normal table and left
+the stale file in place. The task now removes the extensions first; against an
+honest baseline `dedupe` is below the gate on every run, so it ships pure.
+
+### Annotations are C types here
+
+`setup.py` compiles these with `annotation_typing = True`, so Cython lowers PEP
+484 hints to C types. In these files an annotation is not documentation: a
+missing one leaves a `PyObject*` whose every operation goes back through the
+interpreter, and a wrong one is a wrong C type.
+
+```bash
+python scripts/hot_types.py           # coverage report
+python scripts/hot_types.py --check   # exit 1 on any untyped function or local
+```
+
+Ruff's `ANN` rules stop at signatures, so this is the only check that looks at
+locals — and it looks only at the compiled modules, because that is the only
+place a local annotation changes what runs. Where a name genuinely cannot be
+lowered (a Rust extension object, say), mark it `# hot-types: ignore <reason>`;
+the reason is printed in the report, so an exemption that stops being true is
+visible rather than silent.
+
+Two modules were dropped from `HOT_MODULES` by the gate, which is the gate doing
+its job rather than a shortfall. `captcha` is bounded by a CSPRNG syscall that
+compilation cannot touch. `textmatch` straddled the 1.5× line across eight runs
+(1.48–1.55): its cost is Python string and dict work Cython cannot lower much,
+and a marginal win is not worth a CI gate that fails one run in four.
+
+Worth knowing: the first attempt used plain PEP 484 annotations with
+`annotation_typing`, and the compiled build came out *slower* than pure Python
+(146 vs 85 ns/op on `cooldowns`) — the classes were still Python objects.
+Extension types (`@cython.cclass`) are what pays. `annotate=True` writes
+`src/cb_core/*.html` showing where Python interaction remains.
+
+## The migration spec
+
+`scripts/spec.py` is the source of truth for what is ported.
+`scripts/status.py` measures reality — QA scenarios, v2 scenarios, step
+bindings, an actual test run — and reports the difference:
+
+```bash
+python scripts/cb.py status            # regenerate docs/MIGRATION-STATUS.md
+python scripts/cb.py status -- --check # non-zero if the spec and reality disagree
+```
+
+A feature marked `done` without a ported, passing scenario is a finding, not a
+footnote. `check` runs this.
+
+## CI
+
+`.github/workflows/ci.yml` runs three jobs: lint + tests, the Cython benchmark
+gate, and migrations + integration tests against a real Citus service.
+
+Day to day, `python scripts/cb.py check` runs the same commands without a
+container. Only when you have **changed the workflow file** is it worth
+validating the YAML itself:
+
+```bash
+python scripts/cb.py workflow   # runs act; needs act + a Docker-API socket
+                                # (with podman: podman machine start, then
+                                #  export DOCKER_HOST=<podman socket path>)
+```
