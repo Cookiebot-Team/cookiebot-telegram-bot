@@ -31,3 +31,12 @@ sandbox.duckdb.wal
 # (qa/e2e/conftest.py `_run_db_path`); wiped at the start of the next run
 sandbox-e2e.duckdb
 sandbox-e2e.duckdb.wal
+
+# HyperFrames video projects: the composition, its captured assets and the
+# brief are source; renders, snapshots and the preview cache are output.
+videos/*/renders/
+videos/*/snapshots/
+videos/*/node_modules/
+videos/*/.hyperframes/
+demo.duckdb
+demo.duckdb.wal
