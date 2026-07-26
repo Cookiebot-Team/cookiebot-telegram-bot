@@ -1,0 +1,58 @@
+¡Las funciones de Cookiebot!
+
+AUTOMÁTICO:
+Autopublicador - puede usar el bot para publicar comisiones/eventos/avisos en varios grupos durante varios días
+Republicar - también puede usar el bot para volver a publicar en el mismo grupo todos los días
+Chat AI - Responde a cualquier mensaje de texto
+Stickers - Responde un sticker con otra sticker
+Captcha - Evita que los bots envíen mensajes de texto y expúlsalos si no prueban que son humanos
+Restricción de Medios - Evita que los nuevos miembros envíen medios durante un intervalo específico
+Antispam de Stickers - Evita redadas o largas cadenas de stickers en secuencia
+Preview Fixer - Obtenga una vista previa de los medios de Twitter/X links, TikTok, Instagram Reels y Bluesky
+Detector de Música - Dígale el nombre de una canción que se está reproduciendo en un mensaje de voz
+Bienvenido - Mensaje de bienvenida personalizado
+Tarjetas de Bienvenida - Imagen de bienvenida personalizada con foto de chat y foto de usuario
+Copia de seguridad de miembros - En caso de que el grupo sea pirateado o eliminado por error, puedo ayudar a recuperar a sus participantes
+
+COMANDOS MANUALES:
+everyone - los administradores pueden llamar a todos los miembros del grupo
+adm - Llamar a los administradores del chat
+cualquiercosa - envía una foto de lo que quieres
+youtube - Buscar un video en youtube
+buscarfuente - Busca la fuente de una obra de arte
+giveaway - Crea un sorteo
+cumpleanos - Enviar un collage de cumpleaños
+proximoscumpleanos - Mostrar los próximos cumpleaños
+meme - Generar un meme
+batalla - ¿Quién gana en una pelea?
+destruir - Distorsiona un video imagen gif audio sticker o pfp
+suerte - Abrir una galleta de la fortuna
+aleatorio - Enviar un medio de algún grupo
+ideadibujo - no mas bloques de arte
+dado - tira uno o mas dados
+muerte - ¿Como moririste?
+queja - Invocar a Milton el maestro de las quejas
+shippar - Shippa una pareja con caracter
+edad - te dice cuantos años tienes
+genero - ¿Es niño o niña?
+rojao - Pra pra pra pra poooow
+desenterrar - Desenterrar un mensaje antiguo
+patas - Evento furry de hotel en brasil
+bff - Evento furry de hotel en brasil
+furcamp - Evento furry en acampamento en brasil
+fursmeet - Evento furry de hotel en brasil
+pawstral - Evento furry de hotel en chile
+estavivo - Envía un ping de prueba con la fecha del servidor
+reglas - Muestra las reglas del grupo
+nuevasreglas - Actualiza las reglas del grupo
+nuevabienvenida - Actualiza el mensaje de bienvenida
+publicar - Publicar un anuncio de canal en otros grupos
+reenviar - Vuelva a publicar el mensaje en el mismo grupo todos los días
+apagarposts - Cancelar todos los mensajes y anuncios de reenvío
+analisis - Analizar mensaje
+comandos - enumera los comandos del bot
+configurar - configurar el bot
+reload - Recarregar cache de configuracion
+privacidad - Política de privacidad
+
+¡Habla con Mekhy para agregar tu propio comando o enseñarle algo al bot!

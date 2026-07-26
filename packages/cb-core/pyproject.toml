@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=75", "Cython>=3.0.11"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cb-core"
+version = "0.1.0"
+description = "Shared runtime: settings, telemetry, db, cache, and the Cython-compiled hot path"
+requires-python = ">=3.13"
+dependencies = [
+    # rust-backed
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "orjson>=3.10",
+    "msgspec>=0.19",
+    "blake3>=1.0",
+    "uuid-utils>=0.10",
+    "whenever>=0.6",
+    "polars>=1.20",
+    # object storage: one Rust crate (`object_store`) behind S3, GCS, local and memory
+    "obstore>=0.11",
+    # c-backed
+    "asyncpg>=0.30",
+    # DDL only: every service converges the schema at startup (cb_core/migrations.py),
+    # so the runner has to live where all of them can reach it. Runtime SQL stays asyncpg.
+    "alembic>=1.14",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.2",
+    "uvloop>=0.21; sys_platform != 'win32'",
+    "redis[hiredis]>=5.2",
+    "zstandard>=0.23",
+    # observability
+    "opentelemetry-sdk>=1.29",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.29",
+    "opentelemetry-instrumentation-asyncpg>=0.50b0",
+    "opentelemetry-instrumentation-redis>=0.50b0",
+    "opentelemetry-instrumentation-httpx>=0.50b0",
+    "prometheus-client>=0.21",
+    "structlog>=25.1",
+    # http
+    "httpx[http2]>=0.28",
+    # llm providers
+    "anthropic>=0.120",
+    "openai>=2.0",
+    # pure-python mode shadow module; the compiled .so does not need it at runtime,
+    # but the uncompiled fallback import does.
+    "Cython>=3.0.11",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.package-data]
+# v1 locale strings ported verbatim (see cb_core/locales.py); read via
+# importlib.resources so they must ship inside the wheel, not just the sdist.
+"cb_core.locale_data.en" = ["*.txt", "*.json"]
+"cb_core.locale_data.pt" = ["*.txt", "*.json"]
+"cb_core.locale_data.es" = ["*.txt", "*.json"]

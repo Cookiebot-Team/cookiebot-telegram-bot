@@ -1,0 +1,58 @@
+As Funcionalidades do Cookiebot!
+
+AUTOMÁTICO:
+Autopublicador - Pode usar o bot para publicar comissões/eventos/avisos em vários grupos por vários dias
+Repost - Também pode usar o bot para repostar no mesmo grupo todos os dias
+IA de conversa - Responde qualquer mensagem de texto
+Stickers - Responde um sticker com outro sticker
+Captcha - Impede que bots mandem mensagens e kicka eles se não provarem que são humanos
+Restrição de mídia - Impede que novos membros mandem mídia, por um intervalo especificado
+Sticker antispam - Impede raids ou longas cadeias de stickers em sequencia
+Corrigidor de previews - Visualizar mídias de links do Twitter/X, TikTok, Instagram Reels e Bluesky
+Detector de Música - Fala o nome de uma música tocando em mensagem de voz
+Welcome - Mensagem customizada de boas vindas
+Cartões de boas-vindas - Imagem de boas-vindas personalizada com foto do chat e foto do usuário
+Backup de Participantes - Caso o grupo seja hackeado ou apagado por engano, posso ajudar a recuperar seus participantes
+
+COMANDOS MANUAIS:
+everyone - Admins podem chamar todos os membros do grupo
+adm - Chama os administradores do chat
+qualquercoisa - Manda uma foto do que vc quiser
+youtube - Procura um video no youtube
+buscarfonte - Pesquisa a fonte de uma obra de arte
+giveaway - Cria um sorteio
+aniversario - Manda um collage de aniversariantes do dia
+proximosaniversarios - Mostra os próximos aniversariantes
+meme - Gera um meme
+batalha - Quem ganha em uma luta
+zoar - Distorce um video imagem gif sticker audio ou pfp
+sorte - Biscoito da sorte
+aleatorio - Manda uma mídia de algum grupo
+ideiadesenho - Chega de art block
+dado - Roda um ou mais dados quaisquer
+morte - Arrasta pra cima
+reclamacao - Invoca o Milton o mestre das reclamações
+shippar - Shippa um casal com caracteristica
+idade - Te digo quantos anos vc tem
+genero - Sera que e menino ou menina
+rojao - Pra pra pra pra poooow
+desenterrar - Desenterra uma mensagem antiga
+patas - Evento furry de hotel em sorocaba
+bff - Evento furry de hotel em campinas
+furcamp - Evento furry em acampamento
+fursmeet - Evento furry de hotel em santa maria
+pawstral - Evento furry de hotel no chile
+tavivo - Manda um ping de teste com data do servidor
+regras - Mostra as regras do grupo
+novasregras - Atualiza as regras do grupo
+novobemvindo - Atualiza a mensagem de boas vindas
+divulgar - Divulgar anuncio de um canal para outros grupos
+repostar - Repostar mensagem no mesmo grupo todos os dias
+apagarposts - Cancela todas as mensagens de repost e anuncios
+analise - Inspecionar elementos de uma mensagem
+comandos - Lista os comandos do bot
+configurar - Configura o bot
+reload - Recarregar cache de configuracoes
+privacidade - Política de privacidade
+
+Fale com o Mekhy para adicionar um comando seu ou ensinar algo ao bot!

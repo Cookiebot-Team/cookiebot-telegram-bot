@@ -1,0 +1,58 @@
+Cookiebot Features!
+
+AUTOMATIC FEATURES:
+Publisher - Can use bot to publish commissions/events/notices in multiple groups for multiple days
+Repost - Can also use bot to repost on the same group every day
+Chat AI - Reply to any text message
+Stickers - Reply a sticker with another sticker
+Captcha - Stop bots from texting and kick them if they don't prove they're human
+Media Restriction - Prevents new members from sending media, for a specified interval
+Sticker Antispam - Prevent raids or long chains of stickers in sequence
+Preview Fixer - Preview media from Twitter/X links, TikTok, Instagram Reels and Bluesky
+Music Detector - Speak the name of a song playing in voice message
+Welcome - Customized welcome message
+Welcome Cards - Customized welcome image with chat photo and user photo
+Member Backup - In case the group is hacked or deleted by mistake, I can help recover your participants
+
+MANUAL COMMANDS:
+everyone - Admins can call all group members
+adm - Call chat admins
+anything - send a picture of what you want
+youtube - Search for a video on youtube
+searchsource - Searches for the source of an artwork
+giveaway - Create a giveaway
+birthday - Send a birthday collage
+nextbirthdays - Show the next birthdays
+meme - Generate a meme
+battle - Who wins in a fight
+destroy - Distorts a video image gif sticker audio or pfp
+fortunecookie - Open a fortune cookie
+random - Send a media from some group
+drawingidea - No more art block
+dice - Rolls one or more dice
+death - How did you die
+complaint - Summon Milton the complaints master
+ship - Shipps a couple with character
+age - tell you how old you are
+gender - Is it a boy or a girl
+firecracker - Pra pra pra pra poooow
+unearth - Unearth a message from the past
+patas - Hotel furry event in brazil
+bff - Hotel furry event in brazil
+furcamp - Camp furry event in brazil
+fursmeet - Hotel furry event in brazil
+pawstral - Hotel furry event in chile
+isalive - Send a test ping with server date
+rules - Shows the group's rules
+newrules - Updates group rules
+newwelcome - Updates the welcome message
+publish - Publicize a channel's ad to other groups
+repost - Repost message on the same group every day
+deleteposts - Cancels all reposts and ads
+analysis - Inspect elements of a message
+commands - Lists bot commands
+configure - Configure the bot
+reload - Reload settings cache
+privacy - Privacy policy
+
+Talk to Mekhy to add your own command or teach the bot something!
