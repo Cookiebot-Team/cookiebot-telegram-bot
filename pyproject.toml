@@ -1,0 +1,108 @@
+[project]
+name = "cookiebot-v2"
+version = "0.1.0"
+description = "Cookiebot v2 — async Telegram group bot + analytics backend"
+requires-python = ">=3.13"
+dependencies = [
+    "cb-core",
+    "cb-api",
+    "cb-gateway",
+    "cb-worker",
+    "cb-sandbox",
+]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+cb-core = { workspace = true }
+cb-api = { workspace = true }
+cb-gateway = { workspace = true }
+cb-worker = { workspace = true }
+cb-sandbox = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "pytest-bdd>=8.1",
+    "pytest-cov>=6.0",
+    "ruff>=0.9",
+    "mypy>=1.14",
+    "Cython>=3.0.11",
+    "setuptools>=75",
+    "alembic>=1.14",
+    "psycopg[binary]>=3.2",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["packages/cb-core/src", "packages/cb-api/src", "packages/cb-gateway/src", "packages/cb-worker/src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "ASYNC", "RUF", "BLE", "SLF", "ANN"]
+ignore = [
+    "E501",
+    # `Any` is deliberate at the seams: asyncpg Records, aiogram payloads and the
+    # monkeypatch points tests drive. Banning it there produces worse types (a
+    # wrong concrete type) rather than better ones.
+    "ANN401",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# ASYNC109: the `timeout` argument is forwarded to each SDK's own per-request
+# timeout, which is what also bounds the SDK's internal retries. An asyncio
+# timeout at the call site would cancel mid-retry instead.
+"packages/cb-core/src/cb_core/llm/*.py" = ["ASYNC109"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["qa", "packages"]
+bdd_features_base_dir = "qa/features"
+filterwarnings = [
+    "error::DeprecationWarning",
+    # gherkin (pytest-bdd's parser) calls re.split(pattern, string, 1) positionally,
+    # which Python 3.14 deprecates. It fires only while parsing a .feature file that
+    # has tags, so it turned "copy the QA scenario verbatim" into a collection error.
+    # Scoped to the module and the message so our own deprecations still fail the run.
+    "ignore:'maxsplit' is passed as positional argument:DeprecationWarning:gherkin.*",
+]
+markers = [
+    "integration: needs a reachable Postgres/Citus; skipped by `make test`",
+    "e2e: real end-to-end suite against cb-gateway + cb-sandbox subprocesses over HTTP; opt-in via `cb.py test-e2e`",
+]
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+# The packages are namespace packages under separate src/ roots, so the four
+# `main.py` modules collide unless mypy is told where each root starts.
+explicit_package_bases = true
+mypy_path = "packages/cb-core/src:packages/cb-api/src:packages/cb-gateway/src:packages/cb-worker/src:packages/cb-sandbox/src"
+# Ruff's ANN rules cover signatures; these cover what ANN cannot see — a body
+# that quietly degrades to Any, an annotation that does not match what the
+# function returns, and calls into untyped code. Both matter for the compiled
+# modules: `annotation_typing = True` in setup.py makes Cython lower PEP 484
+# hints to C types, so a wrong hint is a wrong C type, not just bad docs.
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+
+[[tool.mypy.overrides]]
+# The acceptance suite drives aiogram and pytest objects whose stubs are partial;
+# requiring full typing there buys noise, not safety. Signatures are still
+# enforced by ruff's ANN rules, which do apply everywhere.
+#
+# Only `qa.*` is listed: `qa/` has an `__init__.py`, so its modules resolve as
+# `qa.conftest` and the pattern matches. The per-package `tests/` directories do
+# not, so their modules resolve as bare names like `test_llm` — a `tests.*`
+# pattern silently matched nothing. They are excluded by scoping the mypy run to
+# the `src` roots instead (see `cb.py types`), which is what "check the shipped
+# code" meant in the first place.
+module = ["qa.*"]
+disallow_untyped_defs = false
+check_untyped_defs = false
