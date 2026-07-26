@@ -1,0 +1,1016 @@
+{
+  "bot": {
+    "id": 424242,
+    "username": "CookieMWbot",
+    "first_name": "Cookiebot",
+    "can_join_groups": true,
+    "can_read_all_group_messages": true,
+    "supports_inline_queries": false
+  },
+  "db": "sandbox.duckdb",
+  "default_seed": "default",
+  "seeds": [
+    {
+      "name": "default",
+      "title": "Group with an anonymous admin",
+      "description": "A supergroup with the bot as administrator, a creator, a plain member, and an admin who posts anonymously. Several features (mediarestrict, config, calladms) check whether the bot is an admin before acting, so seeding the bot's own membership is not decorative.",
+      "users": [
+        {
+          "key": "alice",
+          "first_name": "Alice",
+          "username": "alice"
+        },
+        {
+          "key": "bob",
+          "first_name": "Bob",
+          "username": "bob"
+        },
+        {
+          "key": "carol",
+          "first_name": "Carol",
+          "username": "carol"
+        }
+      ],
+      "chats": [
+        {
+          "key": "main",
+          "title": "Cookiebot Sandbox Group",
+          "type": "supergroup",
+          "bot_role": "administrator",
+          "members": [
+            {
+              "user": "alice",
+              "role": "creator"
+            },
+            {
+              "user": "bob",
+              "role": "member"
+            },
+            {
+              "user": "carol",
+              "role": "administrator",
+              "anonymous": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "empty",
+      "title": "Empty",
+      "description": "A blank slate — everything the caller builds by hand from here."
+    },
+    {
+      "name": "dm",
+      "title": "Private chat",
+      "description": "The bot and one user in a private chat, for the commands that only make sense outside a group. The DM existing stands for the user having pressed Start: Telegram forbids a bot from opening one.",
+      "users": [
+        {
+          "key": "dana",
+          "first_name": "Dana",
+          "username": "dana"
+        }
+      ],
+      "dms": [
+        "dana"
+      ]
+    },
+    {
+      "name": "doomlist",
+      "title": "Doomlisted account, not yet joined",
+      "description": "The default world plus a raider account whose name carries one of the glyphs check_local_blacklist matches (cb_gateway/handlers/doomlist.py:_FORBIDDEN_NAME_CHARS). That check runs entirely off User.full_name against a fixed table — no network call, no seeded Postgres row — so it fires deterministically the moment this account self-joins, unlike the cas.chat/burrbot branches of the same handler, which depend on a vendor's live opinion of a sandbox-only id. The account is deliberately in no chat: pressing join is the whole test.",
+      "users": [
+        {
+          "key": "alice",
+          "first_name": "Alice",
+          "username": "alice"
+        },
+        {
+          "key": "bob",
+          "first_name": "Bob",
+          "username": "bob"
+        },
+        {
+          "key": "carol",
+          "first_name": "Carol",
+          "username": "carol"
+        },
+        {
+          "key": "raider",
+          "first_name": "卐Raider",
+          "username": "raider_incoming"
+        }
+      ],
+      "chats": [
+        {
+          "key": "main",
+          "title": "Cookiebot Sandbox Group",
+          "type": "supergroup",
+          "bot_role": "administrator",
+          "members": [
+            {
+              "user": "alice",
+              "role": "creator"
+            },
+            {
+              "user": "bob",
+              "role": "member"
+            },
+            {
+              "user": "carol",
+              "role": "administrator",
+              "anonymous": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "id": "anon-admin",
+      "button": "Anonymous admin -> /config",
+      "label": "Anonymous admin bypass",
+      "seed": "default",
+      "feature_id": "util_config",
+      "acting_user": "carol",
+      "what_to_do": "Acting as Carol, send /config.",
+      "what_to_look_for": "The config menu (inline buttons) should open. v1 rejected this and told the admin to turn anonymity off first — that's the defect this port fixed."
+    },
+    {
+      "id": "sticker-spam",
+      "button": "Sticker spam",
+      "label": "Sticker spam",
+      "seed": "default",
+      "feature_id": "core_stickerspam",
+      "acting_user": "bob",
+      "what_to_do": "Acting as Bob, pick Sticker in the composer and send with a high repeat count (try x6 or more).",
+      "what_to_look_for": "Once the group's flood threshold is crossed, deleteMessage calls should start appearing in the API log for the extra stickers."
+    },
+    {
+      "id": "newcomer-media",
+      "button": "Newcomer media restriction",
+      "label": "Newcomer media restriction",
+      "seed": "default",
+      "feature_id": "core_mediarestrict",
+      "create_user": {
+        "first_name": "Newcomer",
+        "username_prefix": "newcomer"
+      },
+      "what_to_do": "Click '+ Join as me' under Members, then immediately send a photo.",
+      "what_to_look_for": "A brand-new member's media should be restricted (deleted or the account muted) until they're established — check the API log for restrictChatMember or deleteMessage."
+    },
+    {
+      "id": "doomlist",
+      "button": "Doomlisted join",
+      "label": "Doomlisted join",
+      "seed": "doomlist",
+      "feature_id": "util_doomlist",
+      "acting_user": "raider",
+      "what_to_do": "Click '+ Join as me' under Members for this account.",
+      "what_to_look_for": "banChatMember should appear in the API log immediately and the join should never settle into a normal membership — the name carries a glyph the local blacklist check matches."
+    }
+  ],
+  "features": [
+    {
+      "id": "util_isalive",
+      "title": "Health check from chat",
+      "description": null,
+      "status": "done",
+      "commands": [
+        "/isalive",
+        "/tavivo"
+      ],
+      "tags": [
+        "isalive"
+      ],
+      "docs": null
+    },
+    {
+      "id": "core_listcommand",
+      "title": "List available commands",
+      "description": null,
+      "status": "done",
+      "commands": [
+        "/commands",
+        "/comandos"
+      ],
+      "tags": [
+        "listcommand"
+      ],
+      "docs": "docs/contracts/core_listcommand.md"
+    },
+    {
+      "id": "core_privacy",
+      "title": "Privacy policy",
+      "description": null,
+      "status": "done",
+      "commands": [
+        "/privacy",
+        "/privacidade",
+        "/privacidad"
+      ],
+      "tags": [
+        "privacy",
+        "privacy_and_commands"
+      ],
+      "docs": "docs/contracts/core_privacy.md"
+    },
+    {
+      "id": "core_rules",
+      "title": "Group rules and /newrules",
+      "description": null,
+      "status": "done",
+      "commands": [
+        "/rules",
+        "/regras",
+        "/newrules",
+        "/novasregras"
+      ],
+      "tags": [
+        "rules"
+      ],
+      "docs": "docs/contracts/core_rules.md"
+    },
+    {
+      "id": "core_welcome",
+      "title": "Welcome message and /newwelcome",
+      "description": null,
+      "status": "done",
+      "commands": [
+        "/newwelcome",
+        "/novobemvindo"
+      ],
+      "tags": [
+        "welcome"
+      ],
+      "docs": "docs/contracts/core_welcome.md"
+    },
+    {
+      "id": "core_groupguardian",
+      "title": "Join captcha",
+      "description": "captcha challenge module already compiled; needs handler + DB wiring",
+      "status": "done",
+      "commands": [],
+      "tags": [
+        "captcha",
+        "groupguardian",
+        "join_chain"
+      ],
+      "docs": "docs/contracts/core_groupguardian.md"
+    },
+    {
+      "id": "core_stickerspam",
+      "title": "Anti sticker spam",
+      "description": "SlidingWindow compiled; needs shared counter via cache.incr_window",
+      "status": "done",
+      "commands": [],
+      "tags": [
+        "stickerspam"
+      ],
+      "docs": "docs/contracts/core_stickerspam.md"
+    },
+    {
+      "id": "core_mediarestrict",
+      "title": "Media restriction for new members",
+      "description": null,
+      "status": "done",
+      "commands": [],
+      "tags": [
+        "mediarestrict"
+      ],
+      "docs": "docs/contracts/core_mediarestrict.md"
+    },
+    {
+      "id": "util_config",
+      "title": "Admin configuration menu",
+      "description": "QA says /config, v1 ships /configurar - both must resolve",
+      "status": "done",
+      "commands": [
+        "/config",
+        "/configure",
+        "/configurar"
+      ],
+      "tags": [
+        "config",
+        "config_menu"
+      ],
+      "docs": "docs/contracts/util_config.md"
+    },
+    {
+      "id": "util_doomlist",
+      "title": "Block listed users from joining",
+      "description": "external cas.chat + burrbot need timeout and circuit breaker",
+      "status": "done",
+      "commands": [],
+      "tags": [
+        "doomlist"
+      ],
+      "docs": "docs/contracts/util_doomlist.md"
+    },
+    {
+      "id": "core_setlang",
+      "title": "Language selection",
+      "description": "QA describes a web settings page; v1 only has the in-chat menu",
+      "status": "done",
+      "commands": [],
+      "tags": [
+        "setlang"
+      ],
+      "docs": "docs/contracts/core_setlang.md"
+    },
+    {
+      "id": "core_botskins",
+      "title": "Per-event bot skins",
+      "description": "one process serves every skin; per-event asset packs pending",
+      "status": "partial",
+      "commands": [],
+      "tags": [
+        "botskins"
+      ],
+      "docs": null
+    },
+    {
+      "id": "fun_dice",
+      "title": "Roll an n-sided die",
+      "description": "QA says 'roll 6'; v1 ships /dado and /d<N> - alias table already covers both",
+      "status": "done",
+      "commands": [
+        "/dice",
+        "/dado",
+        "/d20"
+      ],
+      "tags": [
+        "dice"
+      ],
+      "docs": "docs/contracts/fun_dice.md"
+    },
+    {
+      "id": "fun_ship",
+      "title": "Ship two members",
+      "description": null,
+      "status": "planned",
+      "commands": [
+        "/ship",
+        "/shippar"
+      ],
+      "tags": [
+        "ship"
+      ],
+      "docs": null
+    },
+    {
+      "id": "fun_death",
+      "title": "Random cause of death",
+      "description": null,
+      "status": "planned",
+      "commands": [
+        "/death",
+        "/morte",
+        "/muerte"
+      ],
+      "tags": [
+        "death"
+      ],
+      "docs": null
+    },
+    {
+      "id": "fun_meme",
+      "title": "Meme generator",
+      "description": "image compositing is a worker job, not a reply-path call",
+      "status": "planned",
+      "commands": [
+        "/meme"
+      ],
+      "tags": [
+        "meme"
+      ],
+      "docs": null
+    },
+    {
+      "id": "fun_battle",
+      "title": "Battle poll",
+      "description": "v1 scrapes telegram.me HTML for avatars; replace with getUserProfilePhotos",
+      "status": "planned",
+      "commands": [
+        "/battle",
+        "/batalha",
+        "/batalla"
+      ],
+      "tags": [
+        "battle"
+      ],
+      "docs": null
+    },
+    {
+      "id": "fun_random",
+      "title": "Random media from the group",
+      "description": "MediaService.random() done and tested; handler not written",
+      "status": "done",
+      "commands": [
+        "/random",
+        "/aleatorio"
+      ],
+      "tags": [
+        "random"
+      ],
+      "docs": "docs/contracts/fun_random.md"
+    },
+    {
+      "id": "fun_firecracker",
+      "title": "Firecracker sequence",
+      "description": null,
+      "status": "planned",
+      "commands": [
+        "/firecracker",
+        "/rojao",
+        "/fogos"
+      ],
+      "tags": [
+        "firecracker"
+      ],
+      "docs": null
+    },
+    {
+      "id": "fun_complaint",
+      "title": "Complaint bit",
+      "description": null,
+      "status": "planned",
+      "commands": [
+        "/complaint",
+        "/milton",
+        "/queja"
+      ],
+      "tags": [
+        "complaint"
+      ],
+      "docs": null
+    },
+    {
+      "id": "fun_partneredcons",
+      "title": "Partnered convention posters",
+      "description": "/trex is spec'd in QA but missing from v1 - net-new",
+      "status": "planned",
+      "commands": [
+        "/bff",
+        "/patas",
+        "/fursmeet",
+        "/trex",
+        "/furcamp",
+        "/pawstral"
+      ],
+      "tags": [
+        "partneredcons"
+      ],
+      "docs": null
+    },
+    {
+      "id": "util_birthday",
+      "title": "Today's birthdays",
+      "description": "generated birth_month/birth_day columns replace v1's unindexable $expr scan",
+      "status": "planned",
+      "commands": [
+        "/birthday",
+        "/aniversario"
+      ],
+      "tags": [
+        "birthday"
+      ],
+      "docs": null
+    },
+    {
+      "id": "util_nextbirthday",
+      "title": "Upcoming birthdays",
+      "description": null,
+      "status": "planned",
+      "commands": [
+        "/nextbirthday",
+        "/proximosaniversarios"
+      ],
+      "tags": [
+        "nextbirthday"
+      ],
+      "docs": null
+    },
+    {
+      "id": "util_everyone",
+      "title": "Ping every member",
+      "description": "v1 does one backend call per user; batch it",
+      "status": "planned",
+      "commands": [
+        "/everyone",
+        "@everyone"
+      ],
+      "tags": [
+        "everyone"
+      ],
+      "docs": null
+    },
+    {
+      "id": "util_calladms",
+      "title": "Call the admins",
+      "description": "group ping done; v1 also DMs each admin - needs a cb-worker fan-out job",
+      "status": "partial",
+      "commands": [
+        "/adm",
+        "@admin",
+        "/report"
+      ],
+      "tags": [
+        "calladms"
+      ],
+      "docs": "docs/contracts/util_calladms.md"
+    },
+    {
+      "id": "util_embedder",
+      "title": "Rewrite social links",
+      "description": "rewrites the 3 hosts v1 actually rewrites; vm.tiktok.com short links need a redirect resolve",
+      "status": "done",
+      "commands": [],
+      "tags": [
+        "embedder"
+      ],
+      "docs": "docs/contracts/util_embedder.md"
+    },
+    {
+      "id": "util_youtube",
+      "title": "YouTube search",
+      "description": null,
+      "status": "planned",
+      "commands": [
+        "/youtube"
+      ],
+      "tags": [
+        "youtube"
+      ],
+      "docs": null
+    },
+    {
+      "id": "core_musicdetection",
+      "title": "Identify music in voice notes",
+      "description": "ShazamAPI is unofficial - feature-flag it behind a breaker",
+      "status": "planned",
+      "commands": [],
+      "tags": [
+        "musicdetection"
+      ],
+      "docs": null
+    },
+    {
+      "id": "util_postforwarder",
+      "title": "Cross-group post forwarding",
+      "description": null,
+      "status": "planned",
+      "commands": [],
+      "tags": [
+        "postforwarder"
+      ],
+      "docs": null
+    },
+    {
+      "id": "util_postgetter",
+      "title": "Receive forwarded posts",
+      "description": null,
+      "status": "planned",
+      "commands": [],
+      "tags": [
+        "postgetter"
+      ],
+      "docs": null
+    },
+    {
+      "id": "util_deletereposts",
+      "title": "Delete scheduled reposts",
+      "description": "QA says /deletereposts, v1 ships /deleteposts",
+      "status": "planned",
+      "commands": [
+        "/deletereposts",
+        "/deleteposts",
+        "/apagarposts"
+      ],
+      "tags": [
+        "deletereposts"
+      ],
+      "docs": null
+    },
+    {
+      "id": "x_giveaways",
+      "title": "Giveaways",
+      "description": "no QA scenario exists - write one",
+      "status": "planned",
+      "commands": [
+        "/giveaway"
+      ],
+      "tags": [
+        "giveaways"
+      ],
+      "docs": null
+    },
+    {
+      "id": "x_conversational_ai",
+      "title": "Conversational AI replies",
+      "description": "LLM router + cost metering done; handler and quota not written",
+      "status": "partial",
+      "commands": [],
+      "tags": [
+        "conversational_ai"
+      ],
+      "docs": null
+    },
+    {
+      "id": "x_speech_to_text",
+      "title": "Voice transcription",
+      "description": "transcribe task routed to the openai provider; handler not written",
+      "status": "partial",
+      "commands": [],
+      "tags": [
+        "speech_to_text"
+      ],
+      "docs": null
+    },
+    {
+      "id": "x_reverse_search",
+      "title": "Reverse image search",
+      "description": null,
+      "status": "planned",
+      "commands": [
+        "/searchsource",
+        "/buscarfonte"
+      ],
+      "tags": [
+        "reverse_search"
+      ],
+      "docs": null
+    },
+    {
+      "id": "x_distortion",
+      "title": "Media distortion",
+      "description": "v1 busy-waits on a module global; replace with a worker semaphore",
+      "status": "planned",
+      "commands": [
+        "/destroy",
+        "/zoar"
+      ],
+      "tags": [
+        "distortion"
+      ],
+      "docs": null
+    },
+    {
+      "id": "x_owner_commands",
+      "title": "Owner-only operations",
+      "description": null,
+      "status": "planned",
+      "commands": [
+        "/grupos",
+        "/broadcast",
+        "/leave",
+        "/blacklist",
+        "/stop",
+        "/restart"
+      ],
+      "tags": [
+        "owner_commands"
+      ],
+      "docs": null
+    },
+    {
+      "id": "x_custom_commands",
+      "title": "Per-group custom commands",
+      "description": "the seed of tenant handler packs",
+      "status": "planned",
+      "commands": [],
+      "tags": [
+        "custom_commands"
+      ],
+      "docs": null
+    }
+  ],
+  "commands": [
+    {
+      "canonical": "battle",
+      "primary": "/battle",
+      "aliases": [
+        "/batalha",
+        "/batalla"
+      ],
+      "feature_id": "fun_battle",
+      "title": "Battle poll",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "birthday",
+      "primary": "/birthday",
+      "aliases": [
+        "/aniversario",
+        "/aniversário",
+        "/cumpleanos",
+        "/cumpleaños"
+      ],
+      "feature_id": "util_birthday",
+      "title": "Today's birthdays",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "calladms",
+      "primary": "/adm",
+      "aliases": [
+        "/admin",
+        "/report"
+      ],
+      "feature_id": "util_calladms",
+      "title": "Call the admins",
+      "status": "partial",
+      "hint": "Pings every admin in the chat — compare the reply as a member vs. as an admin."
+    },
+    {
+      "canonical": "commands",
+      "primary": "/commands",
+      "aliases": [
+        "/comandos"
+      ],
+      "feature_id": "core_listcommand",
+      "title": "List available commands",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "complaint",
+      "primary": "/complaint",
+      "aliases": [
+        "/milton",
+        "/queja",
+        "/reclamacao",
+        "/reclamação"
+      ],
+      "feature_id": "fun_complaint",
+      "title": "Complaint bit",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "con_bff",
+      "primary": "/bff",
+      "aliases": [],
+      "feature_id": "fun_partneredcons",
+      "title": "Partnered convention posters",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "con_furcamp",
+      "primary": "/furcamp",
+      "aliases": [],
+      "feature_id": "fun_partneredcons",
+      "title": "Partnered convention posters",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "con_fursmeet",
+      "primary": "/fursmeet",
+      "aliases": [],
+      "feature_id": "fun_partneredcons",
+      "title": "Partnered convention posters",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "con_patas",
+      "primary": "/patas",
+      "aliases": [],
+      "feature_id": "fun_partneredcons",
+      "title": "Partnered convention posters",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "con_pawstral",
+      "primary": "/pawstral",
+      "aliases": [],
+      "feature_id": "fun_partneredcons",
+      "title": "Partnered convention posters",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "con_trex",
+      "primary": "/trex",
+      "aliases": [],
+      "feature_id": "fun_partneredcons",
+      "title": "Partnered convention posters",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "config",
+      "primary": "/config",
+      "aliases": [
+        "/configurar",
+        "/configure"
+      ],
+      "feature_id": "util_config",
+      "title": "Admin configuration menu",
+      "status": "done",
+      "hint": "Opens the admin config menu — send it as an anonymous admin to check the v1 defect the port fixed."
+    },
+    {
+      "canonical": "death",
+      "primary": "/death",
+      "aliases": [
+        "/morte",
+        "/muerte"
+      ],
+      "feature_id": "fun_death",
+      "title": "Random cause of death",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "deletereposts",
+      "primary": "/deletereposts",
+      "aliases": [
+        "/apagarposts",
+        "/deleteposts"
+      ],
+      "feature_id": "util_deletereposts",
+      "title": "Delete scheduled reposts",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "dice",
+      "primary": "/dice",
+      "aliases": [
+        "/dado",
+        "/roll"
+      ],
+      "feature_id": "fun_dice",
+      "title": "Roll an n-sided die",
+      "status": "done",
+      "hint": "Bare /dice/ /dado rolls a d6; /d<N> (e.g. /d20, /d100) rolls an N-sided die with no upper bound."
+    },
+    {
+      "canonical": "everyone",
+      "primary": "/everyone",
+      "aliases": [],
+      "feature_id": "util_everyone",
+      "title": "Ping every member",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "firecracker",
+      "primary": "/firecracker",
+      "aliases": [
+        "/acende",
+        "/fogos",
+        "/rojao",
+        "/rojão"
+      ],
+      "feature_id": "fun_firecracker",
+      "title": "Firecracker sequence",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "isalive",
+      "primary": "/isalive",
+      "aliases": [
+        "/tavivo"
+      ],
+      "feature_id": "util_isalive",
+      "title": "Health check from chat",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "meme",
+      "primary": "/meme",
+      "aliases": [],
+      "feature_id": "fun_meme",
+      "title": "Meme generator",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "newrules",
+      "primary": "/newrules",
+      "aliases": [
+        "/novasregras",
+        "/nuevasreglas"
+      ],
+      "feature_id": "core_rules",
+      "title": "Group rules and /newrules",
+      "status": "done",
+      "hint": "Admin only. Try it as a plain member (should refuse) and as an anonymous admin (should work)."
+    },
+    {
+      "canonical": "newwelcome",
+      "primary": "/newwelcome",
+      "aliases": [
+        "/novobemvindo",
+        "/nuevabienvenida"
+      ],
+      "feature_id": "core_welcome",
+      "title": "Welcome message and /newwelcome",
+      "status": "done",
+      "hint": "Admin only, same anonymous-admin check as /newrules."
+    },
+    {
+      "canonical": "nextbirthday",
+      "primary": "/nextbirthday",
+      "aliases": [
+        "/nextbirthdays",
+        "/proximosaniversarios"
+      ],
+      "feature_id": "util_nextbirthday",
+      "title": "Upcoming birthdays",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "privacy",
+      "primary": "/privacy",
+      "aliases": [
+        "/privacidad",
+        "/privacidade"
+      ],
+      "feature_id": "core_privacy",
+      "title": "Privacy policy",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "publish",
+      "primary": "/publish",
+      "aliases": [
+        "/divulgar",
+        "/publicar"
+      ],
+      "feature_id": null,
+      "title": null,
+      "status": "unknown",
+      "hint": null
+    },
+    {
+      "canonical": "random",
+      "primary": "/random",
+      "aliases": [
+        "/aleatorio",
+        "/aleatório"
+      ],
+      "feature_id": "fun_random",
+      "title": "Random media from the group",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "repost",
+      "primary": "/repost",
+      "aliases": [
+        "/reenviar",
+        "/repostar"
+      ],
+      "feature_id": null,
+      "title": null,
+      "status": "unknown",
+      "hint": null
+    },
+    {
+      "canonical": "rules",
+      "primary": "/rules",
+      "aliases": [
+        "/reglas",
+        "/regras"
+      ],
+      "feature_id": "core_rules",
+      "title": "Group rules and /newrules",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "ship",
+      "primary": "/ship",
+      "aliases": [
+        "/shipp",
+        "/shippar"
+      ],
+      "feature_id": "fun_ship",
+      "title": "Ship two members",
+      "status": "planned",
+      "hint": null
+    },
+    {
+      "canonical": "youtube",
+      "primary": "/youtube",
+      "aliases": [],
+      "feature_id": "util_youtube",
+      "title": "YouTube search",
+      "status": "planned",
+      "hint": null
+    }
+  ]
+}
