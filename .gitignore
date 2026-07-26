@@ -40,3 +40,4 @@ videos/*/node_modules/
 videos/*/.hyperframes/
 demo.duckdb
 demo.duckdb.wal
+videos/*/.media/
