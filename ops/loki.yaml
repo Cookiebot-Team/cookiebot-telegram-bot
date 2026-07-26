@@ -1,0 +1,81 @@
+# Loki, single-binary, filesystem-backed — the same shape as the Tempo config
+# next to it: one process, local disk, no object store, no ring to operate.
+#
+# It exists so a log line, a metric exemplar and a trace all join on the same
+# `trace_id`. cb-core's structlog pipeline already stamps every line with
+# `trace_id`/`span_id`; the collector forwards those as OTLP log attributes,
+# and the datasource wiring in `ops/grafana/provisioning/datasources/` turns
+# them into a click-through from a log line to its trace.
+#
+# Ingestion is OTLP only (`POST /otlp/v1/logs`, native since Loki 3). Nothing
+# pushes to the legacy `/loki/api/v1/push` endpoint, and no promtail/Alloy
+# sidecar tails container stdout: the services run as *host* processes during
+# development, so a container log collector would see nothing.
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  # Loki is chatty at info; the interesting failures (ingestion rejected, out
+  # of order) are warnings, and a wall of routine lines is how people learn to
+  # ignore the log of the thing that stores their logs.
+  log_level: warn
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    # `inmemory` rather than consul/etcd: a single-binary Loki still wants a
+    # ring, and an in-process one is the whole of the coordination this needs.
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # A local workbench replays old fixtures and re-runs recorded scenarios, both
+  # of which produce timestamps Loki would otherwise reject outright as too old
+  # — and a rejected log line is invisible, which is the worst possible failure
+  # mode for the thing you turned to when something else broke.
+  reject_old_samples: false
+  allow_structured_metadata: true
+  # Every attribute the collector forwards that is not mapped to a label lands
+  # in structured metadata, which is what keeps `trace_id` queryable without
+  # making it a label (a label per trace would be unbounded cardinality and
+  # would take the index down within an afternoon).
+  otlp_config:
+    resource_attributes:
+      attributes_config:
+        - action: index_label
+          attributes:
+            - service.name
+            - service.namespace
+            - deployment.environment
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+
+table_manager:
+  retention_deletes_enabled: true
+  retention_period: 168h   # 7d, matching Tempo's block retention
+
+# No ruler, no alertmanager: this stack is for looking at a local run, and an
+# alerting path nobody has configured a receiver for is decoration.
+analytics:
+  reporting_enabled: false

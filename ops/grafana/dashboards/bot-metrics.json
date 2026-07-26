@@ -1,0 +1,267 @@
+{
+  "uid": "cb-bot-metrics",
+  "title": "Bot metrics",
+  "tags": ["cookiebot", "metrics"],
+  "timezone": "browser",
+  "editable": true,
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "description": "What the bot is doing, from the metrics cb-core defines (packages/cb-core/src/cb_core/metrics.py). Every latency panel is a p95, not a mean: a mean over a chat bot's traffic is dominated by the cheap commands and hides exactly the slow ones people complain about.",
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "metrics" },
+        "query": "label_values(up, job)",
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Telegram ingest",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "Updates received",
+      "description": "Split by update type, so a flood of one kind (a sticker raid, a join storm) is visible as a shape rather than as one rising line.",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (update_type) (rate(cb_updates_total[$__rate_interval]))",
+          "legendFormat": "{{update_type}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" }, "showPoints": "never" }, "unit": "reqps" },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Updates dropped, by reason",
+      "description": "Dropping is normal — dedupe catches Telegram's own redeliveries. What matters is the *reason* mix changing: a new reason appearing, or dedupe suddenly dropping everything, which is what a rewound update_id counter looks like.",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (reason) (rate(cb_updates_dropped_total[$__rate_interval]))",
+          "legendFormat": "{{reason}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" }, "showPoints": "never" }, "unit": "reqps" },
+        "overrides": []
+      }
+    },
+    {
+      "type": "row",
+      "title": "Handlers",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "Handler p95 latency, by command",
+      "description": "Click a spike to jump to the trace behind it — the exemplars on this series carry trace_id (see the datasource wiring in ops/grafana/provisioning/datasources).",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 10 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le, command) (rate(cb_handler_duration_seconds_bucket[$__rate_interval])))",
+          "legendFormat": "{{command}}",
+          "exemplar": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 0, "showPoints": "never" }, "unit": "s" },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Handler outcomes",
+      "description": "Silence is a valid, common outcome in this bot — a command refused for a non-admin, a filter that decided not to act. Separating it from errors is the whole reason `outcome` is a label.",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 10 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (outcome) (rate(cb_handler_duration_seconds_count[$__rate_interval]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" }, "showPoints": "never" }, "unit": "reqps" },
+        "overrides": []
+      }
+    },
+    {
+      "type": "table",
+      "title": "Handler errors by type",
+      "description": "Grouped by exception class rather than by message: a message carries ids and would make every row unique, which is a list, not a summary.",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (handler, exc_type) (increase(cb_handler_errors_total[$__range]))",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "Value": "errors in range" } } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "errors in range", "desc": true }] } }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Outbound Bot API latency (p95) and rate limiting",
+      "description": "The bot's own view of Telegram. A rising 429 rate is the signal that a feature is sending more than it should — and it shows up here long before users notice.",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le, method) (rate(cb_telegram_api_duration_seconds_bucket[$__rate_interval])))",
+          "legendFormat": "p95 {{method}}",
+          "exemplar": true
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (method) (rate(cb_telegram_rate_limited_total[$__rate_interval]))",
+          "legendFormat": "429/s {{method}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 0, "showPoints": "never" }, "unit": "s" },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "429.*" },
+            "properties": [
+              { "id": "unit", "value": "reqps" },
+              { "id": "custom.axisPlacement", "value": "right" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "row",
+      "title": "Storage, cache and dependencies",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "Cache hit ratio by layer",
+      "description": "v1 cached configs in an unlocked dict with no TTL and no invalidation, and nobody could tell a stale read from a fresh one. This is that made visible: a ratio that drops means the layer stopped working, not that traffic changed.",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (cache, layer) (rate(cb_cache_lookups_total{outcome=\"hit\"}[$__rate_interval]))\n  /\nclamp_min(sum by (cache, layer) (rate(cb_cache_lookups_total[$__rate_interval])), 0.001)",
+          "legendFormat": "{{cache}} / {{layer}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 0, "showPoints": "never" }, "unit": "percentunit", "min": 0, "max": 1 },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Database: pool usage and query p95",
+      "description": "Pool exhaustion and slow queries look identical from a handler's latency alone. Both are here so the difference is one glance.",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "targets": [
+        { "refId": "A", "expr": "sum(cb_db_pool_in_use)", "legendFormat": "connections in use" },
+        { "refId": "B", "expr": "sum(cb_db_pool_size)", "legendFormat": "pool size" },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(cb_db_query_duration_seconds_bucket[$__rate_interval])))",
+          "legendFormat": "query p95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 0, "showPoints": "never" }, "unit": "short" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "query p95" },
+            "properties": [{ "id": "unit", "value": "s" }, { "id": "custom.axisPlacement", "value": "right" }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "External dependencies: up and latency",
+      "description": "cas.chat, saucenao and friends. A dependency going down should degrade one feature, not the bot — this panel is how you check that claim rather than assume it.",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "targets": [
+        { "refId": "A", "expr": "cb_external_dep_up", "legendFormat": "up: {{dep}}" },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le, dep) (rate(cb_external_dep_duration_seconds_bucket[$__rate_interval])))",
+          "legendFormat": "p95: {{dep}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 0, "showPoints": "never" }, "unit": "short" },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "p95.*" },
+            "properties": [{ "id": "unit", "value": "s" }, { "id": "custom.axisPlacement", "value": "right" }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "LLM spend and tokens",
+      "description": "v1 had zero visibility into token spend. A cost line that rises without a matching request line means the model changed, not the traffic.",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (provider, model) (increase(cb_llm_cost_usd_total[$__rate_interval]))",
+          "legendFormat": "USD: {{provider}}/{{model}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (kind) (rate(cb_llm_tokens_total[$__rate_interval]))",
+          "legendFormat": "tokens/s: {{kind}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 10, "showPoints": "never" }, "unit": "short" },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "USD.*" },
+            "properties": [{ "id": "unit", "value": "currencyUSD" }]
+          }
+        ]
+      }
+    }
+  ]
+}

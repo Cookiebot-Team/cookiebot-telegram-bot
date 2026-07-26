@@ -1,0 +1,20 @@
+apiVersion: 1
+
+# Dashboards are files on disk, not clicked-together state living in Grafana's
+# own database. That is what makes them reviewable in a diff, and what makes
+# `docker compose down -v` a safe thing to do — a dashboard someone spent an
+# afternoon on should not be one volume deletion away from gone.
+
+providers:
+  - name: cookiebot
+    orgId: 1
+    folder: Cookiebot
+    type: file
+    disableDeletion: false
+    # Picks up edits to the JSON without a restart, which is the difference
+    # between iterating on a panel and rebuilding a container to see it.
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

@@ -1,0 +1,58 @@
+# Prometheus' scrape-config format, read by VictoriaMetrics in single-binary
+# mode (`-promscrape.config`). Kept in that format on purpose: it is what every
+# exporter, every runbook and every future move to a real Prometheus already
+# speaks, and VM reads it verbatim.
+#
+# The service targets are *host* processes — `cb.py gateway|api|worker` run
+# outside compose — so they are simply down until someone starts them. VM is
+# configured to tolerate that rather than refuse to boot; a metrics stack that
+# only starts when the whole application is already running is a stack nobody
+# can use to debug the application not starting.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    env: local
+
+scrape_configs:
+  # Services expose their own /metrics via prometheus_client (multiprocess-safe).
+  - job_name: cb-gateway
+    static_configs:
+      - targets: ["host.docker.internal:9101"]
+        labels: { service: cb-gateway }
+
+  - job_name: cb-api
+    static_configs:
+      - targets: ["host.docker.internal:9102"]
+        labels: { service: cb-api }
+
+  - job_name: cb-worker
+    static_configs:
+      - targets: ["host.docker.internal:9103"]
+        labels: { service: cb-worker }
+
+  # Anything pushed as OTLP metrics lands here — the collector re-exposes it
+  # in Prometheus format, so an OTLP-only signal still reaches the same store
+  # as the scraped ones.
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8889"]
+        labels: { service: otel-collector }
+
+  # The stack watching itself. Without these, "no data" in a dashboard has two
+  # possible causes — the app is not running, or the stack is broken — and no
+  # way to tell them apart.
+  - job_name: victoriametrics
+    static_configs:
+      - targets: ["victoriametrics:8428"]
+        labels: { service: victoriametrics }
+
+  - job_name: tempo
+    static_configs:
+      - targets: ["tempo:3200"]
+        labels: { service: tempo }
+
+  - job_name: loki
+    static_configs:
+      - targets: ["loki:3100"]
+        labels: { service: loki }

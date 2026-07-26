@@ -1,0 +1,88 @@
+# The one thing every service talks to. Three pipelines, three stores:
+#
+#   traces  -> Tempo   (OTLP straight through)
+#   metrics -> :8889   (re-exposed in Prometheus format, scraped by
+#                       VictoriaMetrics — see ops/scrape.yml)
+#   logs    -> Loki    (OTLP, native since Loki 3)
+#
+# Keeping all three behind one endpoint is what lets a service set a single
+# `OTEL_EXPORTER_OTLP_ENDPOINT` and be done, and what let the metrics store
+# change (Prometheus -> VictoriaMetrics) without touching a line of
+# application code.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 2s
+    send_batch_size: 1024
+  memory_limiter:
+    check_interval: 2s
+    limit_percentage: 75
+    spike_limit_percentage: 20
+  # Drop high-cardinality junk before it reaches a store. This is the cheapest
+  # place to enforce it: once a label is in an index, deleting the rule does
+  # not shrink what is already there.
+  attributes/scrub:
+    actions:
+      - key: http.request.header.authorization
+        action: delete
+      # Message text is unbounded and frequently personal. Whatever a span
+      # needs to say about a message it says with a command name and an
+      # outcome, never the text itself.
+      - key: telegram.text
+        action: delete
+  # A log stream with no service name is one nobody can filter to, so it
+  # disappears into the general noise instead of being missing loudly.
+  resource/logs:
+    attributes:
+      - key: service.name
+        value: unknown-service
+        action: insert
+
+exporters:
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    # Lets Grafana jump metric -> exemplar -> trace.
+    enable_open_metrics: true
+    # Without this, an OTLP metric loses its `service`/`env` resource
+    # attributes on the way out, and the metrics dashboard cannot break
+    # anything down by service — the first thing anyone asks it to do.
+    resource_to_telemetry_conversion:
+      enabled: true
+  otlphttp/loki:
+    # Loki's native OTLP receiver. Note the path: the exporter appends
+    # `/v1/logs` itself, so this must stop at `/otlp`.
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+  debug:
+    verbosity: basic
+
+service:
+  telemetry:
+    logs:
+      level: warn
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/scrub, batch]
+      exporters: [otlp/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/scrub, resource/logs, batch]
+      exporters: [otlphttp/loki]

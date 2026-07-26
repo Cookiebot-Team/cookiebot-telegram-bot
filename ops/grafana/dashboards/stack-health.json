@@ -1,0 +1,160 @@
+{
+  "uid": "cb-stack-health",
+  "title": "Observability stack health",
+  "tags": ["cookiebot", "meta"],
+  "timezone": "browser",
+  "editable": true,
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-30m", "to": "now" },
+  "description": "Is the stack itself working? Every other dashboard shows nothing when the app is idle AND when the stack is broken, and those two look identical. This one tells them apart, so it is the first place to look when a panel says 'No data'.",
+  "panels": [
+    {
+      "type": "text",
+      "title": "Read this first",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "mode": "markdown",
+        "content": "A panel showing **No data** has two very different causes: the application is not running, or this stack is not receiving. The row below distinguishes them.\n\n`up` is 1 for every target VictoriaMetrics can scrape. The service targets (`cb-gateway`, `cb-api`, `cb-worker`) are **host** processes started with `cb.py gateway|api|worker` — they are legitimately down until you start them, and that is not a stack fault. The infrastructure targets should be up whenever `cb.py up` has run."
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Scrape targets up",
+      "description": "1 = VictoriaMetrics reached the target on its last attempt. A service at 0 means the process is not running; an infrastructure component at 0 means the stack is broken.",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up",
+          "legendFormat": "{{job}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "textMode": "value_and_name",
+        "orientation": "horizontal"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "down", "color": "red", "index": 0 } } },
+            { "type": "value", "options": { "1": { "text": "up", "color": "green", "index": 1 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Spans accepted by Tempo",
+      "description": "Non-zero means traces are arriving and being stored. Zero while the bot is handling updates means the trace pipeline is broken between the app, the collector and Tempo — not that nothing happened.",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(tempo_distributor_spans_received_total[$__rate_interval]))",
+          "legendFormat": "spans/s received"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(tempo_discarded_spans_total[$__rate_interval]))",
+          "legendFormat": "spans/s discarded"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 10, "showPoints": "never" }, "unit": "short" },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Log lines accepted by Loki",
+      "description": "Loki silently drops lines it rejects (too old, malformed, over a limit). A discard rate above zero is why a log line you know was written is not in the log dashboard.",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 11 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(loki_distributor_lines_received_total[$__rate_interval]))",
+          "legendFormat": "lines/s received"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (reason) (rate(loki_discarded_samples_total[$__rate_interval]))",
+          "legendFormat": "discarded: {{reason}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 10, "showPoints": "never" }, "unit": "short" },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "VictoriaMetrics ingestion and series count",
+      "description": "Active series is the cardinality bill. A step change here after a deploy means a new label with unbounded values got into a metric — the failure this project's telemetry rules exist to prevent.",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 11 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(vm_rows_inserted_total[$__rate_interval]))",
+          "legendFormat": "rows/s inserted"
+        },
+        {
+          "refId": "B",
+          "expr": "vm_cache_entries{type=\"storage/hour_metric_ids\"}",
+          "legendFormat": "active series (this hour)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 10, "showPoints": "never" }, "unit": "short" },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Collector pipeline: accepted vs refused",
+      "description": "The collector is the single point every signal passes through. A refusal rate above zero here explains a gap in all three of the other dashboards at once.",
+      "datasource": { "type": "prometheus", "uid": "metrics" },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 18 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_sent_spans_total[$__rate_interval]))",
+          "legendFormat": "spans sent: {{exporter}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_send_failed_spans_total[$__rate_interval]))",
+          "legendFormat": "spans FAILED: {{exporter}}"
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_sent_log_records_total[$__rate_interval]))",
+          "legendFormat": "logs sent: {{exporter}}"
+        },
+        {
+          "refId": "D",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_send_failed_log_records_total[$__rate_interval]))",
+          "legendFormat": "logs FAILED: {{exporter}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 10, "showPoints": "never" }, "unit": "short" },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": ".*FAILED.*" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+          }
+        ]
+      }
+    }
+  ]
+}

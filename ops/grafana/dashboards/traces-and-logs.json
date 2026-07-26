@@ -1,0 +1,165 @@
+{
+  "uid": "cb-traces-logs",
+  "title": "Traces and logs",
+  "tags": ["cookiebot", "traces", "logs"],
+  "timezone": "browser",
+  "editable": true,
+  "schemaVersion": 39,
+  "refresh": "",
+  "time": { "from": "now-1h", "to": "now" },
+  "description": "One update, followed all the way through. Paste a trace id into the variable at the top and the trace, its spans and its log lines all appear together — that join is the thing this stack exists to provide, and it only works because every log line carries the trace it belongs to.",
+  "templating": {
+    "list": [
+      {
+        "name": "trace_id",
+        "label": "Trace ID",
+        "type": "textbox",
+        "query": "",
+        "current": { "text": "", "value": "" },
+        "description": "Paste one from the search panel below, from an exemplar on the metrics dashboard, or from a log line."
+      },
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "textbox",
+        "query": "cb-gateway",
+        "current": { "text": "cb-gateway", "value": "cb-gateway" },
+        "description": "service.name as the app reports it — cb-gateway, cb-api, cb-worker."
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "text",
+      "title": "How to use this",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "mode": "markdown",
+        "content": "**Start at the bottom.** The search panel lists recent traces; click one to fill in `trace_id` above, and the two panels in the middle fill with that trace's spans and that trace's log lines side by side.\n\nComing the other way works too: a spike on **Bot metrics** carries exemplars — click one and Grafana brings you here with the id already set.\n\nIf the log panel is empty for a trace that clearly has spans, the log line was written without trace context (a module logging outside a request, or before instrumentation runs). That is a finding, not a glitch."
+      }
+    },
+    {
+      "type": "traces",
+      "title": "Trace: $trace_id",
+      "description": "The whole update, span by span. A gap between spans is real work nobody instrumented — usually where the time actually went.",
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "gridPos": { "h": 14, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "$trace_id",
+          "limit": 100
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Logs for this trace",
+      "description": "Every line any service wrote while handling this update, in order, across process boundaries — the gateway and the worker that picked up its job share a trace id.",
+      "datasource": { "type": "loki", "uid": "logs" },
+      "gridPos": { "h": 14, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service_name=~\".+\"} | trace_id = `$trace_id`",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "sortOrder": "Ascending",
+        "enableLogDetails": true,
+        "dedupStrategy": "none"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Log volume by level",
+      "description": "A warning rate that climbs while the error rate stays flat is the shape of a degraded dependency being handled correctly — worth seeing, not worth paging on.",
+      "datasource": { "type": "loki", "uid": "logs" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (level) (count_over_time({service_name=~\".+\"} | json | __error__=`` [$__auto]))",
+          "queryType": "range",
+          "legendFormat": "{{level}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 30, "stacking": { "mode": "normal" }, "showPoints": "never" }, "unit": "short" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "error" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "warning" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "logs",
+      "title": "Recent warnings and errors ($service)",
+      "description": "The unfiltered feed, for when you do not yet have a trace id — find the line that looks wrong, click its trace_id, and the panels above fill in.",
+      "datasource": { "type": "loki", "uid": "logs" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service_name=~\"$service\"} | json | level =~ `warning|error|critical`",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true,
+        "dedupStrategy": "none"
+      }
+    },
+    {
+      "type": "table",
+      "title": "Recent traces — click one to fill in the id above",
+      "description": "TraceQL over the last window. Sorted by duration rather than by time, because the trace worth opening is almost never the most recent one.",
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 26 },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "traceqlSearch",
+          "filters": [
+            {
+              "id": "service-name",
+              "tag": "service.name",
+              "operator": "=~",
+              "scope": "resource",
+              "value": ["$service"],
+              "valueType": "string"
+            }
+          ],
+          "limit": 50,
+          "tableType": "traces"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "traceIdHidden" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          }
+        ]
+      }
+    }
+  ]
+}

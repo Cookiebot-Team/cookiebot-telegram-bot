@@ -1,0 +1,106 @@
+apiVersion: 1
+
+# Four stores, wired so any one of them gets you to the other two. That wiring
+# is the point of this file — three datasources that cannot link to each other
+# are three tools, not a stack. The joins:
+#
+#   metric -> trace   exemplars carry `trace_id` (VictoriaMetrics -> Tempo)
+#   trace  -> logs    Tempo's `tracesToLogsV2` searches Loki by `trace_id`
+#   trace  -> metric  Tempo's `tracesToMetrics` runs PromQL for the span
+#   log    -> trace   Loki's derived field turns a `trace_id` into a link
+#
+# Every one of those depends on cb-core's structlog pipeline stamping
+# `trace_id`/`span_id` on each line (`cb_core/logging.py:_add_trace_context`).
+
+datasources:
+  # VictoriaMetrics speaks PromQL over the Prometheus HTTP API, so Grafana
+  # talks to it with the `prometheus` datasource type — nothing here is
+  # VM-specific except the URL and the port.
+  - name: VictoriaMetrics
+    type: prometheus
+    uid: metrics
+    access: proxy
+    url: http://victoriametrics:8428
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+      prometheusType: Prometheus
+      prometheusVersion: 2.55.0
+      timeInterval: 15s
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
+          urlDisplayLabel: View trace
+
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    access: proxy
+    url: http://tempo:3200
+    jsonData:
+      tracesToMetrics:
+        datasourceUid: metrics
+        spanStartTimeShift: -2m
+        spanEndTimeShift: 2m
+        queries:
+          - name: Handler latency (p95)
+            query: >-
+              histogram_quantile(0.95,
+                sum by (le) (rate(cb_handler_duration_seconds_bucket[$__rate_interval])))
+      tracesToLogsV2:
+        datasourceUid: logs
+        spanStartTimeShift: -2m
+        spanEndTimeShift: 2m
+        # Match on the trace id rather than on labels: a span and its log lines
+        # share a trace, not necessarily a service — a worker job logs under
+        # its own name while continuing the gateway's trace.
+        filterByTraceID: true
+        filterBySpanID: false
+        customQuery: false
+      serviceMap:
+        datasourceUid: metrics
+      nodeGraph:
+        enabled: true
+      streamingEnabled:
+        search: true
+
+  - name: Loki
+    type: loki
+    uid: logs
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        # Two matchers for one field on purpose. `trace_id` arrives as
+        # structured metadata when a line came through OTLP, and as a JSON key
+        # inside the line itself when it came from structlog's own renderer —
+        # both are real, and a link that only works for one of them is a link
+        # people stop trusting.
+        - name: trace_id
+          matcherType: label
+          matcherRegex: trace_id
+          url: "$${__value.raw}"
+          datasourceUid: tempo
+          urlDisplayLabel: View trace
+        - name: trace_id_in_line
+          matcherType: regex
+          matcherRegex: '"trace_id"\s*:\s*"(\w+)"'
+          url: "$${__value.raw}"
+          datasourceUid: tempo
+          urlDisplayLabel: View trace
+
+  # message_events lives here — analytics rows carry trace_id, so a slow-command
+  # row in a dashboard links straight to its Tempo trace.
+  - name: Citus
+    type: grafana-postgresql-datasource
+    uid: citus
+    access: proxy
+    url: citus:5432
+    database: cookiebot
+    user: cookiebot
+    secureJsonData:
+      password: cookiebot
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1700

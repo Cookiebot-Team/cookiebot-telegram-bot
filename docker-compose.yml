@@ -1,0 +1,171 @@
+# Single-node Citus: same distributed DDL as a cluster, one container.
+# Scale later with `SELECT citus_add_node(...)` — no schema change required.
+name: cookiebot-v2
+
+services:
+  citus:
+    image: citusdata/citus:13.0
+    # Shard count is not set here: the migration session sets it (CB_CITUS_SHARD_COUNT
+    # in migrations/env.py), so local, CI and production get the same topology
+    # regardless of how the server was started.
+    command: ["-c", "shared_preload_libraries=citus,pg_stat_statements"]
+    environment:
+      POSTGRES_USER: cookiebot
+      POSTGRES_PASSWORD: cookiebot
+      POSTGRES_DB: cookiebot
+    ports: ["5432:5432"]
+    volumes:
+      - citus-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cookiebot -d cookiebot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--save", "", "--appendonly", "no", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.119.0
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./ops/otel-collector.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8889:8889"   # collector-scraped prometheus exporter
+    depends_on: [tempo, loki]
+
+  tempo:
+    image: grafana/tempo:2.7.0
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./ops/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    ports: ["3200:3200"]
+
+  # VictoriaMetrics in single-binary mode: one process doing ingest, storage,
+  # scraping and PromQL. It reads Prometheus' own scrape config format
+  # (`-promscrape.config`), so `ops/scrape.yml` is a plain prometheus.yml and
+  # nothing about how the services expose `/metrics` had to change.
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.111.0
+    command:
+      - -storageDataPath=/vm-data
+      - -retentionPeriod=15d
+      - -promscrape.config=/etc/vm/scrape.yml
+      # The scrape targets are host processes (`cb.py gateway` runs outside
+      # compose), which are simply absent until someone starts them. Without
+      # this, VM refuses to start at all when a target does not resolve, so
+      # `cb.py up` would fail for anyone not already running the bot.
+      - -promscrape.config.strictParse=false
+      - -promscrape.suppressScrapeErrors=true
+      # Lets a metric carry the trace it came from, which is what makes the
+      # "spike in the graph -> the actual trace behind it" jump work.
+      - -search.maxExportDuration=720h
+    volumes:
+      - ./ops/scrape.yml:/etc/vm/scrape.yml:ro
+      - vm-data:/vm-data
+    ports: ["8428:8428"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8428/health >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Loki 3 ingests OTLP natively (`/otlp/v1/logs`), so the collector is the only
+  # thing that talks to it and the services keep logging exactly as they do now.
+  loki:
+    image: grafana/loki:3.3.2
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./ops/loki.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    ports: ["3100:3100"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3100/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  grafana:
+    image: grafana/grafana:11.5.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_FEATURE_TOGGLES_ENABLE: traceqlEditor
+      # Provisioned dashboards are read-only in the UI otherwise, which makes
+      # "tweak a panel to answer the question in front of you" impossible —
+      # the main thing a person actually does with a dashboard.
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+    volumes:
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./ops/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    # 3000 is Grafana's convention and the default here, but it is also the
+    # single most contended port on a developer machine — override it rather
+    # than hunt down whatever else is holding it:
+    #   CB_GRAFANA_PORT=3002 python scripts/cb.py up
+    ports: ["${CB_GRAFANA_PORT:-3000}:3000"]
+    depends_on: [victoriametrics, tempo, loki]
+
+  # v1's MongoDB, for exercising the importer against a live source. Opt in with:
+  #   docker compose --profile v1data up -d
+  # A mongodump directory needs nothing running — see CB_MONGO_DUMP_DIR.
+  mongo:
+    image: mongo:7
+    profiles: ["v1data"]
+    environment:
+      MONGO_INITDB_DATABASE: cookiebot
+    ports: ["27017:27017"]
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Self-hosted Telegram Bot API server. Opt in with:
+  #   docker compose --profile selfhosted up -d
+  # Needs TELEGRAM_API_ID / TELEGRAM_API_HASH from my.telegram.org (these identify
+  # the *application*, not a bot; bot tokens stay in CB_BOT_TOKENS).
+  # Buys: 2 GB uploads, no download-size cap, no per-bot rate limits, and a webhook
+  # that may point at a private address.
+  telegram-bot-api:
+    image: aiogram/telegram-bot-api:latest
+    profiles: ["selfhosted"]
+    environment:
+      # Plain defaults, not `:?required`: podman-compose interpolates every service
+      # in the file, including ones behind an inactive profile, so a `:?` here makes
+      # `cb.py up` fail for people who will never run this container. The guard lives
+      # in the `selfhosted` task instead.
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID:-}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH:-}
+      TELEGRAM_LOCAL: "1"   # write files to disk; getFile returns a path, not a URL
+      TELEGRAM_VERBOSITY: "1"
+    volumes:
+      - telegram-bot-api-data:/var/lib/telegram-bot-api
+    ports:
+      - "8082:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/ >/dev/null 2>&1 || exit 0"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  citus-data:
+  mongo-data:
+  telegram-bot-api-data:
+  tempo-data:
+  vm-data:
+  loki-data:
+  grafana-data:
