@@ -92,6 +92,11 @@ class Settings(BaseSettings):
     traces_enabled: bool = True
     trace_sample_ratio: float = 1.0
     metrics_port: int = 9101
+    #: Ship log records to the OTLP collector alongside stdout, so a log line
+    #: is reachable from the trace it belongs to. Off by default: stdout is the
+    #: contract every deployment already relies on, and a collector that is not
+    #: listening must never become a reason the service logs nothing.
+    otlp_logs_enabled: bool = False
 
     # telegram
     bot_tokens: dict[str, str] = Field(default_factory=dict)
