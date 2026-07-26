@@ -1,0 +1,101 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv sync --all-packages
+      - name: ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: types
+        # mypy catches what ANN cannot (a body degrading to Any, a hint that
+        # disagrees with the return), and hot_types.py catches what neither can:
+        # untyped locals in the Cython-compiled modules, where an annotation is
+        # lowered to a C type.
+        run: |
+          uv run mypy packages/cb-core/src packages/cb-api/src packages/cb-gateway/src packages/cb-worker/src
+          uv run python scripts/hot_types.py --check
+      - name: unit tests (pure python build)
+        env:
+          CB_SKIP_CYTHON: "1"
+        # CB_SKIP_CYTHON is read at *build* time, so the package must be reinstalled
+        # for it to take effect — setting it only for pytest would silently test the
+        # compiled build.
+        run: |
+          CB_SKIP_CYTHON=1 uv sync --reinstall-package cb-core
+          uv run pytest -q packages
+      - name: qa acceptance (mock telegram, no live token)
+        run: uv run pytest -q -m "not integration" qa
+
+  cython-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install 3.13
+      - run: uv sync --all-packages
+      - name: baseline (uncompiled build)
+        env:
+          CB_BENCH_BASELINE: /tmp/cb-bench-baseline.json
+        run: |
+          CB_SKIP_CYTHON=1 uv sync --reinstall-package cb-core
+          uv run python packages/cb-core/bench/bench_hot.py
+      - name: compile hot modules
+        run: |
+          uv sync --reinstall-package cb-core
+          cd packages/cb-core && uv run python setup.py build_ext --inplace
+      - name: same tests, compiled build
+        run: uv run pytest -q packages
+      - name: benchmark gate (>=1.5x or ship pure)
+        env:
+          CB_BENCH_BASELINE: /tmp/cb-bench-baseline.json
+        run: uv run python packages/cb-core/bench/bench_hot.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cython-annotations
+          path: packages/cb-core/src/cb_core/*.html
+          if-no-files-found: ignore
+
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      citus:
+        image: citusdata/citus:13.0
+        env:
+          POSTGRES_USER: cookiebot
+          POSTGRES_PASSWORD: cookiebot
+          POSTGRES_DB: cookiebot
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cookiebot" --health-interval 5s
+          --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install 3.13
+      - run: uv sync --all-packages
+      - name: upgrade then downgrade (both directions must work)
+        env:
+          CB_PG_DSN: postgresql://cookiebot:cookiebot@localhost:5432/cookiebot
+        run: |
+          cd packages/cb-api
+          uv run alembic upgrade head
+          uv run alembic downgrade base
+          uv run alembic upgrade head
+      - name: integration tests (real rows, simulated users, Citus topology)
+        env:
+          CB_PG_DSN: postgresql://cookiebot:cookiebot@localhost:5432/cookiebot
+          CB_TEST_PG_DSN: postgresql://cookiebot:cookiebot@localhost:5432/cookiebot
+        run: uv run pytest -q -m integration qa/integration
