@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* Telegram Desktop's dark palette, so the sandbox reads as the real client
+   rather than as a test harness. Values sampled from Telegram's own theme. */
+@theme {
+  --color-tg-bg: #17212b;
+  --color-tg-bg-secondary: #0e1621;
+  --color-tg-panel: #1e2c3a;
+  --color-tg-hover: #202b36;
+  --color-tg-accent: #5288c1;
+  --color-tg-out: #2b5278;
+  --color-tg-in: #182533;
+  --color-tg-text: #ffffff;
+  --color-tg-muted: #6d7f8f;
+  --color-tg-divider: #101921;
+  --color-tg-green: #4dcd5e;
+  --color-tg-red: #e53935;
+  /* Neither "still loading" nor "the bot answered" — the waiting indicator's
+     third state, once a reply has taken long enough that silence itself is a
+     result worth noticing. */
+  --color-tg-amber: #e0a52d;
+}
+
+html, body { height: 100%; }
+body { background: var(--color-tg-bg-secondary); color: var(--color-tg-text); }
