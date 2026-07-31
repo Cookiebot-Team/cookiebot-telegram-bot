@@ -1,0 +1,58 @@
+{{- if .Values.httpRoute.enabled }}
+{{/*
+QA access to the API and the gateway. Not the ingest path: with a local Bot API
+server the webhook is a ClusterIP URL and never traverses a Gateway.
+
+A ReferenceGrant is required because the Gateway lives in another namespace —
+Gateway API is deny-by-default across namespace boundaries, which is the point.
+*/}}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "cookiebot.fullname" . }}
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ .Values.httpRoute.gateway.name }}
+      namespace: {{ .Values.httpRoute.gateway.namespace }}
+      sectionName: {{ .Values.httpRoute.gateway.sectionName }}
+  {{- with .Values.httpRoute.hostnames }}
+  hostnames:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- if .Values.services.api.enabled }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      backendRefs:
+        - name: {{ include "cookiebot.fullname" . }}-{{ .Values.services.api.name }}
+          port: {{ .Values.services.api.port }}
+    {{- end }}
+    {{- if .Values.services.gateway.enabled }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ include "cookiebot.fullname" . }}-{{ .Values.services.gateway.name }}
+          port: {{ .Values.services.gateway.port }}
+    {{- end }}
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: {{ include "cookiebot.fullname" . }}-gateway
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: {{ .Values.httpRoute.gateway.namespace }}
+  to:
+    - group: ""
+      kind: Service
+{{- end }}

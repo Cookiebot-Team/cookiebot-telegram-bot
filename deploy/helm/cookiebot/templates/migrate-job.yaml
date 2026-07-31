@@ -1,0 +1,73 @@
+{{- if .Values.migrations.enabled }}
+{{/*
+Converge the schema once, before the new pods roll.
+
+Every service already calls ensure_schema() at startup, so this changes nothing
+about correctness. What it changes: N replicas do not race the same DDL on a
+cold namespace, and a bad migration fails the release instead of crash-looping
+three Deployments at the same time.
+
+Helm hook, not a plain Job, so `helm upgrade` waits for it. Argo CD reads the
+same annotations.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "cookiebot.fullname" . }}-migrate
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+    app.kubernetes.io/name: cb-migrate
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: {{ .Values.migrations.backoffLimit }}
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        {{- include "cookiebot.labels" . | nindent 8 }}
+        app.kubernetes.io/name: cb-migrate
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "cookiebot.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: {{ include "cookiebot.image" (list . .Values.services.api) }}
+          args: ["migrate"]
+          env:
+            - name: CB_SERVICE
+              value: migrate
+            - name: CB_SERVICE_NAME
+              value: cb-migrate
+          {{- $common := include "cookiebot.commonEnv" . | fromYaml }}
+          {{- with $common.env }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          envFrom:
+            {{- toYaml $common.envFrom | nindent 12 }}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+{{- end }}

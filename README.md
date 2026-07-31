@@ -146,6 +146,7 @@ python scripts/cb.py check   # lint, tests, benchmarks, spec consistency
 
 ## License
 
-No `LICENSE` file here yet — v1 ships CC0 1.0, and this rewrite should carry the
-same licence before it goes public. Cookiebot is built by
+[Apache License 2.0](LICENSE). v1 ships CC0 1.0; v2 moves to Apache-2.0 for the
+explicit patent grant and the attribution requirement that a public-domain
+dedication waives. Cookiebot is built by
 [MekhyW](https://github.com/MekhyW) and contributors.

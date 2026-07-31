@@ -1,0 +1,56 @@
+{{- if .Values.networkPolicy.enabled }}
+{{/*
+Egress rules the workloads cannot do without. Ingress and namespace-wide
+default-deny belong to the infrastructure repo — a chart that ships its own
+default-deny will silently fight whatever the platform already applies.
+
+Cilium policies union, so these only ever add reachability.
+*/}}
+{{- if .Values.telegramBotApi.enabled }}
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "cookiebot.fullname" . }}-telegram-dcs
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: telegram-bot-api
+  egress:
+    # A local Bot API server speaks MTProto straight to Telegram's data centres,
+    # so an FQDN rule for api.telegram.org does not cover it.
+    - toCIDR:
+        {{- toYaml .Values.networkPolicy.telegramCidrs | nindent 8 }}
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+            - port: "80"
+              protocol: TCP
+---
+{{- end }}
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "cookiebot.fullname" . }}-external-apis
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: cookiebot
+  egress:
+    - toFQDNs:
+        {{- if not .Values.telegramBotApi.enabled }}
+        - matchName: api.telegram.org
+        {{- end }}
+        - matchPattern: "*.googleapis.com"
+        - matchPattern: "*.r2.cloudflarestorage.com"
+        - matchName: api.anthropic.com
+        - matchName: api.openai.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+{{- end }}

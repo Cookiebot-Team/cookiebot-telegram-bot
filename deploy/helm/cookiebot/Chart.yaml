@@ -1,0 +1,24 @@
+apiVersion: v2
+name: cookiebot
+description: >-
+  Cookiebot v2 — Telegram gateway, API and worker, with the optional
+  infrastructure a self-contained environment needs: a self-hosted Bot API
+  server, Valkey, and a CloudNativePG/Citus cluster.
+type: application
+
+# version  — the chart's own shape. Bump on template changes.
+# appVersion — the application. Also the default image tag.
+version: 0.1.0
+appVersion: "0.1.0"
+
+keywords: [telegram, bot, citus, aiogram, fastapi]
+home: https://github.com/Cookiebot-Team/cookiebot-telegram-bot
+sources:
+  - https://github.com/Cookiebot-Team/cookiebot-telegram-bot
+
+annotations:
+  # Citus and Valkey are subcharts in spirit but not in Chart.lock: the
+  # CloudNativePG operator is a cluster-wide platform concern (installed by the
+  # infrastructure repo), and this chart only creates the `Cluster` CR when
+  # citus.enabled is true. Nothing here installs an operator.
+  category: Application

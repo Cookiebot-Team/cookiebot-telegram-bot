@@ -1,0 +1,104 @@
+{{- if .Values.valkey.enabled }}
+{{/*
+arq queue, cooldowns, dedupe, config cache.
+
+One replica, no operator. v1 kept this state in process-local dicts, two SQLite
+files and a text file; the win in v2 is that it lives in one place, not that the
+place is highly available in UAT.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cookiebot.fullname" . }}-valkey
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+    app.kubernetes.io/name: valkey
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: valkey
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: valkey
+      port: {{ .Values.valkey.port }}
+      targetPort: valkey
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "cookiebot.fullname" . }}-valkey
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+    app.kubernetes.io/name: valkey
+spec:
+  serviceName: {{ include "cookiebot.fullname" . }}-valkey
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: valkey
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        {{- include "cookiebot.labels" . | nindent 8 }}
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: valkey
+          image: {{ .Values.valkey.image }}
+          args:
+            - --appendonly
+            - "yes"
+            - --maxmemory
+            - {{ .Values.valkey.maxmemory | quote }}
+            - --maxmemory-policy
+            - {{ .Values.valkey.maxmemoryPolicy | quote }}
+            - --save
+            - "900 1"
+          ports:
+            - name: valkey
+              containerPort: {{ .Values.valkey.port }}
+          readinessProbe:
+            exec:
+              command: ["valkey-cli", "ping"]
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: valkey
+            initialDelaySeconds: 10
+          resources:
+            {{- toYaml .Values.valkey.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      {{- if not .Values.valkey.persistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+  {{- if .Values.valkey.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with .Values.valkey.persistence.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.valkey.persistence.size }}
+  {{- end }}
+{{- end }}

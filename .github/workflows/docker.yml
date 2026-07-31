@@ -1,0 +1,127 @@
+# Development images for the Kubernetes cluster.
+#
+# Publishes three images to GHCR on every push to main:
+#   ghcr.io/<owner>/cookiebot/cb-gateway:dev-<sha>
+#   ghcr.io/<owner>/cookiebot/cb-api:dev-<sha>
+#   ghcr.io/<owner>/cookiebot/cb-worker:dev-<sha>
+#
+# Pull requests build but do not push — a PR must not be able to publish an
+# image the cluster might pull.
+#
+# `dev` is a moving tag for humans poking at the cluster. Nothing in GitOps ever
+# references it: the Helm values pin dev-<sha>, bumped by the `notify-ops` job.
+name: docker
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      compile:
+        description: "compile mode"
+        type: choice
+        options: [cython, nuitka]
+        default: cython
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [cb-gateway, cb-api, cb-worker]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.service }}
+          tags: |
+            type=raw,value=dev,enable={{is_default_branch}}
+            type=raw,value=dev-{{sha}},enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=ref,event=pr
+
+      - name: build & push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64 # the cluster is one amd64 node; arm64 doubles build time for nothing
+          build-args: |
+            SERVICE=${{ matrix.service }}
+            COMPILE=${{ inputs.compile || 'cython' }}
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,scope=${{ matrix.service }},mode=max
+          provenance: true
+          sbom: true
+
+      # A regression here is silent otherwise: one careless dependency and the
+      # image doubles. The number goes in the job summary, so a PR review sees it.
+      - name: image size
+        run: |
+          tag=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            size=$(docker image inspect "$tag" --format '{{.Size}}')
+            human=$(numfmt --to=iec --suffix=B "$size")
+          else
+            human="pushed: ${{ steps.build.outputs.digest }}"
+          fi
+          echo "| ${{ matrix.service }} | $human |" >> "$GITHUB_STEP_SUMMARY"
+
+      # A container that cannot start is worth catching before the cluster does.
+      - name: smoke test
+        if: github.event_name == 'pull_request'
+        run: |
+          tag=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+          docker run --rm --entrypoint /opt/cb/bin/python "$tag" \
+            -c "import cb_launcher, cb_core; print('import ok')"
+          # An unknown service must exit 2, not hang or traceback.
+          docker run --rm -e CB_SERVICE=nonsense "$tag" && exit 1 || test $? -eq 2
+
+  # Opens a PR against the infrastructure repo pinning the new digest. Skipped
+  # unless OPS_REPO_TOKEN exists, so a fork or a fresh clone does not fail here.
+  notify-ops:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: bump the UAT image tag
+        env:
+          GH_TOKEN: ${{ secrets.OPS_REPO_TOKEN }}
+          OPS_REPO: ${{ vars.OPS_REPO }} # e.g. <owner>/home-self-hosted
+        run: |
+          if [ -z "$GH_TOKEN" ] || [ -z "$OPS_REPO" ]; then
+            echo "OPS_REPO_TOKEN or OPS_REPO not configured — skipping" >&2
+            exit 0
+          fi
+          gh workflow run bump-cookiebot.yml \
+            --repo "$OPS_REPO" \
+            --field tag="dev-${GITHUB_SHA::7}" \
+            || echo "no bump workflow in $OPS_REPO yet"

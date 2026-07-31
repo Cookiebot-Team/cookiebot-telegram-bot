@@ -1,0 +1,281 @@
+# Defaults describe a self-contained environment: the three services plus the
+# Bot API server, Valkey and Citus. An environment that already has managed
+# Postgres or Redis turns those off and points the DSNs elsewhere.
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  registry: ghcr.io
+  # <owner>/<repo>; the per-service image is <repository>/<service name>
+  repository: cookiebot-team/cookiebot-telegram-bot
+  # empty -> .Chart.AppVersion. CI pins dev-<sha> here; never `latest`, never `dev`.
+  tag: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# ---------------------------------------------------------------------------
+# The three deployables. Ports match scripts/cb.py so a container and a laptop
+# expose the same surface.
+# ---------------------------------------------------------------------------
+services:
+  gateway:
+    enabled: true
+    name: cb-gateway
+    replicas: 1
+    port: 8081
+    # Stateless ingest: the reply path is what these limits protect.
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { memory: 768Mi }
+    probes:
+      enabled: true
+      liveness: /healthz
+      readiness: /readyz
+    env: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  api:
+    enabled: true
+    name: cb-api
+    replicas: 1
+    port: 8000
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { memory: 768Mi }
+    probes:
+      enabled: true
+      liveness: /healthz
+      readiness: /readyz
+    env: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  worker:
+    enabled: true
+    name: cb-worker
+    replicas: 1
+    port: 0 # arq has no HTTP surface; only the metrics port is exposed
+    # ffmpeg and opencv live here. The CPU limit is what keeps a /destroy job
+    # from starving the gateway's reply path on a single-node cluster.
+    resources:
+      requests: { cpu: 200m, memory: 512Mi }
+      limits: { cpu: "2", memory: 2Gi }
+    probes:
+      enabled: false
+    env: {}
+    scratchSizeLimit: 4Gi
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+# ---------------------------------------------------------------------------
+# Application configuration → CB_* environment variables (pydantic-settings,
+# env_prefix "CB_"). Anything not listed keeps the default in cb_core/settings.py.
+# ---------------------------------------------------------------------------
+config:
+  env: uat
+  logLevel: INFO
+  logJson: true
+
+  # webhook | polling. With a local Bot API server, webhook costs no public
+  # surface: the server POSTs to a ClusterIP address.
+  telegramIngest: webhook
+  # Empty -> the gateway does not register a webhook at startup. With the
+  # bundled Bot API server this is filled in automatically (see _helpers.tpl).
+  webhookBaseUrl: ""
+
+  ownerId: 0
+  defaultLanguage: en
+
+  # memory:// | s3://bucket | gs://bucket — cb_core.storage (obstore)
+  storageUri: "memory://"
+
+  otlpEndpoint: http://alloy.observability.svc:4317
+  tracesEnabled: true
+  metricsPort: 9101
+
+  # Every service converges the schema at startup. The pre-upgrade Job below
+  # does it once so N replicas do not race the same DDL.
+  autoMigrate: true
+
+  # Free-form escape hatch: CB_<KEY>=<value>, applied after everything above.
+  extraEnv: {}
+
+# ---------------------------------------------------------------------------
+# Secrets. This chart never creates one holding a credential — it only
+# references. Create it out of band (scripts/cookiebot_bot.py does for UAT).
+#
+#   bot-token          the BotFather token, used by tooling
+#   bot-tokens         {"skin": "token", ...} -> CB_BOT_TOKENS
+#   webhook-secret     -> CB_WEBHOOK_SECRET, checked on every update
+#   telegram-api-id    local Bot API server only
+#   telegram-api-hash  local Bot API server only
+# ---------------------------------------------------------------------------
+secrets:
+  name: cookiebot-secrets
+  # Optional keys; left empty they are simply not injected.
+  anthropicApiKeyKey: ""
+  openaiApiKeyKey: ""
+
+# ---------------------------------------------------------------------------
+# Self-hosted Telegram Bot API server (tdlib/telegram-bot-api).
+#
+# --local permits http:// webhooks on private addresses, so the whole webhook
+# path stays inside the cluster: no public hostname, no ingress, no tunnel entry.
+# It also removes the 20 MB download cap that the v1 media path kept hitting.
+#
+# The bot must be logged OUT of api.telegram.org before this serves it —
+# Telegram gives no delivery guarantee otherwise. scripts/cookiebot_bot.py in
+# the infrastructure repo does that once, on purpose, behind a confirmation.
+# ---------------------------------------------------------------------------
+telegramBotApi:
+  enabled: true
+  # Upstream publishes only `latest`. Resolve it once with
+  # `docker buildx imagetools inspect` and pin the digest here.
+  image: aiogram/telegram-bot-api:latest
+  port: 8081
+  statsPort: 8082
+  local: true
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
+  # Where the server writes files.
+  filesRoot: /var/lib/telegram-bot-api
+  # Mount that same volume into cb-worker, read-only, so the worker reads media
+  # off disk instead of downloading what is already on the node.
+  #
+  # The PVC is ReadWriteOnce: two pods may share it only while they are on the
+  # SAME node. True is correct for a single-node cluster and wrong the moment
+  # the worker can be scheduled elsewhere — set false (and accept the download)
+  # or move to ReadWriteMany when pve02 exists.
+  shareFilesWithWorker: true
+
+valkey:
+  enabled: true
+  image: valkey/valkey:8-alpine
+  port: 6379
+  maxmemory: 256mb
+  # The arq queue must survive eviction; caches may not. volatile-lru evicts
+  # only keys that carry a TTL.
+  maxmemoryPolicy: volatile-lru
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 384Mi }
+  # Set when valkey.enabled=false
+  externalDsn: ""
+
+# ---------------------------------------------------------------------------
+# Citus via CloudNativePG. Requires the CNPG operator in the cluster; this chart
+# only creates the Cluster CR.
+#
+# Coordinator-only is functionally complete: create_distributed_table(),
+# colocation, reference tables and pg_cron rollups all work on one node — the
+# shards just live locally. Adding workers later is citus_add_node(), not a
+# migration.
+# ---------------------------------------------------------------------------
+citus:
+  enabled: true
+  # PostgreSQL 17 + Citus 13. CNPG's ImageVolume extensions need PG 18 + k8s
+  # 1.33, and Citus 13 targets PG 15-17 — hence a custom image
+  # (infra/images/cnpg-citus in the infrastructure repo).
+  image: ghcr.io/cookiebot-team/cnpg-citus:17-13.0
+  instances: 1
+  database: cookiebot
+  owner: cookiebot
+  storage:
+    size: 20Gi
+    storageClass: ""
+  walStorage:
+    size: 5Gi
+    storageClass: ""
+  parameters:
+    max_connections: "200"
+    shared_buffers: 768MB
+    effective_cache_size: 2GB
+    work_mem: 16MB
+    maintenance_work_mem: 256MB
+    random_page_cost: "1.1"
+    max_prepared_transactions: "100" # Citus 2PC
+    log_min_duration_statement: 500ms
+  resources:
+    requests: { cpu: 250m, memory: 1Gi }
+    limits: { memory: 3Gi }
+  backup:
+    enabled: false
+    destinationPath: ""
+    endpointURL: ""
+    credentialsSecret: ""
+    retention: 14d
+  # Set when citus.enabled=false. Use externalDsnSecret when the DSN carries a
+  # password — a plain externalDsn lands in a ConfigMap.
+  externalDsn: ""
+  externalDsnSecret: {}
+  # externalDsnSecret:
+  #   name: managed-postgres
+  #   key: uri
+
+# One-shot schema convergence before the new pods roll.
+migrations:
+  enabled: true
+  backoffLimit: 3
+
+# ---------------------------------------------------------------------------
+# Routing. Nothing here is public by default: with a local Bot API server the
+# webhook never leaves the cluster, and these routes exist for QA.
+# ---------------------------------------------------------------------------
+httpRoute:
+  enabled: false
+  gateway:
+    name: internal
+    namespace: gateway
+    sectionName: http
+  hostnames: []
+
+# Cilium policies. Off by default because they are cluster-flavoured; the
+# infrastructure repo owns the namespace-wide ones.
+networkPolicy:
+  enabled: false
+  # Telegram's published DC ranges. A local Bot API server speaks MTProto
+  # straight to these, so an FQDN rule for api.telegram.org does not cover it.
+  telegramCidrs:
+    - 149.154.160.0/20
+    - 91.108.4.0/22
+    - 91.108.8.0/22
+    - 91.108.12.0/22
+    - 91.108.16.0/22
+    - 91.108.20.0/22
+    - 91.108.56.0/22
+    - 91.105.192.0/23
+    - 185.76.151.0/24
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]

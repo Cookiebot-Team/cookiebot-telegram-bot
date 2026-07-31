@@ -1,0 +1,93 @@
+{{- if .Values.citus.enabled }}
+{{/*
+PostgreSQL 17 + Citus 13, managed by CloudNativePG. The operator is a cluster
+concern and is NOT installed here — this only creates the Cluster CR.
+
+Coordinator-only is not a compromise: create_distributed_table(), colocation,
+reference tables and pg_cron rollups all work on one node; the shards live
+locally. The group_id shard key from docs/MULTI-TENANT.md is unchanged, and
+adding workers later is citus_add_node(), not a migration.
+*/}}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "cookiebot.fullname" . }}-citus
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+  annotations:
+    # Citus rewrites parts of its own configuration after CREATE EXTENSION.
+    argocd.argoproj.io/sync-options: ServerSideApply=true
+spec:
+  instances: {{ .Values.citus.instances }}
+  imageName: {{ .Values.citus.image }}
+  primaryUpdateStrategy: unsupervised
+
+  postgresql:
+    shared_preload_libraries:
+      - citus
+      - pg_stat_statements
+    parameters:
+      {{- toYaml .Values.citus.parameters | nindent 6 }}
+
+  bootstrap:
+    initdb:
+      database: {{ .Values.citus.database }}
+      owner: {{ .Values.citus.owner }}
+      postInitTemplateSQL:
+        - CREATE EXTENSION IF NOT EXISTS citus;
+        - CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+  storage:
+    size: {{ .Values.citus.storage.size }}
+    {{- with .Values.citus.storage.storageClass }}
+    storageClass: {{ . }}
+    {{- end }}
+
+  walStorage:
+    size: {{ .Values.citus.walStorage.size }}
+    {{- with .Values.citus.walStorage.storageClass }}
+    storageClass: {{ . }}
+    {{- end }}
+
+  resources:
+    {{- toYaml .Values.citus.resources | nindent 4 }}
+
+  monitoring:
+    enablePodMonitor: false # scraped by annotation, not by PodMonitor
+
+  {{- if .Values.citus.backup.enabled }}
+  backup:
+    barmanObjectStore:
+      destinationPath: {{ .Values.citus.backup.destinationPath }}
+      {{- with .Values.citus.backup.endpointURL }}
+      endpointURL: {{ . }}
+      {{- end }}
+      s3Credentials:
+        accessKeyId:
+          name: {{ .Values.citus.backup.credentialsSecret }}
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: {{ .Values.citus.backup.credentialsSecret }}
+          key: ACCESS_SECRET_KEY
+    retentionPolicy: {{ .Values.citus.backup.retention | quote }}
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cookiebot.fullname" . }}-citus-metrics
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+    app.kubernetes.io/name: citus
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9187"
+spec:
+  selector:
+    cnpg.io/cluster: {{ include "cookiebot.fullname" . }}-citus
+    role: primary
+  ports:
+    - name: metrics
+      port: 9187
+      targetPort: 9187
+{{- end }}

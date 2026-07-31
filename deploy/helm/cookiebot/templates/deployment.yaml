@@ -1,0 +1,143 @@
+{{/*
+One Deployment per enabled service. They differ in image, port and resources;
+everything else is deliberately identical so a fix applies to all three.
+
+CB_SERVICE is baked into the image at build time and repeated here so a
+`kubectl describe` says what the pod is without decoding the entrypoint.
+*/}}
+{{- range $key, $svc := .Values.services }}
+{{- if $svc.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cookiebot.fullname" $ }}-{{ $svc.name }}
+  labels:
+    {{- include "cookiebot.labels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $svc.name }}
+    app.kubernetes.io/component: {{ $key }}
+spec:
+  replicas: {{ $svc.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $svc.name }}
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: {{ if gt (int $svc.replicas) 1 }}0{{ else }}1{{ end }}
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "cookiebot.labels" $ | nindent 8 }}
+        app.kubernetes.io/name: {{ $svc.name }}
+        app.kubernetes.io/instance: {{ $.Release.Name }}
+        app.kubernetes.io/component: {{ $key }}
+        {{- with $.Values.podLabels }}{{ toYaml . | nindent 8 }}{{ end }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ $.Values.config.metricsPort | quote }}
+        prometheus.io/path: /metrics
+        # Roll the pods when the config changes; without this a ConfigMap edit
+        # is applied and then ignored until the next unrelated deploy.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") $ | sha256sum }}
+        {{- with $.Values.podAnnotations }}{{ toYaml . | nindent 8 }}{{ end }}
+    spec:
+      serviceAccountName: {{ include "cookiebot.serviceAccountName" $ }}
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      {{- with $.Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ $svc.name }}
+          image: {{ include "cookiebot.image" (list $ $svc) }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          env:
+            - name: CB_SERVICE
+              value: {{ $svc.name }}
+            - name: CB_SERVICE_NAME
+              value: {{ $svc.name }}
+            {{- range $name, $value := $svc.env }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- $common := include "cookiebot.commonEnv" $ | fromYaml }}
+          {{- with $common.env }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          envFrom:
+            {{- toYaml $common.envFrom | nindent 12 }}
+          ports:
+            {{- if gt (int $svc.port) 0 }}
+            - name: http
+              containerPort: {{ $svc.port }}
+            {{- end }}
+            - name: metrics
+              containerPort: {{ $.Values.config.metricsPort }}
+          {{- if $svc.probes.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ $svc.probes.liveness }}
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: {{ $svc.probes.readiness }}
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # Postgres and Valkey may take longer than the liveness probe allows on
+          # a cold node; startupProbe buys that time without loosening liveness.
+          startupProbe:
+            httpGet:
+              path: {{ $svc.probes.liveness }}
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          {{- end }}
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            # readOnlyRootFilesystem is on, and granian/arq both want a writable
+            # temp dir.
+            - name: tmp
+              mountPath: /tmp
+            {{- if and (eq $key "worker") $.Values.telegramBotApi.enabled $.Values.telegramBotApi.local $.Values.telegramBotApi.shareFilesWithWorker }}
+            # In --local mode getFile hands back a path on the Bot API server's
+            # disk. Sharing the volume needs both pods on the same node (RWO).
+            - name: telegram-files
+              mountPath: {{ $.Values.telegramBotApi.filesRoot }}
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: {{ if eq $key "worker" }}{{ $svc.scratchSizeLimit }}{{ else }}256Mi{{ end }}
+        {{- if and (eq $key "worker") $.Values.telegramBotApi.enabled $.Values.telegramBotApi.local $.Values.telegramBotApi.shareFilesWithWorker }}
+        - name: telegram-files
+          persistentVolumeClaim:
+            claimName: data-{{ include "cookiebot.fullname" $ }}-telegram-bot-api-0
+        {{- end }}
+      {{- with $svc.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $svc.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $svc.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- end }}

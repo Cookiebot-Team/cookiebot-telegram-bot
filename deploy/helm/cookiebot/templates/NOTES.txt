@@ -1,0 +1,42 @@
+cookiebot {{ .Chart.AppVersion }} → namespace {{ .Release.Namespace }}
+
+Deployed:
+{{- range $key, $svc := .Values.services }}
+{{- if $svc.enabled }}
+  {{ $svc.name }}{{ if gt (int $svc.port) 0 }} on :{{ $svc.port }}{{ end }} — {{ include "cookiebot.image" (list $ $svc) }}
+{{- end }}
+{{- end }}
+{{- if .Values.telegramBotApi.enabled }}
+  telegram-bot-api on :{{ .Values.telegramBotApi.port }} ({{ if .Values.telegramBotApi.local }}--local{{ else }}cloud-relay{{ end }})
+{{- end }}
+{{- if .Values.valkey.enabled }}
+  valkey on :{{ .Values.valkey.port }}
+{{- end }}
+{{- if .Values.citus.enabled }}
+  citus — {{ .Values.citus.instances }} instance(s), database {{ .Values.citus.database }}
+{{- end }}
+
+Ingest: {{ .Values.config.telegramIngest }}
+{{- with include "cookiebot.webhookBaseUrl" . }}
+Webhook base: {{ . }}
+  (the gateway calls setWebhook for each skin at startup — cb_gateway/ingest.py)
+{{- end }}
+
+{{ if not .Values.citus.enabled }}Postgres: {{ .Values.citus.externalDsn | default "NOT CONFIGURED — set citus.externalDsn or citus.externalDsnSecret" }}{{ end }}
+
+Before this works, the Secret "{{ .Values.secrets.name }}" must exist with:
+  bot-tokens         {"skin":"123:ABC"}   → CB_BOT_TOKENS
+  webhook-secret     any URL-safe string  → CB_WEBHOOK_SECRET
+{{- if .Values.telegramBotApi.enabled }}
+  telegram-api-id    from my.telegram.org
+  telegram-api-hash  from my.telegram.org
+
+The bot must also be logged OUT of api.telegram.org, or Telegram makes no
+promise it delivers to this server. In the infrastructure repo:
+
+  uv run scripts/cookiebot_bot.py
+{{- end }}
+
+Check it:
+  kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "cookiebot.fullname" . }}-{{ .Values.services.gateway.name }}
+  kubectl -n {{ .Release.Namespace }} logs -l app.kubernetes.io/name={{ .Values.services.gateway.name }} -f

@@ -1,0 +1,136 @@
+{{- if .Values.telegramBotApi.enabled }}
+{{/*
+Self-hosted Telegram Bot API server.
+
+Two things it buys, both of which the v1 stack paid for in workarounds:
+  * --local permits an http:// webhook on a private address, so the whole
+    ingest path stays inside the cluster — no public hostname, no tunnel entry
+  * no download size cap and 2 GB uploads, and getFile returns a local path the
+    worker reads off the shared volume instead of re-downloading
+
+Prerequisite the chart cannot enforce: the bot must be logged OUT of
+api.telegram.org first. Telegram gives no delivery guarantee otherwise, and
+refuses logOut while a webhook is set.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cookiebot.fullname" . }}-telegram-bot-api
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+    app.kubernetes.io/name: telegram-bot-api
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: {{ .Values.telegramBotApi.statsPort | quote }}
+    prometheus.io/path: /
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: telegram-bot-api
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: {{ .Values.telegramBotApi.port }}
+      targetPort: http
+    - name: stats
+      port: {{ .Values.telegramBotApi.statsPort }}
+      targetPort: stats
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "cookiebot.fullname" . }}-telegram-bot-api
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+    app.kubernetes.io/name: telegram-bot-api
+spec:
+  serviceName: {{ include "cookiebot.fullname" . }}-telegram-bot-api
+  # A bot may be logged in on exactly one server at a time. Two replicas would
+  # fight over the session, not share it.
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: telegram-bot-api
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        {{- include "cookiebot.labels" . | nindent 8 }}
+        app.kubernetes.io/name: telegram-bot-api
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: telegram-bot-api
+          image: {{ .Values.telegramBotApi.image }}
+          args:
+            {{- if .Values.telegramBotApi.local }}
+            - --local
+            {{- end }}
+            - --http-port={{ .Values.telegramBotApi.port }}
+            - --http-stat-port={{ .Values.telegramBotApi.statsPort }}
+            - --dir={{ .Values.telegramBotApi.filesRoot }}
+            - --temp-dir={{ .Values.telegramBotApi.filesRoot }}/tmp
+            - --log-verbosity=1
+          env:
+            - name: TELEGRAM_API_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: telegram-api-id
+            - name: TELEGRAM_API_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: telegram-api-hash
+          ports:
+            - name: http
+              containerPort: {{ .Values.telegramBotApi.port }}
+            - name: stats
+              containerPort: {{ .Values.telegramBotApi.statsPort }}
+          readinessProbe:
+            # The stats port answers as soon as the server listens; the bot port
+            # only answers to a path containing a valid token.
+            tcpSocket:
+              port: stats
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.telegramBotApi.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.telegramBotApi.filesRoot }}
+      {{- if not .Values.telegramBotApi.persistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+  {{- if .Values.telegramBotApi.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with .Values.telegramBotApi.persistence.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.telegramBotApi.persistence.size }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,47 @@
+{{/*
+ClusterIP per HTTP service, plus a metrics port on every one of them. The worker
+has no HTTP surface, so it gets a metrics-only Service — vmagent scrapes pods by
+annotation, but a Service keeps `kubectl port-forward` honest for debugging.
+*/}}
+{{- range $key, $svc := .Values.services }}
+{{- if $svc.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cookiebot.fullname" $ }}-{{ $svc.name }}
+  labels:
+    {{- include "cookiebot.labels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $svc.name }}
+    app.kubernetes.io/component: {{ $key }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ $svc.name }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+  ports:
+    {{- if gt (int $svc.port) 0 }}
+    - name: http
+      port: {{ $svc.port }}
+      targetPort: http
+    {{- end }}
+    - name: metrics
+      port: {{ $.Values.config.metricsPort }}
+      targetPort: metrics
+{{- end }}
+{{- end }}
+{{- if .Values.serviceAccount.create }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "cookiebot.serviceAccountName" . }}
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+  {{- with .Values.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+# Nothing in this chart talks to the Kubernetes API.
+automountServiceAccountToken: false
+{{- end }}

@@ -1,0 +1,47 @@
+{{/*
+Every CB_* that is not a credential. pydantic-settings reads these with the
+CB_ prefix; anything omitted keeps the default in cb_core/settings.py.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cookiebot.fullname" . }}-env
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+data:
+  CB_ENV: {{ .Values.config.env | quote }}
+  CB_LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  CB_LOG_JSON: {{ .Values.config.logJson | quote }}
+
+  CB_REDIS_DSN: {{ include "cookiebot.redisDsn" . | quote }}
+{{- if and (not .Values.citus.enabled) .Values.citus.externalDsn }}
+  CB_PG_DSN: {{ .Values.citus.externalDsn | quote }}
+{{- end }}
+  CB_AUTO_MIGRATE: {{ .Values.config.autoMigrate | quote }}
+
+  CB_TELEGRAM_INGEST: {{ .Values.config.telegramIngest | quote }}
+{{- with include "cookiebot.telegramApiBase" . }}
+  CB_TELEGRAM_API_BASE: {{ . | quote }}
+  CB_TELEGRAM_API_LOCAL: {{ $.Values.telegramBotApi.local | quote }}
+{{- end }}
+{{- with include "cookiebot.webhookBaseUrl" . }}
+  {{- /* The gateway calls setWebhook for each skin at startup (cb_gateway/ingest.py),
+         so nothing else has to register it — no post-install hook, no drift. */}}
+  CB_WEBHOOK_BASE_URL: {{ . | quote }}
+{{- end }}
+{{- if and .Values.telegramBotApi.enabled .Values.telegramBotApi.local }}
+  {{- /* In --local mode getFile returns an absolute path on the server's disk;
+         cb-worker reads it through the shared volume mounted at this root. */}}
+  CB_TELEGRAM_FILES_ROOT: {{ .Values.telegramBotApi.filesRoot | quote }}
+{{- end }}
+
+  CB_OWNER_ID: {{ .Values.config.ownerId | quote }}
+  CB_DEFAULT_LANGUAGE: {{ .Values.config.defaultLanguage | quote }}
+  CB_STORAGE_URI: {{ .Values.config.storageUri | quote }}
+
+  CB_OTLP_ENDPOINT: {{ .Values.config.otlpEndpoint | quote }}
+  CB_TRACES_ENABLED: {{ .Values.config.tracesEnabled | quote }}
+  CB_METRICS_PORT: {{ .Values.config.metricsPort | quote }}
+{{- range $key, $value := .Values.config.extraEnv }}
+  CB_{{ $key | upper }}: {{ $value | quote }}
+{{- end }}

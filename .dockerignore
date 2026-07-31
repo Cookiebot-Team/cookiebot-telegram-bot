@@ -1,0 +1,48 @@
+# Everything the image does not need. The COPY steps in the Dockerfile are
+# already narrow; this keeps the build context from carrying 40 MB of DuckDB
+# files and node_modules to the daemon on every build.
+
+.git
+.github
+.venv
+**/.venv
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.mypy_cache
+.pytest_cache
+.ruff_cache
+
+# local state — several of these are large and none belong in an image
+*.duckdb
+*.duckdb.wal
+sandbox.config.json
+videos/
+demo.duckdb*
+sandbox-e2e.duckdb
+
+# web hub has its own build and its own image
+web/node_modules
+web/.next
+web/out
+
+# test + docs surfaces
+qa/
+docs/
+ops/
+*.md
+!README.md
+
+# build outputs from a host-side `python setup.py build_ext --inplace`;
+# the image compiles its own so a stale darwin .so must not leak in
+**/*.so
+**/*.c
+**/*.html
+build/
+dist/
+*.egg-info
+
+# secrets and env
+.env
+.env.*
+!.env.example

@@ -1,0 +1,9 @@
+# helm's ignore syntax is not gitignore's: no negation, and a bad pattern makes
+# the whole chart fail to load. Keep it boring.
+.DS_Store
+.git
+.gitignore
+.idea
+.vscode
+*.tmproj
+*.bak
