@@ -6,6 +6,21 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "cookiebot.fullname" . }}-env
+  # Created in the same phase as the ServiceAccount, and for the same reason.
+  # The migrate Job is a pre-install/PreSync hook and pulls its whole
+  # environment from this ConfigMap via envFrom, so leaving it in the ordinary
+  # sync phase deadlocks a first install:
+  #
+  #   Error: configmap "cookiebot-env" not found
+  #
+  # The pod is created and never starts, and the sync waits on a hook that
+  # cannot finish. No hook-delete-policy: the long-running workloads read this
+  # too, so removing it when the hook succeeds would take them down.
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: "-5"
   labels:
     {{- include "cookiebot.labels" . | nindent 4 }}
 data:
