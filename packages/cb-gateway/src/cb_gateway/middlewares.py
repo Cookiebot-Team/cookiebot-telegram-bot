@@ -14,7 +14,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject, Update
 from opentelemetry.trace import SpanKind
 
-from cb_core import cache, metrics
+from cb_core import cache, groups, metrics
 from cb_core.dedupe import RecentIds, idempotency_key
 from cb_core.events import recorder
 from cb_core.logging import get_logger
@@ -129,6 +129,23 @@ class TelemetryMiddleware(BaseMiddleware):
         parsed = parse_command(text, data.get("bot_username", "")) if text else None
         command = parsed.name if parsed else None
         data["parsed_command"] = parsed
+
+        # Everything a group feature writes carries a foreign key to `groups`,
+        # and nothing else creates that row at runtime — the only other INSERT
+        # is in the v1 importer. Without this, a group the bot was merely added
+        # to gets a working menu whose every write is rejected by the FK, which
+        # surfaces as a setting that will not save rather than as an error.
+        #
+        # Idempotent and memoised per process, so this is a set lookup after
+        # the first update from a given chat.
+        if group_id:
+            chat = getattr(update.event, "chat", None)
+            await groups.ensure(
+                group_id,
+                title=getattr(chat, "title", None),
+                chat_type=getattr(chat, "type", None),
+                skin=skin,
+            )
 
         metrics.updates_total.labels(bot=skin, update_type=utype).inc()
         start = time.perf_counter()
