@@ -1,53 +1,57 @@
 ---
 title: Privacy
-description: What Cookiebot stores, why, and how to get rid of it
+description: What Cookiebot stores, what it does not, and who is responsible for it
 ---
 
 ```
 /privacy
 ```
 
-Answers this in-chat, for the person who asks.
+Also `/privacidade` and `/privacidad`. The bot replies in chat with a link to
+the policy for the deployment you are talking to.
+
+This page describes what the **software** stores. Whoever runs a given
+deployment decides where that database lives and how long anything is kept —
+see [Who is responsible](#who-is-responsible).
 
 ## What is stored
 
-Cookiebot keeps what it needs to do its job across restarts and nothing that is
-only interesting in aggregate:
-
-- **Group settings** — everything on the [configure](/docs/using/configure)
-  page, per group
-- **The group's own text** — the welcome message and the rules an admin set
-- **Birthdays**, if a member registered one with `/birthday`
-- **Short-lived moderation state** — captcha attempts in flight, recent sticker
-  counts. Minutes, not months
-- **Posts submitted** through the publishing flow, while that flow is running
+| | Why |
+|---|---|
+| **Group settings** | Everything on the [configure](/docs/using/configure) page, per group |
+| **The group's own text** | The welcome message and the rules an admin set |
+| **Group membership** | Who is in the group, who is an admin, and when someone joined — the join time is what the media hold counts from |
+| **Accounts seen** | Telegram id, username, display name, language, and a birthday **if a member registers one** |
+| **Media the group sent** | Stored so features like `/random` can post it back, with a note of who uploaded it |
+| **Short-lived moderation state** | Captcha challenges in flight, recent sticker counts. Minutes, not months |
+| **Activity metadata** | One row per event: when, which group, which member, which command, whether it succeeded, how long it took |
 
 ## What is not
 
-- Message history. The bot is not a logger and does not keep a transcript
-- Anything from groups it is not in
-- Anything from private chats beyond what is needed to answer the command asked
+- **Message text.** The activity rows record *that* a message or command
+  happened, not what it said. The bot is not a logger and keeps no transcript.
+- **Anything from groups it is not in**, and nothing from private chats beyond
+  what is needed to answer the command you sent.
+- **Anything shared between groups.** Settings, membership and moderation state
+  are per group; someone removed from one group arrives in the next with a
+  clean slate.
 
-## Removing it
+## Getting rid of it
 
-Leaving the group removes what is tied to you in that group. `/privacy` states
-what is held at that moment and how to have it dropped.
+- **Remove the bot from the group.** Its access ends immediately — it stops
+  receiving updates the moment it stops being a member.
+- **Ask the group's operator.** Deletion of what is already stored is theirs to
+  perform; `/privacy` points at the policy that says how.
 
-Removing the bot from a group ends its access immediately: it stops receiving
-updates the moment it stops being a member.
+## Who is responsible
 
-## Where it runs
-
-This deployment is self-hosted — the data is in a PostgreSQL database on
-infrastructure the group's operator runs, not on a vendor's platform.
-
-Media flows through a **self-hosted Telegram Bot API server** rather than
-Telegram's public one, which means files a group sends are fetched to that
-server rather than out to a third party. It is also why the UAT deployment can
-work without exposing anything to the public internet.
+Cookiebot is self-hosted software. The operator who runs a deployment is the
+data controller for it: their infrastructure, their retention period, their
+jurisdiction. The bot's code cannot answer those questions, and this page does
+not try to.
 
 <Callout>
-This page describes the software's behaviour. Whoever operates a given
-deployment is the data controller for it, and can answer what their retention
-and jurisdiction actually are — the bot's code cannot.
+Running a deployment yourself? The database schema is the honest answer to
+"what is kept" — it is in the repository, and the
+[architecture](/docs/architecture) page explains the shape.
 </Callout>

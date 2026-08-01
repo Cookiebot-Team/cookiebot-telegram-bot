@@ -1,19 +1,18 @@
 {
-  "title": "Cookiebot v2",
+  "title": "Cookiebot",
   "pages": [
     "index",
-    "---Using Cookiebot---",
+    "---For group admins---",
     "using",
-    "---Internals---",
+    "---Building v2---",
+    "progress",
+    "features",
     "architecture",
     "development",
     "sandbox",
     "e2e",
     "deploy",
     "multi-tenant",
-    "---Progress---",
-    "progress",
-    "features",
     "feature-map"
   ]
 }

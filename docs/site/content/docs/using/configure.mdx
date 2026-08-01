@@ -1,54 +1,75 @@
 ---
 title: Configuring a group
-description: Every setting the /config menu exposes, what it changes, and what it costs
+description: Every setting in the /config menu, what it changes, and the two most groups get wrong
 ---
 
 ```
 /config
 ```
 
-Admin-only. The bot opens a menu; pressing a button either toggles the setting
-or asks you to reply with a value. Settings are **per group** — nothing is
-shared between groups, and there is no global default you can set once.
+Also `/configurar` and `/configure`. Admin-only, and **the menu opens in a
+private chat** — in the group the bot only says it has messaged you.
 
-## What you can change
+<Callout type="warn">
+Telegram does not allow a bot to start a private conversation. **Press Start on
+the bot once, in private, before your first `/config`**, or there is nowhere
+for the menu to arrive and the bot will tell you it could not reach you. An
+anonymous admin hits the same wall: Telegram gives no account to message, so
+turn anonymity off for that one command.
+</Callout>
 
-| Setting | Default | What it does |
-|---|---|---|
-| `language` | `en` | The language the bot replies in. Commands still work in all three |
-| `sfw` | on | Filters not-safe-for-work content |
-| `allow_furbots` | on | Whether other known bots are tolerated in the group |
-| `sticker_spam_limit` | `5` | Stickers in a row before the bot steps in. See [Moderation](/docs/using/moderation) |
-| `media_restrict_seconds` | `0` (off) | How long a new member must wait before posting media |
-| `captcha_timeout_seconds` | `120` | How long a joiner has to pass the captcha |
-| `functions_fun` | on | The whole `/dice`, `/ship`, `/battle` family |
-| `functions_utility` | on | The utility commands |
-| `publisher_post` | off | Whether submitted posts are published automatically |
-| `publisher_ask` | on | Whether the bot asks before publishing |
-| `publisher_members_only` | off | Restrict publishing to group members |
-| `max_posts` | `3` | Posts allowed per user in the publishing flow |
-| `thread_posts` | unset | Which forum topic posts land in |
+Each button either toggles a setting or asks you to reply with a value. Every
+setting is **per group** — nothing is shared between groups, and there is no
+global default.
 
-## The two that most groups get wrong
+## The menu
 
-**`media_restrict_seconds` defaults to 0**, which means off. It is the setting
-people assume is protecting them and is not. Setting it to `600` makes a new
-member wait ten minutes before they can post images — which is most of what
-drive-by spam actually is.
+Buttons appear in this order.
 
-**`captcha_timeout_seconds` at 120 is short for a busy group.** A joiner who
-opens Telegram, gets distracted and comes back four minutes later has already
-failed. Raising it to `300` costs almost nothing: a bot that is not going to
-solve a captcha does not solve it slowly.
+| Button | Setting | Default | What it does |
+|---|---|---|---|
+| **Language** | `language` | `en` | What the bot replies in: `pt`, `eng` or `es`. Commands still work in all three |
+| **FurBots** | `allow_furbots` | on | `1` to stay out of the way of other furbots in the group, `0` if this is the only one |
+| **Stickers limit** | `sticker_spam_limit` | `5` | Stickers in a row before the bot steps in — see [Moderation](/docs/using/moderation) |
+| **🕒 Limbo** | `media_restrict_seconds` | `0` (off) | Seconds a new member must wait before posting images and files |
+| **🕒 CAPTCHA** | `captcha_timeout_seconds` | `120` | Seconds a joiner has to answer the challenge. **`0` turns the captcha off** |
+| **Fun Functions** | `functions_fun` | on | The whole `/dice`, `/ship`, `/battle` family |
+| **Utility Functions** | `functions_utility` | on | The utility commands |
+| **SFW Chat** | `sfw` | on | Marks the chat as safe-for-work |
+| **Publisher Post** | `publisher_post` | off | Allow posts from other channels to be published here (groups over 50 members) |
+| **Publisher Ask** | `publisher_ask` | on | Add posts sent in the group to the publishing queue |
+| **Thread Posts** | `thread_posts` | unset | Which forum topic posts land in, for groups with topics |
+| **Max Posts** | `max_posts` | `3` | Posts the bot may publish here per day |
+| **Publisher Members Only** | `publisher_members_only` | off | Only channel members may use the publisher |
+
+## The two most groups get wrong
+
+**🕒 Limbo is off by default.** It is the setting people assume is protecting
+them and is not. Set it to `600` and a new member waits ten minutes before
+they can post images — which is most of what drive-by spam actually is, because
+that kind of account posts within seconds of arriving or not at all.
+
+**🕒 CAPTCHA at 120 seconds is short for a busy group.** Someone who opens
+Telegram, gets distracted, and comes back four minutes later has already been
+removed. `300` costs almost nothing: an account that is not going to answer a
+challenge does not answer it slowly.
 
 ## Turning whole families off
 
-`functions_fun` and `functions_utility` switch out groups of commands at once.
-A moderation-only deployment is `functions_fun: off`, which leaves greetings,
-rules, captchas and the media limits and removes everything else.
+**Fun Functions** and **Utility Functions** switch out groups of commands at
+once. A moderation-only deployment is Fun off, Utility off — which leaves
+greetings, rules, the captcha, sticker limits and the media hold, and removes
+everything else.
+
+## Values the menu will not accept
+
+A numeric field replies `ERROR: invalid input — try again` to anything that is
+not a number, and asks again. Nothing is stored until a value parses, so a
+mistyped reply cannot leave a group half-configured.
 
 <Callout>
-Settings changes take effect immediately — there is no restart, and no cache to
-wait out. If a change appears not to have applied, check you are an admin: the
-menu opens for anyone but rejects the reply that sets the value.
+Changes apply immediately across every running instance of the bot. If a change
+seems not to have taken, it is almost always that the reply setting the value
+was not sent by an admin — the menu opens for anyone it is shown to, but the
+value is only accepted from an admin.
 </Callout>

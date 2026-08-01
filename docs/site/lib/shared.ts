@@ -1,4 +1,4 @@
-export const appName = 'Cookiebot v2';
+export const appName = 'Cookiebot';
 export const docsRoute = '/docs';
 export const docsImageRoute = '/og/docs';
 export const docsContentRoute = '/llms.mdx/docs';

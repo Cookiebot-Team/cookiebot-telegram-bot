@@ -1,93 +1,100 @@
 ---
-title: Add the bot to a group
-description: Getting Cookiebot into a Telegram group and working, in about two minutes
+title: Getting started
+description: Add Cookiebot to a Telegram group and have it working in about five minutes
 ---
 
 Cookiebot is a moderation and utility bot for Telegram groups. It greets new
-members, screens joiners, enforces the rules a group sets for itself, and
-carries a handful of tools and games. It speaks **English, Portuguese and
-Spanish**, and every command works in all three.
+members, screens joiners with a captcha, keeps sticker floods and drive-by
+image spam under control, holds the group's rules, and carries a set of
+everyday tools. It speaks **English, Portuguese and Spanish**, and every
+command works in all three regardless of which language the group replies in.
 
-This page is for whoever runs the group. No account, no dashboard, no signup —
-Telegram is the whole interface.
+Telegram is the whole interface. There is no account to create and no dashboard
+to log into.
 
-## 1. Add the bot
+## 1. Add the bot and make it an admin
 
-The environment currently open for testing runs as **`@cookiebot_uat_bot`**.
+Add the bot your operator gave you to the group, then open **Manage group →
+Administrators** and promote it.
 
 <Callout type="warn">
-This is the **UAT** bot: a test deployment. It is fine to point a real group at
-it while you evaluate, but treat its data as disposable and expect restarts.
-Production runs a different bot with a different username.
+Promotion is not optional. A Telegram bot without admin rights cannot delete a
+message, remove a member, or read most of what is posted — so a bot that is
+present but not promoted looks broken while behaving exactly as Telegram
+intends.
 </Callout>
 
-1. Open your group → **Add members** → search for `@cookiebot_uat_bot`
-2. Add it
-3. Open the group's **Administrators** list and promote the bot
-
-## 2. Promote it, and why that is not optional
-
-A Telegram bot with no admin rights can read almost nothing and change nothing.
-Cookiebot needs these:
-
-| Right | What stops working without it |
+| Right | What needs it |
 |---|---|
-| **Delete messages** | Sticker-spam control, media restrictions, removing a joiner's failed captcha |
-| **Ban users** | Anything that removes a bad actor rather than just deleting the message |
-| **Invite users via link** | Rejoin flows after a captcha timeout |
-| **Pin messages** | `/rules` pinning |
+| **Delete messages** | Sticker-flood control, the media hold on new members, clearing a failed captcha |
+| **Ban users** | Removing a joiner who fails the captcha, blocking a listed account |
+| **Invite users via link** | Letting a removed joiner come back and try again |
+| **Pin messages** | Pinning the rules |
 
-Leave **Anonymous** off. An anonymous admin's actions arrive attributed to the
-group rather than a user, and the bot cannot tell who asked.
-
-## 3. Check it is alive
-
-Send this in the group:
+## 2. Check that it can see the group
 
 ```
 /isalive
 ```
 
-If it answers, the bot can see the group and reply in it — which is more than
-"the bot is in the members list" tells you.
+A reply means the bot can both read the group and post in it — which is more
+than "it appears in the member list" tells you.
 
 <Callout>
-No reply? Nine times in ten it is Telegram's **privacy mode**, which stops bots
-seeing ordinary group messages. Commands and mentions still arrive, so
-`/isalive` working while normal chat seems ignored is expected and correct —
-the bot only reads what it is addressed with, unless privacy mode is turned off
-in BotFather by whoever owns the bot.
+**No reply?** Usually Telegram's privacy mode, which stops bots from seeing
+ordinary messages. Commands addressed to the bot still arrive, so `/isalive`
+answering while normal chat seems ignored is expected. Some features (link
+rewriting, sticker counting) need privacy mode off, which only the bot's owner
+can change in BotFather.
 </Callout>
 
-## 4. Set the language
-
-The bot defaults to English. Set it once, per group:
+## 3. Set the group's language
 
 ```
 /config
 ```
 
-and pick **language** from the menu. Everything the bot says afterwards —
-greetings, warnings, command output — follows that setting. The *commands
-themselves* keep working in all three languages regardless: `/regras`,
-`/reglas` and `/rules` are the same command.
+Pick **Language** and reply with `pt`, `eng` or `es`. That changes what the bot
+*says*; it never changes what the bot *listens for* — `/rules`, `/regras` and
+`/reglas` are the same command in every group.
 
-## 5. Give it the two things a group needs
+<Callout type="warn">
+`/config` answers **in a private chat**, not in the group: the bot replies "I've
+sent you a message in the private chat to configure!" and the menu opens there.
+Telegram does not let a bot open that conversation, so **press Start on the bot
+once, in private, before running `/config`** — otherwise there is nowhere for
+the menu to go and the bot will say it could not reach you.
+</Callout>
+
+## 4. Set a welcome and the rules
 
 ```
-/newwelcome     reply to the prompt with your greeting
-/newrules       reply to the prompt with your rules
+/newwelcome
+/newrules
 ```
 
-Both are admin-only, and both are set by **replying** to the message the bot
-sends you — not by typing the text on the same line. Include `<user>` in a
-welcome message and it is replaced with the joiner's name.
+Both are two-step: the bot posts a prompt, and you **reply to that prompt** with
+the text you want. Typing the text on the same line as the command does
+nothing. In a welcome message, `<user>` is replaced with the new member's name.
+
+Only an admin's reply is accepted — including an **anonymous** admin, whose
+message arrives from GroupAnonymousBot rather than from an account.
+
+## 5. Decide what runs unattended
+
+The defaults are deliberately mild. Two settings do most of the work, and both
+are covered on [Configuring a group](/docs/using/configure):
+
+- **🕒 CAPTCHA** — how long a joiner has to answer. `0` turns screening off.
+- **🕒 Limbo** — how long a new member must wait before posting images and
+  files. Off by default, and the single most effective setting against
+  drive-by image spam.
 
 ## Where to go next
 
 <Cards>
-  <Card title="Commands" href="/docs/using/commands" description="All 29 of them, with the Portuguese and Spanish spellings." />
-  <Card title="Configuring a group" href="/docs/using/configure" description="Every setting the /config menu exposes and what it changes." />
-  <Card title="Moderation" href="/docs/using/moderation" description="Captchas, sticker spam, media limits — what the bot does on its own." />
-  <Card title="Privacy" href="/docs/using/privacy" description="What is stored, for how long, and how to get rid of it." />
+  <Card title="Commands" href="/docs/using/commands" description="Every command, with its Portuguese and Spanish spellings." />
+  <Card title="Configuring a group" href="/docs/using/configure" description="Every setting in the /config menu and what it changes." />
+  <Card title="Moderation" href="/docs/using/moderation" description="Captcha, sticker floods, media holds, blocked accounts." />
+  <Card title="Troubleshooting" href="/docs/using/troubleshooting" description="The bot is silent, the menu never arrives, a setting seems ignored." />
 </Cards>

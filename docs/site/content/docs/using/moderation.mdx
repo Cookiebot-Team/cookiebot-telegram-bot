@@ -1,55 +1,70 @@
 ---
 title: Moderation
-description: What the bot does on its own, without anyone asking
+description: What the bot does on its own — the captcha, sticker floods, the media hold, blocked accounts
 ---
 
-Most of Cookiebot's value is in what happens while nobody is watching. This is
-the part that runs unprompted.
+Most of Cookiebot's value is in what happens while nobody is watching. Four
+things run unprompted, and all four need the bot to be an admin with **delete**
+and **ban** rights.
 
-## Joiners
+## Screening joiners
 
-A new member is screened before they can do anything interesting. The captcha
-is a challenge in the group; passing it is the end of the matter, and failing
-it — or ignoring it until `captcha_timeout_seconds` runs out — removes them.
+A new member gets a challenge in the group and has **🕒 CAPTCHA** seconds to
+answer it — by replying with the answer, or by tapping the button. An admin can
+wave someone through with the approve button.
 
-Removal is not a ban. Someone who genuinely missed it can come back and try
-again, which matters because the most common captcha failure is a real person
-who put their phone down.
+Fail it, or let the timer run out, and the member is removed. **Removal is not a
+permanent ban**: the block is lifted shortly afterwards so a real person who put
+their phone down can come back and try again. That matters, because the most
+common captcha failure is exactly that.
 
-## Sticker spam
+Set **🕒 CAPTCHA** to `0` to turn screening off entirely.
 
-Stickers are the cheapest way to make a group unusable: a client can send
-dozens a second and each one is a separate message. `sticker_spam_limit`
-(default 5) is how many in a row one member may send before the bot intervenes.
+## Sticker floods
 
-Counted per member and per run — a conversation in stickers between two people
-is not spam, and is not treated as it.
+Stickers are the cheapest way to make a group unreadable — a client can send
+them faster than anyone can scroll. The bot counts stickers per member within a
+rolling window:
 
-## Media restrictions
+- at exactly **Stickers limit** (default 5) it **warns once**;
+- past the limit it **deletes** every further sticker.
 
-`media_restrict_seconds` holds a new member back from posting images and files
-for a set time after joining. Off by default, and the single most effective
-setting against drive-by image spam, because that kind of account posts within
-seconds of arriving or not at all.
+A conversation held in stickers between two people is counted per person, so it
+is not treated as a flood. If the bot cannot reach its counter, it does nothing
+rather than guessing — silence beats deleting a message that was fine.
 
-## Group guardian
+## Holding back new members
 
-Watches for the patterns that mean a group is being attacked rather than
-annoyed — mass joins, coordinated posting, known-bad actors — and acts on the
-group rather than on the individual message.
+**🕒 Limbo** stops a member who has just joined from posting images and files
+for a set number of seconds. The bot says how long the hold is when it greets
+them.
+
+Off by default, and the single most effective setting against drive-by image
+spam. Ten minutes (`600`) is a reasonable starting point.
+
+## Blocked accounts
+
+Accounts on the shared abuse lists the bot checks — plus its own list — are
+removed when they **join by themselves**. An account *added* by an existing
+member is not, on the assumption that a member vouching for someone is a
+decision the bot should not overrule.
+
+If a list cannot be reached, the join is allowed. A screening service being
+down is not a reason to lock a group's door.
 
 ## What the bot will not do
 
-- **It does not moderate admins.** An admin posting stickers forever is a
-  problem for the group's humans.
-- **It does not read messages it is not addressed with**, unless privacy mode
-  is turned off for the bot in BotFather. This is Telegram's rule, not the
-  bot's, and it is why some features need privacy mode off to work at all.
-- **It does not act across groups.** Somebody removed from one group arrives in
-  the next with a clean slate. There is no shared reputation.
+- **It does not moderate admins.** An admin flooding stickers is a matter for
+  the group's humans.
+- **It does not read what it is not addressed with**, unless privacy mode is
+  turned off for the bot in BotFather. That is Telegram's rule, and it is why
+  sticker counting and link rewriting need privacy mode off to work at all.
+- **It does not act across groups.** Someone removed from one group arrives in
+  the next with a clean slate. There is no shared reputation, by design.
+- **It does not keep a transcript.** See [Privacy](/docs/using/privacy).
 
 <Callout type="warn">
-Every one of these needs the bot to be an admin with **delete** and **ban**
-rights. Without them the bot can see a problem and do nothing about it, which
-looks exactly like the bot being broken.
+Without **delete** and **ban** rights, every one of these can detect a problem
+and do nothing about it — which looks exactly like a broken bot. If moderation
+seems inert, check the bot's admin rights first.
 </Callout>

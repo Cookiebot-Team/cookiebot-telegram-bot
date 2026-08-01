@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-08-01",
-  "commit": "0bef409",
-  "test_summary": "924 passed, 36 skipped, 122 deselected, 1 warning in 34.91s",
+  "commit": "c8d7544",
+  "test_summary": "924 passed, 36 skipped, 122 deselected, 1 warning in 75.20s (0:01:15)",
   "totals": {
     "features": 53,
     "done": 25,
@@ -1146,6 +1146,362 @@
         "failing": 0
       },
       "url": "/docs/features/x_analytics_api"
+    }
+  ],
+  "commands": [
+    {
+      "primary": "/adm",
+      "aliases": [
+        "/admin",
+        "/report"
+      ],
+      "feature_id": "util_calladms",
+      "area": "util",
+      "title": "Call the admins",
+      "hint": "Pings every admin in the chat \u2014 compare the reply as a member vs. as an admin.",
+      "status": "partial",
+      "url": "/docs/features/util_calladms"
+    },
+    {
+      "primary": "/battle",
+      "aliases": [
+        "/batalha",
+        "/batalla"
+      ],
+      "feature_id": "fun_battle",
+      "area": "fun",
+      "title": "Battle poll",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/fun_battle"
+    },
+    {
+      "primary": "/bff",
+      "aliases": [],
+      "feature_id": "fun_partneredcons",
+      "area": "fun",
+      "title": "Partnered convention posters",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/fun_partneredcons"
+    },
+    {
+      "primary": "/birthday",
+      "aliases": [
+        "/aniversario",
+        "/anivers\u00e1rio",
+        "/cumpleanos",
+        "/cumplea\u00f1os"
+      ],
+      "feature_id": "util_birthday",
+      "area": "util",
+      "title": "Today's birthdays",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/util_birthday"
+    },
+    {
+      "primary": "/commands",
+      "aliases": [
+        "/comandos"
+      ],
+      "feature_id": "core_listcommand",
+      "area": "core",
+      "title": "List available commands",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/core_listcommand"
+    },
+    {
+      "primary": "/complaint",
+      "aliases": [
+        "/milton",
+        "/queja",
+        "/reclamacao",
+        "/reclama\u00e7\u00e3o"
+      ],
+      "feature_id": "fun_complaint",
+      "area": "fun",
+      "title": "Complaint bit",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/fun_complaint"
+    },
+    {
+      "primary": "/config",
+      "aliases": [
+        "/configurar",
+        "/configure"
+      ],
+      "feature_id": "util_config",
+      "area": "util",
+      "title": "Admin configuration menu",
+      "hint": "Opens the admin config menu \u2014 send it as an anonymous admin to check the v1 defect the port fixed.",
+      "status": "done",
+      "url": "/docs/features/util_config"
+    },
+    {
+      "primary": "/death",
+      "aliases": [
+        "/morte",
+        "/muerte"
+      ],
+      "feature_id": "fun_death",
+      "area": "fun",
+      "title": "Random cause of death",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/fun_death"
+    },
+    {
+      "primary": "/deletereposts",
+      "aliases": [
+        "/apagarposts",
+        "/deleteposts"
+      ],
+      "feature_id": "util_deletereposts",
+      "area": "util",
+      "title": "Delete scheduled reposts",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/util_deletereposts"
+    },
+    {
+      "primary": "/dice",
+      "aliases": [
+        "/dado",
+        "/roll"
+      ],
+      "feature_id": "fun_dice",
+      "area": "fun",
+      "title": "Roll an n-sided die",
+      "hint": "Bare /dice/ /dado rolls a d6; /d<N> (e.g. /d20, /d100) rolls an N-sided die with no upper bound.",
+      "status": "done",
+      "url": "/docs/features/fun_dice"
+    },
+    {
+      "primary": "/everyone",
+      "aliases": [],
+      "feature_id": "util_everyone",
+      "area": "util",
+      "title": "Ping every member",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/util_everyone"
+    },
+    {
+      "primary": "/firecracker",
+      "aliases": [
+        "/acende",
+        "/fogos",
+        "/rojao",
+        "/roj\u00e3o"
+      ],
+      "feature_id": "fun_firecracker",
+      "area": "fun",
+      "title": "Firecracker sequence",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/fun_firecracker"
+    },
+    {
+      "primary": "/furcamp",
+      "aliases": [],
+      "feature_id": "fun_partneredcons",
+      "area": "fun",
+      "title": "Partnered convention posters",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/fun_partneredcons"
+    },
+    {
+      "primary": "/fursmeet",
+      "aliases": [],
+      "feature_id": "fun_partneredcons",
+      "area": "fun",
+      "title": "Partnered convention posters",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/fun_partneredcons"
+    },
+    {
+      "primary": "/isalive",
+      "aliases": [
+        "/tavivo"
+      ],
+      "feature_id": "util_isalive",
+      "area": "util",
+      "title": "Health check from chat",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/util_isalive"
+    },
+    {
+      "primary": "/meme",
+      "aliases": [],
+      "feature_id": "fun_meme",
+      "area": "fun",
+      "title": "Meme generator",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/fun_meme"
+    },
+    {
+      "primary": "/newrules",
+      "aliases": [
+        "/novasregras",
+        "/nuevasreglas"
+      ],
+      "feature_id": "core_rules",
+      "area": "core",
+      "title": "Group rules and /newrules",
+      "hint": "Admin only. Try it as a plain member (should refuse) and as an anonymous admin (should work).",
+      "status": "done",
+      "url": "/docs/features/core_rules"
+    },
+    {
+      "primary": "/newwelcome",
+      "aliases": [
+        "/novobemvindo",
+        "/nuevabienvenida"
+      ],
+      "feature_id": "core_welcome",
+      "area": "core",
+      "title": "Welcome message and /newwelcome",
+      "hint": "Admin only, same anonymous-admin check as /newrules.",
+      "status": "done",
+      "url": "/docs/features/core_welcome"
+    },
+    {
+      "primary": "/nextbirthday",
+      "aliases": [
+        "/nextbirthdays",
+        "/proximosaniversarios"
+      ],
+      "feature_id": "util_nextbirthday",
+      "area": "util",
+      "title": "Upcoming birthdays",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/util_nextbirthday"
+    },
+    {
+      "primary": "/patas",
+      "aliases": [],
+      "feature_id": "fun_partneredcons",
+      "area": "fun",
+      "title": "Partnered convention posters",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/fun_partneredcons"
+    },
+    {
+      "primary": "/pawstral",
+      "aliases": [],
+      "feature_id": "fun_partneredcons",
+      "area": "fun",
+      "title": "Partnered convention posters",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/fun_partneredcons"
+    },
+    {
+      "primary": "/privacy",
+      "aliases": [
+        "/privacidad",
+        "/privacidade"
+      ],
+      "feature_id": "core_privacy",
+      "area": "core",
+      "title": "Privacy policy",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/core_privacy"
+    },
+    {
+      "primary": "/publish",
+      "aliases": [
+        "/divulgar",
+        "/publicar"
+      ],
+      "feature_id": null,
+      "area": "other",
+      "title": "",
+      "hint": "",
+      "status": "unknown",
+      "url": null
+    },
+    {
+      "primary": "/random",
+      "aliases": [
+        "/aleatorio",
+        "/aleat\u00f3rio"
+      ],
+      "feature_id": "fun_random",
+      "area": "fun",
+      "title": "Random media from the group",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/fun_random"
+    },
+    {
+      "primary": "/repost",
+      "aliases": [
+        "/reenviar",
+        "/repostar"
+      ],
+      "feature_id": null,
+      "area": "other",
+      "title": "",
+      "hint": "",
+      "status": "unknown",
+      "url": null
+    },
+    {
+      "primary": "/rules",
+      "aliases": [
+        "/reglas",
+        "/regras"
+      ],
+      "feature_id": "core_rules",
+      "area": "core",
+      "title": "Group rules and /newrules",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/core_rules"
+    },
+    {
+      "primary": "/ship",
+      "aliases": [
+        "/shipp",
+        "/shippar"
+      ],
+      "feature_id": "fun_ship",
+      "area": "fun",
+      "title": "Ship two members",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/fun_ship"
+    },
+    {
+      "primary": "/trex",
+      "aliases": [],
+      "feature_id": "fun_partneredcons",
+      "area": "fun",
+      "title": "Partnered convention posters",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/fun_partneredcons"
+    },
+    {
+      "primary": "/youtube",
+      "aliases": [],
+      "feature_id": "util_youtube",
+      "area": "util",
+      "title": "YouTube search",
+      "hint": "",
+      "status": "planned",
+      "url": "/docs/features/util_youtube"
     }
   ],
   "scenarios": [

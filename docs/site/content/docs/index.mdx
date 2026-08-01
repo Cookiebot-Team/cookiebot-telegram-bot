@@ -1,58 +1,57 @@
 ---
-title: Cookiebot v2
-description: A Telegram group bot being rebuilt in the open, one feature and one scenario at a time
+title: Cookiebot
+description: A moderation and utility bot for Telegram groups — and the open rebuild of it
 ---
 
-Cookiebot is a Telegram group bot — moderation, captchas, group config, media
-tools — serving real groups today on its v1 stack. **v2 is a rewrite that has
-to earn every switch-over**: a feature moves only once its behaviour is
-captured as an executable scenario and that scenario passes.
+Cookiebot keeps a Telegram group habitable: it greets new members, screens
+joiners, holds the group's rules, keeps sticker floods and drive-by image spam
+under control, and carries a set of everyday tools. It speaks **English,
+Portuguese and Spanish**, and Telegram is the entire interface — no account, no
+dashboard.
 
-This site is where that is tracked, in public, with numbers nobody typed by
-hand.
+## Run a group
+
+<Cards>
+  <Card title="Getting started" href="/docs/using" description="Add the bot, promote it, set a language, a welcome and the rules." />
+  <Card title="Commands" href="/docs/using/commands" description="Every command, with its Portuguese and Spanish spellings." />
+  <Card title="Configuring a group" href="/docs/using/configure" description="Every setting in the /config menu — and the two most groups get wrong." />
+  <Card title="Moderation" href="/docs/using/moderation" description="The captcha, sticker floods, the media hold, blocked accounts." />
+  <Card title="Privacy" href="/docs/using/privacy" description="What is stored, what is not, and who is responsible for it." />
+  <Card title="Troubleshooting" href="/docs/using/troubleshooting" description="Silent bot, missing menu, a setting that will not stick." />
+</Cards>
+
+## Build it
+
+Cookiebot is being rebuilt in the open. **v2 is a rewrite that has to earn every
+switch-over**: a feature moves only once its behaviour is captured as an
+executable scenario and that scenario passes. Groups keep running on the current
+release until then.
 
 <ProgressOverview />
 
-## Start here
-
-Two audiences, and it is worth picking the right door.
-
-**Running a group?** You need Telegram and nothing else. Add the bot, promote
-it, set a welcome and some rules.
-
 <Cards>
-  <Card title="Add the bot to a group" href="/docs/using" description="Two minutes, no account, no dashboard." />
-  <Card title="Commands" href="/docs/using/commands" description="All 29, in English, Portuguese and Spanish." />
-  <Card title="Configuring a group" href="/docs/using/configure" description="Every setting, and the two most groups get wrong." />
-  <Card title="Moderation" href="/docs/using/moderation" description="What the bot does while nobody is watching." />
-</Cards>
-
-**Working on it?** Start with the architecture, then the development guide.
-
-<Cards>
+  <Card title="Progress board" href="/docs/progress" description="Milestones, the scenario ledger, and where the spec and reality disagree." />
+  <Card title="Features" href="/docs/features" description="One page per feature: what it does, what must not change, whether it has moved." />
   <Card title="Architecture" href="/docs/architecture" description="Four services, Citus, the compiled hot path — and why." />
   <Card title="Development" href="/docs/development" description="Setup, the task runner, the test pyramid, the gates." />
-  <Card title="Progress board" href="/docs/progress" description="Milestones, the scenario ledger, and what the spec and reality disagree about." />
-  <Card title="Features" href="/docs/features" description="One page per feature: what it does, what must not change, whether it works yet." />
 </Cards>
 
-## How to read this site
+## How this site is built
 
-Two kinds of page, and it is worth knowing which one you are on.
+Two kinds of page, and it is worth knowing which one you are reading.
 
-**Measured pages** — the progress board, and the header block on every feature
-page — are generated from `scripts/spec.py` (the migration spec) and a real
-test run, by `python scripts/cb.py docs-sync`. Nothing on them is an opinion.
-A feature that claims `done` without a passing scenario is reported as a
-finding, on the page, in amber.
+**Measured** — the progress board, the header on every feature page, and the
+command tables under *Commands* — are generated from the bot's own spec, alias
+table and a real test run (`python scripts/cb.py docs-sync`). Nothing on them
+is an opinion: a feature that claims to be done without a passing scenario is
+reported as a finding, on the page, in amber.
 
-**Written pages** — everything else, including the prose under each feature
-header — are for humans, by humans. They explain intent, the v1 behaviour that
-must survive, and the traps. The sync never touches them.
+**Written** — everything else. Intent, behaviour that must not change, and the
+traps. The generator never touches it.
 
 ## The one rule
 
-v1 compatibility is not negotiable. Groups are using the old bot right now, so
-a command that changes its name, its permissions or its reply is a regression —
-however much nicer the new code is. Every ported feature carries a behaviour
-contract and at least one scenario that would catch that.
+v1 compatibility is not negotiable. Groups are using the current release right
+now, so a command that changes its name, its permissions or its reply is a
+regression — however much nicer the new code is. Every ported feature carries a
+behaviour contract and at least one scenario that would catch that.

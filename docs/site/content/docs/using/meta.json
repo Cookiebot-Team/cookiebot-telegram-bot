@@ -1,4 +1,5 @@
 {
   "title": "Using Cookiebot",
-  "pages": ["index", "commands", "configure", "moderation", "privacy"]
+  "description": "For whoever runs the group",
+  "pages": ["index", "commands", "configure", "moderation", "privacy", "troubleshooting"]
 }

@@ -1,0 +1,73 @@
+---
+title: Troubleshooting
+description: The bot is silent, the menu never arrives, a setting seems ignored
+---
+
+Nearly every report falls into one of these. They are ordered by how often they
+turn out to be the answer.
+
+## The bot ignores everything
+
+Send `/isalive`. If it answers, the bot can see and post in the group, and the
+problem is narrower than "the bot is down".
+
+If it does not answer:
+
+1. **Is it actually in the group?** Check the member list, not your memory of
+   adding it.
+2. **Is it an admin?** Manage group → Administrators. Without rights it can
+   still reply, but almost nothing else works.
+3. **Was the command aimed at another bot?** `/rules@some_other_bot` is
+   deliberately ignored.
+
+## Commands work, but nothing automatic does
+
+Sticker limits, link rewriting and anything that reacts to ordinary messages
+need Telegram's **privacy mode** turned off for the bot. With privacy mode on —
+the default — a bot only receives messages addressed to it, so commands work
+and nothing else does. Only the bot's owner can change it, in BotFather.
+
+## `/config` says it messaged me and nothing arrived
+
+Telegram forbids a bot from opening a private chat. **Open a private chat with
+the bot and press Start**, then run `/config` again.
+
+If you are posting as an **anonymous admin**, Telegram gives the bot no account
+to message at all — turn anonymity off for that one command.
+
+## A setting does not stick
+
+The menu opens for whoever it is shown to, but a value is only accepted from an
+admin. If a numeric field keeps asking again, the reply was not a number: the
+bot answers `ERROR: invalid input — try again` and stores nothing until a value
+parses.
+
+Changes apply immediately once accepted. There is no cache to wait out and no
+`/reload` to send.
+
+## New members are being removed
+
+That is the captcha doing its job — but check the timer. **🕒 CAPTCHA** defaults
+to 120 seconds, which is short for a group where people arrive, get distracted,
+and come back. Raise it to `300`, or set `0` to turn screening off.
+
+Removal is temporary: the block lifts shortly after, so a real person can rejoin
+and try again.
+
+## New members cannot post images
+
+That is **🕒 Limbo**, the media hold. The bot says how long it lasts when it
+greets them. Set it to `0` to turn it off.
+
+## Nothing happened when I set the rules
+
+`/newrules` and `/newwelcome` are two-step. The bot posts a prompt and you must
+**reply to that prompt** — typing the text on the same line as the command does
+nothing at all. Only an admin's reply is accepted; a non-admin gets
+`You are not a group admin!`.
+
+## Still stuck
+
+Check the [progress board](/docs/progress): a command that has not moved to the
+new stack yet behaves the way the current release behaves, and a feature marked
+partial does part of what its page describes.

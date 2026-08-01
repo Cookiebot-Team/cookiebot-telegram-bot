@@ -1,76 +1,119 @@
 ---
 title: Commands
-description: Every command Cookiebot answers to, in all three languages
+description: Every command Cookiebot answers to, with its Portuguese and Spanish spellings
 ---
 
-Every command has an English, Portuguese and Spanish spelling and they are
-interchangeable — `/rules`, `/regras` and `/reglas` reach the same handler. The
-group's language setting changes what the bot *says back*, never what it
-listens for, so a Portuguese group can still be driven with English commands.
+Every table on this page is generated from the bot's own alias table, so it
+lists what the parser actually accepts rather than what someone remembered to
+write down.
 
-Commands work with or without the bot's username attached
-(`/rules@cookiebot_uat_bot`), which matters in groups with more than one bot.
+Three things hold for every command:
+
+- **The spellings are interchangeable.** `/rules`, `/regras` and `/reglas` reach
+  the same handler. The group's language setting changes what the bot *says
+  back*, never what it listens for.
+- **Accented spellings count.** `/aleatório` and `/reclamação` are separate
+  triggers, because that is what a Portuguese keyboard produces.
+- **Addressing works.** `/rules@your_bot` behaves like `/rules`, which matters
+  in a group running more than one bot. A command aimed at a *different* bot is
+  ignored in silence.
+
+<Callout>
+**The "In v2" column.** Cookiebot is being rebuilt; groups on the current
+release have everything, and each command moves to the new stack only once its
+behaviour is pinned down by a passing test. `Live` means it has already moved.
+The full picture is on the [progress board](/docs/progress).
+</Callout>
 
 ## Group setup
 
-Admin-only. Each prompts, and you set the value by **replying** to that prompt.
+Admin-only, and all three are two-step: the bot prompts, you **reply to that
+prompt**.
 
-| Command | Also | What it does |
-|---|---|---|
-| `/newwelcome` | `novobemvindo`, `nuevabienvenida` | Sets the greeting for new members. `<user>` becomes their name |
-| `/newrules` | `novasregras`, `nuevasreglas` | Sets the group rules that `/rules` shows |
-| `/config` | `configurar`, `configure` | Opens the settings menu — see [Configuring a group](/docs/using/configure) |
+<CommandTable
+  only={['/config', '/newrules', '/newwelcome']}
+  describe={{
+    '/config': 'Opens the settings menu — in a private chat, not in the group',
+    '/newrules': 'Sets the rules that /rules shows',
+    '/newwelcome': 'Sets the greeting new members get. <user> becomes their name',
+  }}
+/>
 
 ## Everyday
 
-| Command | Also | What it does |
-|---|---|---|
-| `/rules` | `regras`, `reglas` | Shows the group's rules |
-| `/commands` | `comandos` | Lists what is available in this group |
-| `/isalive` | `tavivo` | Health check — the bot answers if it can see and post here |
-| `/privacy` | `privacidade`, `privacidad` | What the bot stores about you, and how to remove it |
-| `/calladms` | `adm`, `admin`, `report` | Summons the group's admins. Reply to the offending message |
-| `/everyone` | — | Mentions everyone. Admin-only for a reason |
-
-## Birthdays
-
-| Command | Also | What it does |
-|---|---|---|
-| `/birthday` | `aniversario`, `cumpleanos` | Registers yours |
-| `/nextbirthday` | `nextbirthdays`, `proximosaniversarios` | Who is next |
-
-## Posts and media
-
-| Command | Also | What it does |
-|---|---|---|
-| `/publish` | `divulgar`, `publicar` | Submits a post for the group's publishing flow |
-| `/repost` | `repostar`, `reenviar` | Reposts a message |
-| `/deletereposts` | `apagarposts`, `deleteposts` | Clears reposts |
-| `/youtube` | — | Pulls a YouTube link into the chat properly |
+<CommandTable
+  only={['/rules', '/commands', '/isalive', '/privacy', '/adm']}
+  describe={{
+    '/rules': "Shows the group's rules",
+    '/commands': 'Lists what this group can use',
+    '/isalive': 'Health check — the bot answers if it can see and post here',
+    '/privacy': 'Replies with the privacy policy link',
+    '/adm': "Summons the group's admins. Reply to the message you are reporting",
+  }}
+/>
 
 ## Fun
 
-Switched off as a group with `functions_fun`.
+Turned off for a whole group with **Fun Functions** in [`/config`](/docs/using/configure).
 
-| Command | Also | What it does |
-|---|---|---|
-| `/dice` | `dado`, `roll` | Rolls |
-| `/random` | `aleatorio` | Picks |
-| `/ship` | `shippar`, `shipp` | Pairs two members |
-| `/battle` | `batalha`, `batalla` | Two members, one winner |
-| `/death` | `morte`, `muerte` | A death |
-| `/firecracker` | `acende`, `fogos`, `rojao` | A firecracker |
-| `/meme` | — | A meme |
-| `/complaint` | `reclamacao`, `queja`, `milton` | Files a complaint, ceremonially |
+<CommandTable
+  only={['/dice', '/random', '/ship', '/battle', '/death', '/firecracker', '/meme', '/complaint']}
+  describe={{
+    '/dice': 'Rolls a six-sided die. /d20, /d100 — any number of sides',
+    '/random': 'Posts a random piece of media the group has sent before',
+    '/ship': 'Pairs two members',
+    '/battle': 'Two members, one winner, decided by a poll',
+    '/death': 'A cause of death, at random',
+    '/firecracker': 'A firecracker, ceremonially',
+    '/meme': 'Generates a meme',
+    '/complaint': 'Files a complaint, ceremonially',
+  }}
+/>
+
+## Utility
+
+Turned off for a whole group with **Utility Functions**.
+
+<CommandTable
+  only={['/birthday', '/nextbirthday', '/everyone', '/youtube']}
+  describe={{
+    '/birthday': "Registers yours, and shows today's",
+    '/nextbirthday': 'Whose birthday is next',
+    '/everyone': 'Mentions every member',
+    '/youtube': 'Searches YouTube and posts the result',
+  }}
+/>
+
+## Posts
+
+The publishing flow, for groups that forward posts between channels. Its
+behaviour is set by the four **Publisher** settings in `/config`.
+
+<CommandTable
+  only={['/publish', '/repost', '/deletereposts']}
+  describe={{
+    '/publish': 'Submits a post to the publishing queue',
+    '/repost': 'Reposts a message',
+    '/deletereposts': 'Clears posts scheduled for reposting',
+  }}
+/>
 
 ## Convention shortcuts
 
-Fixed links for specific furry conventions: `/con_bff`, `/con_furcamp`,
-`/con_fursmeet`, `/con_patas`, `/con_pawstral`, `/con_trex` — reachable as
-`/bff`, `/furcamp`, `/fursmeet`, `/patas`, `/pawstral`, `/trex`.
+Fixed links for partnered furry conventions.
+
+<CommandTable only={['/bff', '/furcamp', '/fursmeet', '/patas', '/pawstral', '/trex']} />
+
+## Things without a command
+
+Some of what the bot does has no command at all — it just happens:
+
+- **Link rewriting.** Twitter/X, TikTok, Instagram and Bluesky links are
+  reposted in a form that actually shows a preview in Telegram.
+- **Joiner screening, sticker limits, media holds.** See
+  [Moderation](/docs/using/moderation).
 
 <Callout>
-Commands the bot does not recognise are ignored in silence rather than answered
-with an error. In a group with several bots, one of them replying "unknown
-command" to everything is worse than nothing.
+An unrecognised command gets **no reply**. In a group with several bots, one of
+them answering "unknown command" to everything is worse than silence.
 </Callout>
