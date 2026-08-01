@@ -1,0 +1,53 @@
+---
+title: Privacy
+description: What Cookiebot stores, why, and how to get rid of it
+---
+
+```
+/privacy
+```
+
+Answers this in-chat, for the person who asks.
+
+## What is stored
+
+Cookiebot keeps what it needs to do its job across restarts and nothing that is
+only interesting in aggregate:
+
+- **Group settings** — everything on the [configure](/docs/using/configure)
+  page, per group
+- **The group's own text** — the welcome message and the rules an admin set
+- **Birthdays**, if a member registered one with `/birthday`
+- **Short-lived moderation state** — captcha attempts in flight, recent sticker
+  counts. Minutes, not months
+- **Posts submitted** through the publishing flow, while that flow is running
+
+## What is not
+
+- Message history. The bot is not a logger and does not keep a transcript
+- Anything from groups it is not in
+- Anything from private chats beyond what is needed to answer the command asked
+
+## Removing it
+
+Leaving the group removes what is tied to you in that group. `/privacy` states
+what is held at that moment and how to have it dropped.
+
+Removing the bot from a group ends its access immediately: it stops receiving
+updates the moment it stops being a member.
+
+## Where it runs
+
+This deployment is self-hosted — the data is in a PostgreSQL database on
+infrastructure the group's operator runs, not on a vendor's platform.
+
+Media flows through a **self-hosted Telegram Bot API server** rather than
+Telegram's public one, which means files a group sends are fetched to that
+server rather than out to a third party. It is also why the UAT deployment can
+work without exposing anything to the public internet.
+
+<Callout>
+This page describes the software's behaviour. Whoever operates a given
+deployment is the data controller for it, and can answer what their retention
+and jurisdiction actually are — the bot's code cannot.
+</Callout>

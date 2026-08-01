@@ -1,0 +1,76 @@
+---
+title: Commands
+description: Every command Cookiebot answers to, in all three languages
+---
+
+Every command has an English, Portuguese and Spanish spelling and they are
+interchangeable — `/rules`, `/regras` and `/reglas` reach the same handler. The
+group's language setting changes what the bot *says back*, never what it
+listens for, so a Portuguese group can still be driven with English commands.
+
+Commands work with or without the bot's username attached
+(`/rules@cookiebot_uat_bot`), which matters in groups with more than one bot.
+
+## Group setup
+
+Admin-only. Each prompts, and you set the value by **replying** to that prompt.
+
+| Command | Also | What it does |
+|---|---|---|
+| `/newwelcome` | `novobemvindo`, `nuevabienvenida` | Sets the greeting for new members. `<user>` becomes their name |
+| `/newrules` | `novasregras`, `nuevasreglas` | Sets the group rules that `/rules` shows |
+| `/config` | `configurar`, `configure` | Opens the settings menu — see [Configuring a group](/docs/using/configure) |
+
+## Everyday
+
+| Command | Also | What it does |
+|---|---|---|
+| `/rules` | `regras`, `reglas` | Shows the group's rules |
+| `/commands` | `comandos` | Lists what is available in this group |
+| `/isalive` | `tavivo` | Health check — the bot answers if it can see and post here |
+| `/privacy` | `privacidade`, `privacidad` | What the bot stores about you, and how to remove it |
+| `/calladms` | `adm`, `admin`, `report` | Summons the group's admins. Reply to the offending message |
+| `/everyone` | — | Mentions everyone. Admin-only for a reason |
+
+## Birthdays
+
+| Command | Also | What it does |
+|---|---|---|
+| `/birthday` | `aniversario`, `cumpleanos` | Registers yours |
+| `/nextbirthday` | `nextbirthdays`, `proximosaniversarios` | Who is next |
+
+## Posts and media
+
+| Command | Also | What it does |
+|---|---|---|
+| `/publish` | `divulgar`, `publicar` | Submits a post for the group's publishing flow |
+| `/repost` | `repostar`, `reenviar` | Reposts a message |
+| `/deletereposts` | `apagarposts`, `deleteposts` | Clears reposts |
+| `/youtube` | — | Pulls a YouTube link into the chat properly |
+
+## Fun
+
+Switched off as a group with `functions_fun`.
+
+| Command | Also | What it does |
+|---|---|---|
+| `/dice` | `dado`, `roll` | Rolls |
+| `/random` | `aleatorio` | Picks |
+| `/ship` | `shippar`, `shipp` | Pairs two members |
+| `/battle` | `batalha`, `batalla` | Two members, one winner |
+| `/death` | `morte`, `muerte` | A death |
+| `/firecracker` | `acende`, `fogos`, `rojao` | A firecracker |
+| `/meme` | — | A meme |
+| `/complaint` | `reclamacao`, `queja`, `milton` | Files a complaint, ceremonially |
+
+## Convention shortcuts
+
+Fixed links for specific furry conventions: `/con_bff`, `/con_furcamp`,
+`/con_fursmeet`, `/con_patas`, `/con_pawstral`, `/con_trex` — reachable as
+`/bff`, `/furcamp`, `/fursmeet`, `/patas`, `/pawstral`, `/trex`.
+
+<Callout>
+Commands the bot does not recognise are ignored in silence rather than answered
+with an error. In a group with several bots, one of them replying "unknown
+command" to everything is worse than nothing.
+</Callout>

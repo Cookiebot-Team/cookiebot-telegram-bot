@@ -269,3 +269,119 @@ python scripts/cb.py workflow   # runs act; needs act + a Docker-API socket
                                 # (with podman: podman machine start, then
                                 #  export DOCKER_HOST=<podman socket path>)
 ```
+
+## Deploying to a cluster
+
+The chart is `deploy/helm/cookiebot`. It renders the three services, Valkey, the
+self-hosted Bot API server and — when `citus.enabled` is true — a CloudNativePG
+`Cluster` and a `Database`.
+
+Everything below was found by deploying it to a real cluster for the first time.
+None of it shows up in `helm template`, and all of it only bites on a **first**
+install, which is why a chart that had been reviewed for months still had it.
+
+### Validate against an API server, not with grep
+
+`helm template` proves the YAML renders. It does not prove Kubernetes will
+accept it. This does:
+
+```sh
+helm template cookiebot deploy/helm/cookiebot -n <ns> -f <values> \
+  | kubectl apply --dry-run=server -f -
+```
+
+It catches things a render never will — `imagePullSecrets` given as strings
+instead of `{name: …}` maps returns
+
+```
+associative list with keys may not have non-map elements
+```
+
+which names the field and not the shape it wanted.
+
+### Hook ordering
+
+The migrate Job is a hook so it re-runs on every sync — a plain Job is immutable
+and the second sync would fail to apply a changed spec. But a hook runs *before*
+the ordinary sync phase, so anything it references has to exist by then. It
+needs a ServiceAccount and the `-env` ConfigMap, and when either is missing the
+Job is admitted and no pod is ever created:
+
+```
+Error creating: pods "cookiebot-migrate-" is forbidden: error looking up
+service account …: serviceaccount "cookiebot" not found
+```
+
+The sync then waits on a hook that cannot finish, with no pod to inspect.
+
+The fix is sync waves, not more hooks. Making the ConfigMap a hook works once
+and then breaks the long-running pods, because Argo deletes a hook before
+recreating it and `cb-*` read that ConfigMap through `envFrom` for their whole
+life. The order now is: ServiceAccount at `-5`, ConfigMap and Services at `0`,
+the migrate Job at `1` as a Sync-phase hook, the Deployments at `2`.
+
+**A resource that long-running pods depend on cannot be a hook.**
+
+### Citus needs to authenticate to itself
+
+Citus registers the coordinator in `pg_dist_node` as `localhost:5432` and
+reaches its own shards over TCP even when every shard is local. That connection
+carries no password, and CloudNativePG's generated `pg_hba` ends at
+`host all all all scram-sha-256`, so every distributed write fails with
+`could not connect to shard`.
+
+A plain `initdb` leaves loopback on `trust`, which is why this passes on a
+laptop and fails under CNPG. The chart sets the two loopback entries.
+
+### Extensions belong on the Database resource
+
+Not in `postInitTemplateSQL` — creating `citus` in `template1` starts its
+maintenance daemon there and blocks the `CREATE DATABASE … TEMPLATE template1`
+that CNPG does next, which fails 9 times in 10 and succeeds just often enough
+to look flaky.
+
+Not in `postInitApplicationSQL` either — CNPG runs that as the application
+owner, and these extensions write to `pg_catalog`.
+
+Both `postInit*` hooks also run exactly once, at bootstrap, so an extension
+added to one later is an edit that appears to work and does nothing.
+
+<Callout type="warn">
+The migration calls `citus_set_node_property`, which is superuser-only. The
+application user needs an explicit `GRANT EXECUTE`, or schema convergence dies
+with `permission denied for function citus_set_node_property`. CNPG's `Database`
+resource has no notion of grants and `postInitApplicationSQL` runs as an owner
+who cannot grant on functions it does not own, so this has to be applied by
+something with superuser access to the pod.
+</Callout>
+
+### The Bot API server ignores your arguments
+
+The upstream image's entrypoint builds its own command line from `TELEGRAM_*`
+environment variables and ends with `exec $COMMAND`. It never passes `"$@"`
+through, so **every argument passed to the container is discarded in silence**.
+
+That included `--local`, which is the entire reason the component exists: it is
+what lets Telegram accept an `http://` webhook on a private address. Without it
+the pod runs, the port answers, and the ingest path is quietly the cloud API
+instead.
+
+Configure it with `TELEGRAM_LOCAL`, `TELEGRAM_HTTP_PORT`, `TELEGRAM_WORK_DIR`
+and friends. And it starts as root deliberately — the entrypoint appends
+`--username`/`--groupname` and the server drops privileges itself, so forcing
+`runAsNonRoot` gets you
+
+```
+Can't change effective user: Failed to clear supplementary group list
+```
+
+### Metrics ports
+
+All three services read `CB_METRICS_PORT`. If one hardcodes a port instead, the
+chart's annotation points somewhere nothing is listening, the target is created,
+every scrape times out, and `up` sits at 0 against a pod that is perfectly
+healthy. Check with a query, not with `kubectl get pods`:
+
+```
+up{namespace="cookiebot-uat"}
+```

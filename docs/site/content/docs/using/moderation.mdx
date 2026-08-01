@@ -1,0 +1,55 @@
+---
+title: Moderation
+description: What the bot does on its own, without anyone asking
+---
+
+Most of Cookiebot's value is in what happens while nobody is watching. This is
+the part that runs unprompted.
+
+## Joiners
+
+A new member is screened before they can do anything interesting. The captcha
+is a challenge in the group; passing it is the end of the matter, and failing
+it — or ignoring it until `captcha_timeout_seconds` runs out — removes them.
+
+Removal is not a ban. Someone who genuinely missed it can come back and try
+again, which matters because the most common captcha failure is a real person
+who put their phone down.
+
+## Sticker spam
+
+Stickers are the cheapest way to make a group unusable: a client can send
+dozens a second and each one is a separate message. `sticker_spam_limit`
+(default 5) is how many in a row one member may send before the bot intervenes.
+
+Counted per member and per run — a conversation in stickers between two people
+is not spam, and is not treated as it.
+
+## Media restrictions
+
+`media_restrict_seconds` holds a new member back from posting images and files
+for a set time after joining. Off by default, and the single most effective
+setting against drive-by image spam, because that kind of account posts within
+seconds of arriving or not at all.
+
+## Group guardian
+
+Watches for the patterns that mean a group is being attacked rather than
+annoyed — mass joins, coordinated posting, known-bad actors — and acts on the
+group rather than on the individual message.
+
+## What the bot will not do
+
+- **It does not moderate admins.** An admin posting stickers forever is a
+  problem for the group's humans.
+- **It does not read messages it is not addressed with**, unless privacy mode
+  is turned off for the bot in BotFather. This is Telegram's rule, not the
+  bot's, and it is why some features need privacy mode off to work at all.
+- **It does not act across groups.** Somebody removed from one group arrives in
+  the next with a clean slate. There is no shared reputation.
+
+<Callout type="warn">
+Every one of these needs the bot to be an admin with **delete** and **ban**
+rights. Without them the bot can see a problem and do nothing about it, which
+looks exactly like the bot being broken.
+</Callout>

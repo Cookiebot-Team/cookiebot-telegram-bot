@@ -1,0 +1,54 @@
+---
+title: Configuring a group
+description: Every setting the /config menu exposes, what it changes, and what it costs
+---
+
+```
+/config
+```
+
+Admin-only. The bot opens a menu; pressing a button either toggles the setting
+or asks you to reply with a value. Settings are **per group** — nothing is
+shared between groups, and there is no global default you can set once.
+
+## What you can change
+
+| Setting | Default | What it does |
+|---|---|---|
+| `language` | `en` | The language the bot replies in. Commands still work in all three |
+| `sfw` | on | Filters not-safe-for-work content |
+| `allow_furbots` | on | Whether other known bots are tolerated in the group |
+| `sticker_spam_limit` | `5` | Stickers in a row before the bot steps in. See [Moderation](/docs/using/moderation) |
+| `media_restrict_seconds` | `0` (off) | How long a new member must wait before posting media |
+| `captcha_timeout_seconds` | `120` | How long a joiner has to pass the captcha |
+| `functions_fun` | on | The whole `/dice`, `/ship`, `/battle` family |
+| `functions_utility` | on | The utility commands |
+| `publisher_post` | off | Whether submitted posts are published automatically |
+| `publisher_ask` | on | Whether the bot asks before publishing |
+| `publisher_members_only` | off | Restrict publishing to group members |
+| `max_posts` | `3` | Posts allowed per user in the publishing flow |
+| `thread_posts` | unset | Which forum topic posts land in |
+
+## The two that most groups get wrong
+
+**`media_restrict_seconds` defaults to 0**, which means off. It is the setting
+people assume is protecting them and is not. Setting it to `600` makes a new
+member wait ten minutes before they can post images — which is most of what
+drive-by spam actually is.
+
+**`captcha_timeout_seconds` at 120 is short for a busy group.** A joiner who
+opens Telegram, gets distracted and comes back four minutes later has already
+failed. Raising it to `300` costs almost nothing: a bot that is not going to
+solve a captcha does not solve it slowly.
+
+## Turning whole families off
+
+`functions_fun` and `functions_utility` switch out groups of commands at once.
+A moderation-only deployment is `functions_fun: off`, which leaves greetings,
+rules, captchas and the media limits and removes everything else.
+
+<Callout>
+Settings changes take effect immediately — there is no restart, and no cache to
+wait out. If a change appears not to have applied, check you are an admin: the
+menu opens for anyone but rejects the reply that sets the value.
+</Callout>

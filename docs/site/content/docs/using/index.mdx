@@ -1,0 +1,93 @@
+---
+title: Add the bot to a group
+description: Getting Cookiebot into a Telegram group and working, in about two minutes
+---
+
+Cookiebot is a moderation and utility bot for Telegram groups. It greets new
+members, screens joiners, enforces the rules a group sets for itself, and
+carries a handful of tools and games. It speaks **English, Portuguese and
+Spanish**, and every command works in all three.
+
+This page is for whoever runs the group. No account, no dashboard, no signup —
+Telegram is the whole interface.
+
+## 1. Add the bot
+
+The environment currently open for testing runs as **`@cookiebot_uat_bot`**.
+
+<Callout type="warn">
+This is the **UAT** bot: a test deployment. It is fine to point a real group at
+it while you evaluate, but treat its data as disposable and expect restarts.
+Production runs a different bot with a different username.
+</Callout>
+
+1. Open your group → **Add members** → search for `@cookiebot_uat_bot`
+2. Add it
+3. Open the group's **Administrators** list and promote the bot
+
+## 2. Promote it, and why that is not optional
+
+A Telegram bot with no admin rights can read almost nothing and change nothing.
+Cookiebot needs these:
+
+| Right | What stops working without it |
+|---|---|
+| **Delete messages** | Sticker-spam control, media restrictions, removing a joiner's failed captcha |
+| **Ban users** | Anything that removes a bad actor rather than just deleting the message |
+| **Invite users via link** | Rejoin flows after a captcha timeout |
+| **Pin messages** | `/rules` pinning |
+
+Leave **Anonymous** off. An anonymous admin's actions arrive attributed to the
+group rather than a user, and the bot cannot tell who asked.
+
+## 3. Check it is alive
+
+Send this in the group:
+
+```
+/isalive
+```
+
+If it answers, the bot can see the group and reply in it — which is more than
+"the bot is in the members list" tells you.
+
+<Callout>
+No reply? Nine times in ten it is Telegram's **privacy mode**, which stops bots
+seeing ordinary group messages. Commands and mentions still arrive, so
+`/isalive` working while normal chat seems ignored is expected and correct —
+the bot only reads what it is addressed with, unless privacy mode is turned off
+in BotFather by whoever owns the bot.
+</Callout>
+
+## 4. Set the language
+
+The bot defaults to English. Set it once, per group:
+
+```
+/config
+```
+
+and pick **language** from the menu. Everything the bot says afterwards —
+greetings, warnings, command output — follows that setting. The *commands
+themselves* keep working in all three languages regardless: `/regras`,
+`/reglas` and `/rules` are the same command.
+
+## 5. Give it the two things a group needs
+
+```
+/newwelcome     reply to the prompt with your greeting
+/newrules       reply to the prompt with your rules
+```
+
+Both are admin-only, and both are set by **replying** to the message the bot
+sends you — not by typing the text on the same line. Include `<user>` in a
+welcome message and it is replaced with the joiner's name.
+
+## Where to go next
+
+<Cards>
+  <Card title="Commands" href="/docs/using/commands" description="All 29 of them, with the Portuguese and Spanish spellings." />
+  <Card title="Configuring a group" href="/docs/using/configure" description="Every setting the /config menu exposes and what it changes." />
+  <Card title="Moderation" href="/docs/using/moderation" description="Captchas, sticker spam, media limits — what the bot does on its own." />
+  <Card title="Privacy" href="/docs/using/privacy" description="What is stored, for how long, and how to get rid of it." />
+</Cards>

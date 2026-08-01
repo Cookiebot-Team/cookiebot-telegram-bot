@@ -2,16 +2,18 @@
   "title": "Cookiebot v2",
   "pages": [
     "index",
-    "---Progress---",
-    "progress",
-    "features",
-    "---Handbook---",
+    "---Using Cookiebot---",
+    "using",
+    "---Internals---",
     "architecture",
     "development",
     "sandbox",
     "e2e",
     "deploy",
     "multi-tenant",
+    "---Progress---",
+    "progress",
+    "features",
     "feature-map"
   ]
 }
