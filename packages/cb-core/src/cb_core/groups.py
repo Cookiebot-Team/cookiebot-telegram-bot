@@ -57,9 +57,7 @@ async def ensure(
     if group_id in _ensured:
         return
     try:
-        await db.execute(
-            _UPSERT, group_id, title, chat_type, skin, tenant_id, name="group_ensure"
-        )
+        await db.execute(_UPSERT, group_id, title, chat_type, skin, tenant_id, name="group_ensure")
     except Exception as exc:  # noqa: BLE001 - never let this stop an update
         log.warning("group.ensure_failed", group_id=group_id, error=str(exc))
         return
