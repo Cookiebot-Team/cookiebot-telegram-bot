@@ -4,7 +4,7 @@ QA: qa/features/core_setlang.feature (synced from ../Cookiebot-QA/features/core_
 Contract: docs/contracts/core_setlang.md.
 
 The copied QA scenarios describe a **web settings page** with a language picker;
-v1 has no such surface (docs/FEATURE-MAP.md already records the mismatch). The
+v1 has no such surface (docs/site/content/docs/feature-map.mdx already records the mismatch). The
 first three scenarios below are kept verbatim (per AGENTS.md §1, "QA wins for
 intent") and their steps drive the one real, in-chat mechanism this port owns —
 first-contact language derivation from the adder's Telegram client — since that

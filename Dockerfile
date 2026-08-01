@@ -14,7 +14,8 @@
 #
 # Size, measured by what actually costs bytes here:
 #   * the workspace is installed per-service (`uv sync --package`), so cb-worker
-#     does not carry FastAPI and nothing carries cb-sandbox's DuckDB (~50 MB)
+#     does not carry FastAPI, and telegram-sandbox (DuckDB, ~50 MB) is a dev
+#     dependency in another repository, so no image carries it at all
 #   * bytecode is compiled at build time and the sources dropped (STRIP_SOURCE)
 #   * .so files are stripped of debug symbols
 #   * uv, gcc and the headers stay in the builder stage
@@ -72,7 +73,6 @@ COPY packages/cb-core/pyproject.toml     packages/cb-core/
 COPY packages/cb-api/pyproject.toml      packages/cb-api/
 COPY packages/cb-gateway/pyproject.toml  packages/cb-gateway/
 COPY packages/cb-worker/pyproject.toml   packages/cb-worker/
-COPY packages/cb-sandbox/pyproject.toml  packages/cb-sandbox/
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-workspace --no-editable --package "${SERVICE}"
@@ -141,7 +141,7 @@ RUN --mount=type=cache,target=/root/.cache/ccache \
       --include-package=opentelemetry \
       --include-package-data=cb_core \
       --nofollow-import-to=pytest \
-      --nofollow-import-to=cb_sandbox \
+      --nofollow-import-to=tg_sandbox \
       cb_launcher.py
 
 RUN find /nuitka/cb_launcher.dist -name "*.so" -exec strip --strip-unneeded {} + || true

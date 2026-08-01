@@ -172,6 +172,6 @@ by scenario title — upstream leaves the precondition implicit.
   register `rules.router` — needs `root.include_router(rules.router)` (plus the
   import) for `qa/test_core_rules.py` to pass end to end. Out of this port's
   file ownership.
-- `docs/FEATURE-MAP.md`'s `core_rules` row could use a note pointing at
+- `docs/site/content/docs/feature-map.mdx`'s `core_rules` row could use a note pointing at
   mismatch #1 above (the "not an admin" scenario mismatch); this agent could
   not edit that file.

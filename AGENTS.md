@@ -1,7 +1,7 @@
 # AGENTS.md — Cookiebot v2
 
 Rules for anyone (human or agent) writing code in this repo. Read this before the
-first edit. Longer context: `docs/ARCHITECTURE.md`, `docs/FEATURE-MAP.md`.
+first edit. Longer context: `docs/site/content/docs/architecture.mdx`, `docs/site/content/docs/feature-map.mdx`.
 
 The single hardest constraint: **v2 must be backwards compatible with v1.** Groups
 are live on the old bot. A feature that "works" but changes a command name, a
@@ -18,6 +18,8 @@ packages/cb-gateway/   aiogram webhook ingest — no business logic beyond routi
 packages/cb-worker/    arq jobs and cron — anything slow or fan-out
 qa/                    executable acceptance suite (pytest-bdd + mock Telegram)
 ops/                   otel collector, prometheus, tempo, grafana
+docs/site/             the documentation + progress site (Fumadocs, published to Pages)
+docs/contracts/        per-feature behaviour contracts, referenced by the tests
 ```
 
 Reference repos, read-only, one directory up:
@@ -27,7 +29,7 @@ Reference repos, read-only, one directory up:
 - `../Cookiebot-QA` — Gherkin specs. Source of truth for intended behaviour.
 
 Where the three disagree, v1 code wins for *observable behaviour* and QA wins for
-*intent*. Record the conflict in `docs/FEATURE-MAP.md` rather than silently picking.
+*intent*. Record the conflict in `docs/site/content/docs/feature-map.mdx` rather than silently picking.
 
 ## 2. Non-negotiables
 
@@ -61,6 +63,12 @@ Use the skills; they encode this checklist:
 
 The order for a port is always: read v1 source → extract observable behaviour →
 find the QA scenario → write the failing test → implement → verify parity.
+
+When it lands, flip the row's `status` in `scripts/spec.py` and run
+`python scripts/cb.py docs-sync`. That regenerates the site's progress data and
+the feature page's **frontmatter** — never its prose, which is where you write
+what the feature does and what must not change. Do not hand-edit a `status:`
+in an `.mdx`: `cb.py check` runs `docs-sync --check` and fails on the drift.
 
 ## 4. Postgres and Citus rules
 
@@ -100,7 +108,7 @@ must work; CI runs upgrade → downgrade → upgrade.
 ## 5. Libraries
 
 Prefer the Rust/C-backed option when there is a real one; the list of what we
-actually use and why is in `docs/ARCHITECTURE.md` §2. Do not add a dependency
+actually use and why is in `docs/site/content/docs/architecture.mdx` §2. Do not add a dependency
 that duplicates one already present.
 
 **LLM work:** never call a provider SDK from a handler. Go through

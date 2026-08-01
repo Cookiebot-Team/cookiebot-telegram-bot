@@ -38,7 +38,10 @@ def task(name: str, help_text: str) -> Callable[[Task], Task]:
 def run(*cmd: str, cwd: Path | None = None, env: dict[str, str] | None = None) -> int:
     """Echo then run. Echoing matters: a failing task must be reproducible by hand."""
     printable = " ".join(cmd)
-    where = f" (in {cwd.relative_to(ROOT)})" if cwd and cwd != ROOT else ""
+    # `walk_up` because a task may legitimately run outside the tree — the
+    # sandbox's web client is a sibling checkout, and `relative_to` without it
+    # raises rather than printing a path.
+    where = f" (in {cwd.relative_to(ROOT, walk_up=True)})" if cwd and cwd != ROOT else ""
     print(f"\033[36m$ {printable}\033[0m{where}", flush=True)
     merged = {**os.environ, **(env or {})}
     return subprocess.run(cmd, cwd=cwd or ROOT, env=merged, check=False).returncode
@@ -144,9 +147,9 @@ def qa(extra: list[str]) -> int:
     return run("uv", "run", "pytest", "-q", "-m", "not integration", "qa", *extra)
 
 
-@task("test-e2e", "real end-to-end: cb-gateway + cb-sandbox as subprocesses over HTTP")
+@task("test-e2e", "real end-to-end: cb-gateway + telegram-sandbox as subprocesses over HTTP")
 def test_e2e(extra: list[str]) -> int:
-    """Not part of `test`/`test-all`/`check` on purpose (see docs/E2E.md): it
+    """Not part of `test`/`test-all`/`check` on purpose (see docs/site/content/docs/e2e.mdx): it
     spins up two real processes and needs Postgres + Valkey already up
     (`cb.py up`), so it must never be what the fast CI gate pays for.
     `qa/e2e/conftest.py` skips cleanly when that infra is unreachable, and
@@ -326,33 +329,51 @@ def sandbox_config(_: list[str]) -> int:
 def sandbox(_: list[str]) -> int:
     """The bot talks to this instead of Telegram; the web client drives it.
 
-    `CB_SANDBOX_CONFIG` is set explicitly rather than left to discovery: the
-    sandbox looks for `sandbox.config.json` from its working directory
-    upwards, and a shell started in a subdirectory would silently get the
-    built-in defaults — a different bot username, no features, no doomlist
-    seed — with no error to explain why nothing matches.
+    The sandbox itself is `telegram-sandbox`, a separate tool installed as a
+    dev dependency from git — nothing in it knows about Cookiebot. What makes
+    it *ours* is `sandbox.config.json`, and the path is passed explicitly
+    rather than left to discovery: the sandbox looks for that file from its
+    working directory upwards, and a shell started in a subdirectory would
+    silently get the built-in defaults — a different bot username, no
+    features, no doomlist seed — with no error to explain why nothing matches.
     """
     return run(
         "uv",
         "run",
-        "granian",
-        "--interface",
-        "asgi",
+        "telegram-sandbox",
+        "serve",
         "--host",
         "0.0.0.0",
         "--port",
         "8083",
-        "cb_sandbox.app:app",
-        env={"CB_SANDBOX_CONFIG": str(ROOT / "sandbox.config.json")},
+        "--config",
+        str(ROOT / "sandbox.config.json"),
     )
+
+
+#: Where the sandbox's web client is expected to be checked out. It ships with
+#: the tool, not with this repository, so this is a sibling clone rather than a
+#: path inside the tree.
+SANDBOX_REPO = ROOT.parent / "telegram-sandbox"
 
 
 @task("sandbox-web", "run the sandbox web client (:3001)")
 def sandbox_web(_: list[str]) -> int:
-    """bun, not npm. `web/bun.lock` is the lockfile the repo commits, and a
+    """The client lives in the telegram-sandbox repository, checked out next to
+    this one — it is part of that tool, and it drives any bot, not this one.
+
+    bun, not npm: `bun.lock` is the lockfile that repository commits, and a
     stray `npm install` writes a second one that resolves differently — the
-    kind of drift that shows up as a build that works on one machine only."""
-    web = ROOT / "web"
+    kind of drift that shows up as a build that works on one machine only.
+    """
+    web = SANDBOX_REPO / "web"
+    if not web.is_dir():
+        print(
+            f"the sandbox web client is not at {web}.\n"
+            "clone it next to this repository:\n\n"
+            f"  git clone https://github.com/Cookiebot-Team/telegram-sandbox {SANDBOX_REPO}\n"
+        )
+        return 2
     if shutil.which("bun") is None:
         print("bun is not on PATH — install it: https://bun.sh (`brew install oven-sh/bun/bun`)")
         return 2
@@ -387,6 +408,7 @@ def sandbox_up(_: list[str]) -> int:
         "     python scripts/cb.py gateway     # the real bot, unmodified",
         "",
         "  3) python scripts/cb.py sandbox-web # the client          :3001  (bun)",
+        f"        (lives in {SANDBOX_REPO} — clone it if it is missing)",
         "",
         "then open http://localhost:3001 and press a seed button.",
         "",
@@ -404,9 +426,61 @@ def worker(_: list[str]) -> int:
 # ------------------------------------------------------------------- reporting
 
 
-@task("status", "regenerate docs/MIGRATION-STATUS.md from the spec and a test run")
+@task("status", "check the spec against the QA repo, the scenarios and a test run")
 def status(extra: list[str]) -> int:
+    """What `scripts/spec.py` claims, measured against what the suite does.
+
+    The report this used to write by hand is now the docs site's progress
+    board — `docs-sync` renders it. This task is the check: `--check` fails on
+    a feature claiming done with no passing scenario.
+    """
     return run("uv", "run", "python", "scripts/status.py", *extra)
+
+
+@task("docs-sync", "regenerate the docs site's progress data and feature frontmatter")
+def docs_sync(extra: list[str]) -> int:
+    """Feature pages keep their prose; their frontmatter comes from the spec.
+
+    Runs the offline suite to measure scenario counts unless `--no-tests` is
+    passed. `--check` fails when a page's generated half disagrees with
+    `scripts/spec.py`, which is the whole reason the site can be trusted.
+    """
+    return run("uv", "run", "python", "scripts/docs_sync.py", *extra)
+
+
+@task("docs", "run the documentation site (:3002)")
+def docs(_: list[str]) -> int:
+    """Fumadocs, in `docs/site`. bun, not npm — `bun.lock` is the lockfile the
+    repository commits."""
+    site = ROOT / "docs" / "site"
+    if shutil.which("bun") is None:
+        print("bun is not on PATH — install it: https://bun.sh (`brew install oven-sh/bun/bun`)")
+        return 2
+    if not (site / "node_modules").is_dir():
+        print("installing docs dependencies (first run only)")
+        code = run("bun", "install", cwd=site)
+        if code != 0:
+            return code
+    return run("bun", "run", "dev", cwd=site)
+
+
+@task("docs-build", "build the documentation site as a static export")
+def docs_build(_: list[str]) -> int:
+    """What .github/workflows/docs.yml publishes to GitHub Pages. Worth running
+    locally after editing MDX: a broken component reference is a build error
+    here and a 404 in production."""
+    site = ROOT / "docs" / "site"
+    if shutil.which("bun") is None:
+        print("bun is not on PATH — install it: https://bun.sh")
+        return 2
+    if not (site / "node_modules").is_dir():
+        code = run("bun", "install", cwd=site)
+        if code != 0:
+            return code
+    return chain(
+        lambda: run("bun", "run", "types:check", cwd=site),
+        lambda: run("bun", "run", "build", cwd=site),
+    )
 
 
 @task("workflow", "validate .github/workflows/ci.yml with act (needs Docker)")
@@ -459,6 +533,10 @@ def check(_: list[str]) -> int:
         lambda: test([]),
         lambda: bench([]),
         lambda: run("uv", "run", "python", "scripts/status.py", "--check"),
+        # Cheap, and it catches the one thing nothing else does: a feature page
+        # whose frontmatter says `done` while the spec says `planned`. Runs
+        # with --no-tests because `test` above already measured the suite.
+        lambda: run("uv", "run", "python", "scripts/docs_sync.py", "--check", "--no-tests"),
     )
 
 

@@ -1,6 +1,6 @@
 """Cython build for the hot path only.
 
-Policy (see docs/ARCHITECTURE.md §2): compiling `await`-heavy IO code buys nothing.
+Policy (see docs/site/content/docs/architecture.mdx §2): compiling `await`-heavy IO code buys nothing.
 Only pure-CPU, no-IO modules are compiled, and they stay valid Python — the same
 .py files import and run uncompiled, so tests and debugging work either way.
 

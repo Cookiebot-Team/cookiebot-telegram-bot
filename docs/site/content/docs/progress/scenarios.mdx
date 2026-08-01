@@ -1,0 +1,25 @@
+---
+title: Scenario ledger
+description: Every Gherkin spec file — written in v1's QA repo, ported to v2, executing green
+---
+
+The v1 QA repository holds the intended behaviour as Gherkin. None of it was
+executable: 63 scenarios describing a bot, run by nobody. Porting a feature
+means making its scenarios *run* against v2 — same wording, real assertions.
+
+This ledger is the honest version of "how much of the spec do we actually
+execute". A row with scenarios written and none ported is work not started; a
+row that is green is behaviour that would break the build if it regressed.
+
+<ScenarioLedger />
+
+## Reading a state
+
+| State | Means |
+|---|---|
+| `green` | Every ported scenario for this spec executed and passed |
+| `partial` | Some of the v1 scenarios are ported, others are not |
+| `not ported` | v1 specified it; v2 has no executable scenario yet |
+| `v2-only spec` | Behaviour v2 added or pinned down that v1 never specified |
+| `failing` | A ported scenario is red — the one state that is a bug, not a plan |
+| `no step definitions` | The `.feature` file exists but nothing binds its steps |

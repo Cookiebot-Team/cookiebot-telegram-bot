@@ -38,7 +38,7 @@ Dispatched from `../COOKIEBOT-Telegram-Group-Bot/Bot/COOKIEBOT.py:248-255`::
 
 Full Phase 2/6 contract: `docs/contracts/fun_dice.md`. QA: was
 `../Cookiebot-QA/features/fun_dice.feature` (spec/code trigger mismatch, see
-`docs/FEATURE-MAP.md`'s `fun_dice` row), ported to `qa/features/fun_dice.feature`.
+`docs/site/content/docs/feature-map.mdx`'s `fun_dice` row), ported to `qa/features/fun_dice.feature`.
 
 ## The two things this docstring corrects about the task brief
 

@@ -1,5 +1,5 @@
-"""Proves `CB_QA_SANDBOX=1` does what docs/SANDBOX.md promises: after the
-suite runs, `cb_sandbox.state.store()` — the same store the sandbox's own web
+"""Proves `CB_QA_SANDBOX=1` does what docs/site/content/docs/sandbox.mdx promises: after the
+suite runs, `tg_sandbox.state.store()` — the same store the sandbox's own web
 UI reads — holds the user's message, the bot's reply, and the matching
 `api_calls` entry.
 
@@ -52,7 +52,7 @@ def _send_privacy_and_check(
     only inspecting what was appended keeps the assertion honest regardless
     of what ran before it or whether this file runs alone.
     """
-    from cb_sandbox.state import store
+    from tg_sandbox.state import store
 
     s = store()
     messages_before = len(s.messages.get(GROUP_ID, []))
@@ -88,9 +88,9 @@ def test_a_scenarios_traffic_lands_in_the_sandbox_store(
 ) -> None:
     """One round trip — a user's `/privacy` and the bot's reply — proves both
     directions actually reach the store: `qa/conftest.py:feed()` mirrors the
-    inbound message (bypassing `cb_sandbox.control_api`, which the harness
+    inbound message (bypassing `tg_sandbox.control_api`, which the harness
     never drives), and the outbound `sendMessage` is the real
-    `cb_sandbox.app:app` recording its own call, unmodified.
+    `tg_sandbox.app:app` recording its own call, unmodified.
     """
     _send_privacy_and_check(run, dispatcher, bot, user_id=USER_ID)
 

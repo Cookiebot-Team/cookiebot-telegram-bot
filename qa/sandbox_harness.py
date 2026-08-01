@@ -1,10 +1,10 @@
 """Plumbing for `CB_QA_SANDBOX=1` — running the acceptance suite through
-`cb_sandbox` instead of `qa/mock_telegram.py`.
+`tg_sandbox` instead of `qa/mock_telegram.py`.
 
 Default behaviour (the variable unset) never touches this module beyond the
 top-level `import` in `qa/conftest.py`: every name that would actually import
-`cb_sandbox` — which, on import, reconfigures logging via
-`cb_sandbox.app`'s module-level `configure_logging(settings)` call — is
+`tg_sandbox` — which, on import, reconfigures logging via
+`tg_sandbox.app`'s module-level `configure_logging(settings)` call — is
 resolved lazily, inside a function body, so a default-mode run never pays for
 or triggers any of it. Only `sandbox_enabled()` itself runs unconditionally,
 and it does nothing but read an environment variable.
@@ -15,25 +15,25 @@ The plumbing has two halves:
    already imports `MockTelegram` for (`calls_to`, `admins`, `set_admins`,
    `fail`, `clear_failures`, `reset`, `base_url`, `start`/`stop`), so
    `qa/conftest.py`'s `telegram` fixture can hand out either one and no step
-   file changes. It serves `cb_sandbox.app:app` — the *exact* app the real
+   file changes. It serves `tg_sandbox.app:app` — the *exact* app the real
    sandbox process runs, unmodified — over a real loopback TCP port, the
    same way `qa/mock_telegram.py` binds one, so `CB_TELEGRAM_API_BASE` keeps
    meaning what it always meant.
 
 2. `mirror_inbound_update` — `qa/conftest.py:feed()` calls the dispatcher
-   directly, skipping `cb_sandbox.control_api`'s `/api/...` surface entirely
+   directly, skipping `tg_sandbox.control_api`'s `/api/...` surface entirely
    (the harness has always fed updates straight to `dispatcher.feed_update`,
    never through polling). That means the *inbound* half of a scenario — the
    user's own message, a join, a leave — has nothing that would otherwise
-   put it in `cb_sandbox.state.store()`. This function does what
+   put it in `tg_sandbox.state.store()`. This function does what
    `control_api.send_message`/`join_chat`/`leave_chat` would have done to the
    store, minus queuing a poll update the harness does not need.
 
-Both halves lean on cb_sandbox's own store as the single source of truth
-(`packages/cb-sandbox/src/cb_sandbox/state.py`, owned by another agent right
-now — this module only imports and calls its public surface, never edits it).
+Both halves lean on tg_sandbox's own store as the single source of truth
+(`tg_sandbox/state.py`, in the telegram-sandbox repository — this module only
+imports and calls its public surface, never edits it).
 
-One deliberate seam: cb_sandbox always requires the named chat/user to exist
+One deliberate seam: tg_sandbox always requires the named chat/user to exist
 before acting (`_require_chat` raises "chat not found" otherwise), because
 its real usage always creates them first through `/api/...`. This harness
 skips that step, so `_SandboxBridge` auto-creates a placeholder chat/user the
@@ -70,8 +70,8 @@ def _ensure_chat(chat_id: int, *, title: str | None = None, chat_type: str | Non
     """Get-or-create the `SandboxChat` a Bot API call or an inbound update
     names. Positive ids are Telegram's own convention for a private chat
     (chat_id == the user's id); everything else defaults to a group."""
-    from cb_sandbox.state import SandboxChat
-    from cb_sandbox.state import store as sandbox_store
+    from tg_sandbox.state import SandboxChat
+    from tg_sandbox.state import store as sandbox_store
 
     s = sandbox_store()
     chat = s.chats.get(chat_id)
@@ -99,8 +99,8 @@ def _ensure_user(
     names. The placeholder name mirrors `qa/mock_telegram.py`'s own
     `_chat_member` synthesis (`Admin{id}`/`admin{id}`) for anything
     `set_admins` invents that a scenario never actually sent a message as."""
-    from cb_sandbox.state import SandboxUser
-    from cb_sandbox.state import store as sandbox_store
+    from tg_sandbox.state import SandboxUser
+    from tg_sandbox.state import store as sandbox_store
 
     s = sandbox_store()
     user = s.users.get(user_id)
@@ -137,7 +137,7 @@ def _inbound_media_kind(message: dict[str, Any]) -> str | None:
 def mirror_inbound_update(payload: dict[str, Any]) -> None:
     """Give the sandbox store a record of an update `qa/conftest.py:feed()`
     is about to hand straight to the dispatcher, bypassing
-    `cb_sandbox.control_api` entirely. A no-op unless sandbox mode is on, so
+    `tg_sandbox.control_api` entirely. A no-op unless sandbox mode is on, so
     `feed()` can call this unconditionally without a caller-side branch."""
     if not sandbox_enabled():
         return
@@ -154,7 +154,7 @@ def mirror_inbound_update(payload: dict[str, Any]) -> None:
 def _mirror_callback_query(callback_query: dict[str, Any]) -> None:
     """Register the query id so the bot's answer is accepted.
 
-    `cb_sandbox`'s `answerCallbackQuery` refuses an id it never issued —
+    `tg_sandbox`'s `answerCallbackQuery` refuses an id it never issued —
     correctly, because that is what real Telegram does for a stale or invented
     id. But `queue_update` is what normally records one, and this harness
     never calls it: it hands the update straight to the dispatcher. Without
@@ -162,7 +162,7 @@ def _mirror_callback_query(callback_query: dict[str, Any]) -> None:
     old and response timeout expired or query id is invalid", which looks
     exactly like a handler bug and is not one.
     """
-    from cb_sandbox.state import store as sandbox_store
+    from tg_sandbox.state import store as sandbox_store
 
     query_id = callback_query.get("id")
     if isinstance(query_id, str) and query_id:
@@ -176,13 +176,13 @@ def _store_service_message(message: dict[str, Any], chat_id: int, service: dict[
     Telegram models these as ordinary messages carrying `new_chat_members` /
     `left_chat_member` instead of text, and a handler that greets or challenges
     a newcomer answers with `message.reply(...)`, which sends
-    `reply_to_message_id` pointing at the join. `cb_sandbox` looks that id up
+    `reply_to_message_id` pointing at the join. `tg_sandbox` looks that id up
     in the store, so without this every such reply comes back `400 Bad
     Request: message to reply not found` — which reads as "the welcome feature
     is broken" when the only broken thing is this bookkeeping.
     """
-    from cb_sandbox.state import SandboxMessage
-    from cb_sandbox.state import store as sandbox_store
+    from tg_sandbox.state import SandboxMessage
+    from tg_sandbox.state import store as sandbox_store
 
     from_payload = message.get("from") or {}
     sandbox_store().add_message(
@@ -198,8 +198,8 @@ def _store_service_message(message: dict[str, Any], chat_id: int, service: dict[
 
 
 def _mirror_message(message: dict[str, Any]) -> None:
-    from cb_sandbox.state import Membership, SandboxMessage
-    from cb_sandbox.state import store as sandbox_store
+    from tg_sandbox.state import Membership, SandboxMessage
+    from tg_sandbox.state import store as sandbox_store
 
     chat_payload = message["chat"]
     chat = _ensure_chat(
@@ -285,7 +285,7 @@ def _mirror_message(message: dict[str, Any]) -> None:
 
 
 class _SandboxBridge:
-    """Sits in front of the real `cb_sandbox.app:app` (unmodified) to add two
+    """Sits in front of the real `tg_sandbox.app:app` (unmodified) to add two
     things that are test concerns, not sandbox-workbench concerns — see the
     module docstring: auto-vivifying the chat/user a call names, and failing
     a named method on demand (`SandboxTelegram.fail`, mirroring
@@ -300,8 +300,8 @@ class _SandboxBridge:
             await self._inner(scope, receive, send)
             return
 
-        from cb_sandbox.telegram_api import _extract_payload, _int
         from starlette.requests import Request
+        from tg_sandbox.telegram_api import _extract_payload, _int
 
         body = bytearray()
         while True:
@@ -402,7 +402,7 @@ class SandboxTelegram:
     MockTelegram`, a hint Python never checks at runtime — needs to change.
 
     The one deliberate difference: the calls themselves live in
-    `cb_sandbox.state.store()`, not on this object, so the sandbox's own web
+    `tg_sandbox.state.store()`, not on this object, so the sandbox's own web
     UI (or a human reading the store once `cb.py test` finishes) sees every
     call *every* scenario made, not just the current one's. `reset()` — the
     autouse `_clean` fixture calls it between scenarios so `calls_to`
@@ -425,7 +425,7 @@ class SandboxTelegram:
 
     @property
     def calls(self) -> list[tuple[str, dict[str, Any]]]:
-        from cb_sandbox.state import store as sandbox_store
+        from tg_sandbox.state import store as sandbox_store
 
         return [
             (call["method"], call["payload"])
@@ -433,7 +433,7 @@ class SandboxTelegram:
         ]
 
     def calls_to(self, method: str) -> list[dict[str, Any]]:
-        from cb_sandbox.state import store as sandbox_store
+        from tg_sandbox.state import store as sandbox_store
 
         return [
             call["payload"]
@@ -454,9 +454,9 @@ class SandboxTelegram:
         same contract as `qa/mock_telegram.py`'s `set_admins` — including that
         the passed roster *replaces* the chat's admins, so anyone promoted by
         an earlier call and left out of this one is demoted back to member."""
-        from cb_sandbox.state import Membership
-        from cb_sandbox.state import store as sandbox_store
-        from cb_sandbox.telegram_api import _chat_member_payload
+        from tg_sandbox.state import Membership
+        from tg_sandbox.state import store as sandbox_store
+        from tg_sandbox.telegram_api import _chat_member_payload
 
         s = sandbox_store()
         chat = _ensure_chat(chat_id)
@@ -475,12 +475,12 @@ class SandboxTelegram:
         self.admins[chat_id] = rendered
 
     def reset(self) -> None:
-        from cb_sandbox.state import store as sandbox_store
+        from tg_sandbox.state import store as sandbox_store
 
         self._call_offset = len(sandbox_store().api_calls)
 
     async def start(self) -> None:
-        from cb_sandbox.app import app as sandbox_app
+        from tg_sandbox.app import app as sandbox_app
 
         self._bridge = _SandboxBridge(sandbox_app, self.failures)
         aio_app = web.Application()

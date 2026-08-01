@@ -1,6 +1,6 @@
 """The sandbox test kit, re-exported under the name this suite already uses.
 
-Everything here now lives in `cb_sandbox.testkit` — the sandbox package ships
+Everything here now lives in `tg_sandbox.testkit` — the sandbox package ships
 its own client and pytest plugin so any bot repository gets them by installing
 it, rather than each one growing a hand-written copy that drifts from the
 control API it talks to.
@@ -12,7 +12,7 @@ of them to say the same thing.
 
 from __future__ import annotations
 
-from cb_sandbox.testkit import (
+from tg_sandbox.testkit import (
     SandboxClient,
     calls_to,
     describe_recent_calls,

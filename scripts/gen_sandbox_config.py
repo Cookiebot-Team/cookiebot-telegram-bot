@@ -1,5 +1,5 @@
 """Generate `sandbox.config.json` — what makes the bot-agnostic sandbox
-(`packages/cb-sandbox`) into *Cookiebot's* sandbox.
+(the `telegram-sandbox` tool) into *Cookiebot's* sandbox.
 
 The sandbox itself knows nothing about this bot. Identity, seed worlds,
 features and the command palette are all data it loads from one file, and this
@@ -64,7 +64,7 @@ BOT = {
 
 #: A handful of internal canonical names are not real command text a user can
 #: type (the six partnered-convention commands share the `con_*` family name
-#: from `docs/FEATURE-MAP.md`, not a `/con_bff` trigger) — pick the trigger a
+#: from `docs/site/content/docs/feature-map.mdx`, not a `/con_bff` trigger) — pick the trigger a
 #: human would actually send instead of leaking the internal name.
 PRIMARY_OVERRIDE: dict[str, str] = {
     "con_bff": "/bff",

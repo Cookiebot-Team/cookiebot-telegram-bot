@@ -113,15 +113,10 @@ class Settings(BaseSettings):
     # Set when the server's filesystem is mounted at a different path (containers).
     telegram_files_root: str = ""
     # How updates arrive: webhook (production), polling (dev / self-hosted server
-    # without a public URL), websocket (reserved — see docs/MULTI-TENANT.md).
+    # without a public URL), websocket (reserved — see docs/site/content/docs/multi-tenant.mdx).
     telegram_ingest: str = "webhook"
     telegram_polling_timeout: int = 30
     owner_id: int = 0
-
-    # cb-sandbox's durable copy of its world (users, chats, members, messages).
-    # DuckDB, single-writer: the sandbox process opens it read-write, anyone
-    # else (the web UI server, a test run) opens it read-only.
-    sandbox_db: str = "sandbox.duckdb"
 
     @field_validator("trace_sample_ratio")
     @classmethod

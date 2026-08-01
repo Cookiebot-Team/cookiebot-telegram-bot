@@ -12,7 +12,7 @@ divergent copy of the caches.
 A **tenant** here is a bot brand: its tokens, its owners, its enabled command set,
 its branding and locale, its storage prefix and its LLM budget. The shard key is
 still `group_id` — tenancy is a logical boundary layered on the physical one, not
-a second distribution column. See docs/MULTI-TENANT.md for the rollout.
+a second distribution column. See docs/site/content/docs/multi-tenant.mdx for the rollout.
 """
 
 from __future__ import annotations

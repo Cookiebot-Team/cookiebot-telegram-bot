@@ -1,0 +1,17 @@
+---
+title: Carried v1 defects
+description: Thirteen defects found in v1, each owed a regression test in v2
+---
+
+Reading v1 to port it turned up defects worth naming. They are tracked here
+because a rewrite that silently reintroduces them has gained nothing, and
+because "the new design makes this impossible" is a claim that deserves a test.
+
+**Addressed by design** means the v2 architecture removes the defect by
+construction — a per-request cache instead of a shared one, a real lock instead
+of a busy-wait. It does *not* mean a test exists. Each still needs one that
+would fail if the old behaviour came back.
+
+<DefectTable />
+
+The numbering matches §6 of the [v1 feature map](/docs/feature-map).

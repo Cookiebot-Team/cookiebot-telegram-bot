@@ -4,7 +4,7 @@
 its own 50-thread pool and its own divergent in-memory caches — the skin was a
 CLI argument (`COOKIEBOT.py:24-32`). Here one process serves every skin; the skin
 is a lookup, and adding one is a row plus an env entry. That is also the seam the
-multi-tenant plan builds on (docs/MULTI-TENANT.md).
+multi-tenant plan builds on (docs/site/content/docs/multi-tenant.mdx).
 
 Three endpoint modes, chosen by configuration:
 

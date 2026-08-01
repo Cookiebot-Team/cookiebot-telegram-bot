@@ -11,7 +11,7 @@ spelling. QA: `../Cookiebot-QA/features/fun_dice.feature`. FEATURE-MAP row:
 1. **The gate is `functionsUtility`, not `functionsFun`.** Dice sits in the
    second `elif` chain of the dispatcher (`COOKIEBOT.py:248-255`, which checks
    `utilityfunctions`), not the first (`:214-217`, which checks `funfunctions`
-   and does not even list `/dado`/`/dice` among its triggers). `docs/FEATURE-MAP.md`
+   and does not even list `/dado`/`/dice` among its triggers). `docs/site/content/docs/feature-map.mdx`
    files `fun_dice` under its "Fun" section header purely because that is the
    name of the QA spec file — the runtime gate is unrelated to that grouping.
    `cb_core/group_config.py`'s own `_FEATURE_AREAS` docstring and
@@ -150,6 +150,6 @@ being ignored (mirrors the pattern established in `core_privacy.feature`).
 - `cb_core/textmatch.py`'s `_DICE_SHORTHAND` regex caps `/d<N>` at 4 digits;
   v1 has no such cap. A real, if minor, behaviour regression for anyone typing
   a 5+ digit `/d<N>` command. Not this port's file to edit.
-- `docs/FEATURE-MAP.md`'s `fun_dice` row could use a note pointing at the
+- `docs/site/content/docs/feature-map.mdx`'s `fun_dice` row could use a note pointing at the
   `functions_utility` (not `functions_fun`) gate correction above and at the
   `/d99999` gap; this agent could not edit that file (out of scope for this task).

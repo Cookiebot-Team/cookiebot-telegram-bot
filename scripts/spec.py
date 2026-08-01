@@ -10,7 +10,7 @@ Sources of truth this is transcribed from:
   ../Cookiebot-QA/features/                  intended behaviour
   ../COOKIEBOT-Telegram-Group-Bot/Bot/       observable v1 behaviour
   ../COOKIEBOT-backend/src/main/java/        stored shapes
-  docs/FEATURE-MAP.md                        the mapping, with file:line refs
+  docs/site/content/docs/feature-map.mdx                        the mapping, with file:line refs
 """
 
 from __future__ import annotations
@@ -204,7 +204,7 @@ MILESTONES: dict[str, str] = {
 }
 
 #: Defects carried from v1 that must each become a regression test.
-#: Keys match docs/FEATURE-MAP.md §6.
+#: Keys match docs/site/content/docs/feature-map.mdx §6.
 DEFECTS: dict[str, tuple[str, bool]] = {
     "D1": ("Write calls share the read memo-cache; duplicate writes silently no-op", True),
     "D2": ("verify=False on every backend call", True),

@@ -1,0 +1,1485 @@
+{
+  "generated_at": "2026-08-01",
+  "commit": "559f48d",
+  "test_summary": "924 passed, 36 skipped, 122 deselected, 1 warning in 35.87s",
+  "totals": {
+    "features": 53,
+    "done": 25,
+    "partial": 6,
+    "planned": 22,
+    "blocked": 0,
+    "spec_scenarios": 63,
+    "ported": 95,
+    "spec_files": 31,
+    "spec_files_covered": 15,
+    "new_specs": 17,
+    "green": 175,
+    "failing": 0
+  },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Skeleton, observability, storage, LLM, self-hosted API",
+      "done": 9,
+      "total": 9
+    },
+    {
+      "id": "M1",
+      "title": "Survival core \u2014 moderation, config, captcha, tenancy",
+      "done": 13,
+      "total": 15
+    },
+    {
+      "id": "M2",
+      "title": "Fun and utility commands",
+      "done": 3,
+      "total": 15
+    },
+    {
+      "id": "M3",
+      "title": "Publisher, AI, giveaways, owner tooling",
+      "done": 0,
+      "total": 11
+    },
+    {
+      "id": "M4",
+      "title": "Analytics surface, web console, data migration",
+      "done": 0,
+      "total": 3
+    }
+  ],
+  "features": [
+    {
+      "id": "platform_skeleton",
+      "title": "Workspace, 3 services, CI",
+      "area": "platform",
+      "layer": "platform",
+      "milestone": "M0",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "",
+      "notes": "uv workspace, granian, ruff, pytest",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/platform_skeleton"
+    },
+    {
+      "id": "platform_observability",
+      "title": "OTel traces, Prometheus, structlog",
+      "area": "platform",
+      "layer": "platform",
+      "milestone": "M0",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "",
+      "notes": "trace_id stored on message_events",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/platform_observability"
+    },
+    {
+      "id": "platform_citus",
+      "title": "Citus schema, colocation, UUIDv7",
+      "area": "platform",
+      "layer": "platform",
+      "milestone": "M0",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "",
+      "notes": "topology asserted by qa/integration/test_citus_topology.py",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/platform_citus"
+    },
+    {
+      "id": "platform_cython",
+      "title": "Compiled hot path with benchmark gate",
+      "area": "platform",
+      "layer": "platform",
+      "milestone": "M0",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "",
+      "notes": "cooldowns 1.9x compiled; dedupe/textmatch/captcha ship pure per the gate",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/platform_cython"
+    },
+    {
+      "id": "platform_qa_harness",
+      "title": "Mock Telegram + executable Gherkin",
+      "area": "platform",
+      "layer": "platform",
+      "milestone": "M0",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "",
+      "notes": "v1 QA repo had 63 scenarios, 0 executable",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/platform_qa_harness"
+    },
+    {
+      "id": "platform_storage",
+      "title": "Blob storage: GCS, S3, local, memory",
+      "area": "platform",
+      "layer": "core",
+      "milestone": "M0",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "",
+      "notes": "obstore; content-addressed; per-group reference rows",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/platform_storage"
+    },
+    {
+      "id": "platform_llm",
+      "title": "Multi-provider LLM with configurable models",
+      "area": "platform",
+      "layer": "core",
+      "milestone": "M0",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "",
+      "notes": "anthropic + openai-compatible; per-task routing; cost metering",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/platform_llm"
+    },
+    {
+      "id": "platform_selfhosted_api",
+      "title": "Self-hosted Telegram Bot API server",
+      "area": "platform",
+      "layer": "gateway",
+      "milestone": "M0",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "",
+      "notes": "local mode + polling ingest; websocket reserved",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/platform_selfhosted_api"
+    },
+    {
+      "id": "platform_tenancy",
+      "title": "Multi-tenant registry and schema",
+      "area": "platform",
+      "layer": "core",
+      "milestone": "M1",
+      "status": "partial",
+      "triggers": [],
+      "v1_source": "",
+      "notes": "tenants table + registry landed; handler packs not wired",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/platform_tenancy"
+    },
+    {
+      "id": "platform_locales",
+      "title": "String catalog ported from v1 locales",
+      "area": "platform",
+      "layer": "core",
+      "milestone": "M1",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "Bot/Static/locales/{eng,pt,es}",
+      "notes": "strings must match v1 verbatim - port the files, do not rewrite the copy",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/platform_locales"
+    },
+    {
+      "id": "platform_group_config",
+      "title": "Group config repository with shared cache",
+      "area": "platform",
+      "layer": "core",
+      "milestone": "M1",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "Configurations.py:9-12",
+      "notes": "table exists, nothing reads it; replaces v1's manual /reload (D6)",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/platform_group_config"
+    },
+    {
+      "id": "platform_admin_resolution",
+      "title": "Admin resolution and cache",
+      "area": "platform",
+      "layer": "core",
+      "milestone": "M1",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "Configurations.py:104-114",
+      "notes": "group_admins is never populated; must handle anonymous admins",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/platform_admin_resolution"
+    },
+    {
+      "id": "platform_migration_etl",
+      "title": "Mongo -> Citus backfill",
+      "area": "platform",
+      "layer": "worker",
+      "milestone": "M4",
+      "status": "partial",
+      "triggers": [],
+      "v1_source": "COOKIEBOT-backend/core/domains/*.java",
+      "notes": "configs/rules/welcomes/users/blacklist/groups import, idempotent; randomdatabase needs a Telegram-download backfill",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/platform_migration_etl"
+    },
+    {
+      "id": "util_isalive",
+      "title": "Health check from chat",
+      "area": "util",
+      "layer": "gateway",
+      "milestone": "M0",
+      "status": "done",
+      "triggers": [
+        "/isalive",
+        "/tavivo"
+      ],
+      "v1_source": "Miscellaneous.py:65-69",
+      "notes": "",
+      "contract": null,
+      "scenarios": {
+        "spec": 2,
+        "ported": 4,
+        "green": 4,
+        "failing": 0
+      },
+      "url": "/docs/features/util_isalive"
+    },
+    {
+      "id": "core_listcommand",
+      "title": "List available commands",
+      "area": "core",
+      "layer": "gateway",
+      "milestone": "M1",
+      "status": "done",
+      "triggers": [
+        "/commands",
+        "/comandos"
+      ],
+      "v1_source": "Miscellaneous.py:124-127",
+      "notes": "",
+      "contract": "docs/contracts/core_listcommand.md",
+      "scenarios": {
+        "spec": 2,
+        "ported": 4,
+        "green": 6,
+        "failing": 0
+      },
+      "url": "/docs/features/core_listcommand"
+    },
+    {
+      "id": "core_privacy",
+      "title": "Privacy policy",
+      "area": "core",
+      "layer": "gateway",
+      "milestone": "M1",
+      "status": "done",
+      "triggers": [
+        "/privacy",
+        "/privacidade",
+        "/privacidad"
+      ],
+      "v1_source": "Miscellaneous.py:60-63",
+      "notes": "",
+      "contract": "docs/contracts/core_privacy.md",
+      "scenarios": {
+        "spec": 1,
+        "ported": 3,
+        "green": 7,
+        "failing": 0
+      },
+      "url": "/docs/features/core_privacy"
+    },
+    {
+      "id": "core_rules",
+      "title": "Group rules and /newrules",
+      "area": "core",
+      "layer": "gateway",
+      "milestone": "M1",
+      "status": "done",
+      "triggers": [
+        "/rules",
+        "/regras",
+        "/newrules",
+        "/novasregras"
+      ],
+      "v1_source": "GroupShield.py:49-63",
+      "notes": "",
+      "contract": "docs/contracts/core_rules.md",
+      "scenarios": {
+        "spec": 4,
+        "ported": 9,
+        "green": 14,
+        "failing": 0
+      },
+      "url": "/docs/features/core_rules"
+    },
+    {
+      "id": "core_welcome",
+      "title": "Welcome message and /newwelcome",
+      "area": "core",
+      "layer": "gateway",
+      "milestone": "M1",
+      "status": "done",
+      "triggers": [
+        "/newwelcome",
+        "/novobemvindo"
+      ],
+      "v1_source": "GroupShield.py:140-171",
+      "notes": "",
+      "contract": "docs/contracts/core_welcome.md",
+      "scenarios": {
+        "spec": 3,
+        "ported": 10,
+        "green": 18,
+        "failing": 0
+      },
+      "url": "/docs/features/core_welcome"
+    },
+    {
+      "id": "core_groupguardian",
+      "title": "Join captcha",
+      "area": "core",
+      "layer": "gateway",
+      "milestone": "M1",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "GroupShield.py:231-265",
+      "notes": "captcha challenge module already compiled; needs handler + DB wiring",
+      "contract": "docs/contracts/core_groupguardian.md",
+      "scenarios": {
+        "spec": 2,
+        "ported": 9,
+        "green": 9,
+        "failing": 0
+      },
+      "url": "/docs/features/core_groupguardian"
+    },
+    {
+      "id": "core_stickerspam",
+      "title": "Anti sticker spam",
+      "area": "core",
+      "layer": "gateway",
+      "milestone": "M1",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "Cooldowns.py:12-22",
+      "notes": "SlidingWindow compiled; needs shared counter via cache.incr_window",
+      "contract": "docs/contracts/core_stickerspam.md",
+      "scenarios": {
+        "spec": 2,
+        "ported": 6,
+        "green": 9,
+        "failing": 0
+      },
+      "url": "/docs/features/core_stickerspam"
+    },
+    {
+      "id": "core_mediarestrict",
+      "title": "Media restriction for new members",
+      "area": "core",
+      "layer": "gateway",
+      "milestone": "M1",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "COOKIEBOT.py:167-172",
+      "notes": "",
+      "contract": "docs/contracts/core_mediarestrict.md",
+      "scenarios": {
+        "spec": 2,
+        "ported": 6,
+        "green": 9,
+        "failing": 0
+      },
+      "url": "/docs/features/core_mediarestrict"
+    },
+    {
+      "id": "util_config",
+      "title": "Admin configuration menu",
+      "area": "util",
+      "layer": "gateway",
+      "milestone": "M1",
+      "status": "done",
+      "triggers": [
+        "/config",
+        "/configure",
+        "/configurar"
+      ],
+      "v1_source": "Configurations.py:139-167",
+      "notes": "QA says /config, v1 ships /configurar - both must resolve",
+      "contract": "docs/contracts/util_config.md",
+      "scenarios": {
+        "spec": 2,
+        "ported": 4,
+        "green": 5,
+        "failing": 0
+      },
+      "url": "/docs/features/util_config"
+    },
+    {
+      "id": "util_doomlist",
+      "title": "Block listed users from joining",
+      "area": "util",
+      "layer": "gateway",
+      "milestone": "M1",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "GroupShield.py:172-229",
+      "notes": "external cas.chat + burrbot need timeout and circuit breaker",
+      "contract": "docs/contracts/util_doomlist.md",
+      "scenarios": {
+        "spec": 1,
+        "ported": 6,
+        "green": 4,
+        "failing": 0
+      },
+      "url": "/docs/features/util_doomlist"
+    },
+    {
+      "id": "core_setlang",
+      "title": "Language selection",
+      "area": "core",
+      "layer": "gateway",
+      "milestone": "M1",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "Configurations.py:242-251",
+      "notes": "QA describes a web settings page; v1 only has the in-chat menu",
+      "contract": "docs/contracts/core_setlang.md",
+      "scenarios": {
+        "spec": 3,
+        "ported": 8,
+        "green": 8,
+        "failing": 0
+      },
+      "url": "/docs/features/core_setlang"
+    },
+    {
+      "id": "core_botskins",
+      "title": "Per-event bot skins",
+      "area": "core",
+      "layer": "gateway",
+      "milestone": "M1",
+      "status": "partial",
+      "triggers": [],
+      "v1_source": "universal_funcs.py:39-52",
+      "notes": "one process serves every skin; per-event asset packs pending",
+      "contract": null,
+      "scenarios": {
+        "spec": 3,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/core_botskins"
+    },
+    {
+      "id": "fun_dice",
+      "title": "Roll an n-sided die",
+      "area": "fun",
+      "layer": "gateway",
+      "milestone": "M2",
+      "status": "done",
+      "triggers": [
+        "/dice",
+        "/dado",
+        "/d20"
+      ],
+      "v1_source": "Miscellaneous.py:160-183",
+      "notes": "QA says 'roll 6'; v1 ships /dado and /d<N> - alias table already covers both",
+      "contract": "docs/contracts/fun_dice.md",
+      "scenarios": {
+        "spec": 3,
+        "ported": 8,
+        "green": 9,
+        "failing": 0
+      },
+      "url": "/docs/features/fun_dice"
+    },
+    {
+      "id": "fun_ship",
+      "title": "Ship two members",
+      "area": "fun",
+      "layer": "gateway",
+      "milestone": "M2",
+      "status": "planned",
+      "triggers": [
+        "/ship",
+        "/shippar"
+      ],
+      "v1_source": "UserRegisters.py:216-250",
+      "notes": "",
+      "contract": null,
+      "scenarios": {
+        "spec": 3,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/fun_ship"
+    },
+    {
+      "id": "fun_death",
+      "title": "Random cause of death",
+      "area": "fun",
+      "layer": "gateway",
+      "milestone": "M2",
+      "status": "planned",
+      "triggers": [
+        "/death",
+        "/morte",
+        "/muerte"
+      ],
+      "v1_source": "Miscellaneous.py:335-357",
+      "notes": "",
+      "contract": null,
+      "scenarios": {
+        "spec": 2,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/fun_death"
+    },
+    {
+      "id": "fun_meme",
+      "title": "Meme generator",
+      "area": "fun",
+      "layer": "worker",
+      "milestone": "M2",
+      "status": "planned",
+      "triggers": [
+        "/meme"
+      ],
+      "v1_source": "SocialContent.py:224-277",
+      "notes": "image compositing is a worker job, not a reply-path call",
+      "contract": null,
+      "scenarios": {
+        "spec": 2,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/fun_meme"
+    },
+    {
+      "id": "fun_battle",
+      "title": "Battle poll",
+      "area": "fun",
+      "layer": "worker",
+      "milestone": "M2",
+      "status": "planned",
+      "triggers": [
+        "/battle",
+        "/batalha",
+        "/batalla"
+      ],
+      "v1_source": "SocialContent.py:294-379",
+      "notes": "v1 scrapes telegram.me HTML for avatars; replace with getUserProfilePhotos",
+      "contract": null,
+      "scenarios": {
+        "spec": 1,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/fun_battle"
+    },
+    {
+      "id": "fun_random",
+      "title": "Random media from the group",
+      "area": "fun",
+      "layer": "gateway",
+      "milestone": "M2",
+      "status": "done",
+      "triggers": [
+        "/random",
+        "/aleatorio"
+      ],
+      "v1_source": "SocialContent.py:198-206",
+      "notes": "MediaService.random() done and tested; handler not written",
+      "contract": "docs/contracts/fun_random.md",
+      "scenarios": {
+        "spec": 1,
+        "ported": 5,
+        "green": 33,
+        "failing": 0
+      },
+      "url": "/docs/features/fun_random"
+    },
+    {
+      "id": "fun_firecracker",
+      "title": "Firecracker sequence",
+      "area": "fun",
+      "layer": "gateway",
+      "milestone": "M2",
+      "status": "planned",
+      "triggers": [
+        "/firecracker",
+        "/rojao",
+        "/fogos"
+      ],
+      "v1_source": "Miscellaneous.py:226-238",
+      "notes": "",
+      "contract": null,
+      "scenarios": {
+        "spec": 1,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/fun_firecracker"
+    },
+    {
+      "id": "fun_complaint",
+      "title": "Complaint bit",
+      "area": "fun",
+      "layer": "gateway",
+      "milestone": "M2",
+      "status": "planned",
+      "triggers": [
+        "/complaint",
+        "/milton",
+        "/queja"
+      ],
+      "v1_source": "Miscellaneous.py:240-259",
+      "notes": "",
+      "contract": null,
+      "scenarios": {
+        "spec": 2,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/fun_complaint"
+    },
+    {
+      "id": "fun_partneredcons",
+      "title": "Partnered convention posters",
+      "area": "fun",
+      "layer": "gateway",
+      "milestone": "M2",
+      "status": "planned",
+      "triggers": [
+        "/bff",
+        "/patas",
+        "/fursmeet",
+        "/trex",
+        "/furcamp",
+        "/pawstral"
+      ],
+      "v1_source": "Miscellaneous.py:261-323",
+      "notes": "/trex is spec'd in QA but missing from v1 - net-new",
+      "contract": null,
+      "scenarios": {
+        "spec": 7,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/fun_partneredcons"
+    },
+    {
+      "id": "util_birthday",
+      "title": "Today's birthdays",
+      "area": "util",
+      "layer": "gateway",
+      "milestone": "M2",
+      "status": "planned",
+      "triggers": [
+        "/birthday",
+        "/aniversario"
+      ],
+      "v1_source": "Birthdays.py:14-61",
+      "notes": "generated birth_month/birth_day columns replace v1's unindexable $expr scan",
+      "contract": null,
+      "scenarios": {
+        "spec": 1,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/util_birthday"
+    },
+    {
+      "id": "util_nextbirthday",
+      "title": "Upcoming birthdays",
+      "area": "util",
+      "layer": "gateway",
+      "milestone": "M2",
+      "status": "planned",
+      "triggers": [
+        "/nextbirthday",
+        "/proximosaniversarios"
+      ],
+      "v1_source": "Birthdays.py:104-117",
+      "notes": "",
+      "contract": null,
+      "scenarios": {
+        "spec": 1,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/util_nextbirthday"
+    },
+    {
+      "id": "util_everyone",
+      "title": "Ping every member",
+      "area": "util",
+      "layer": "worker",
+      "milestone": "M2",
+      "status": "planned",
+      "triggers": [
+        "/everyone",
+        "@everyone"
+      ],
+      "v1_source": "UserRegisters.py:97-146",
+      "notes": "v1 does one backend call per user; batch it",
+      "contract": null,
+      "scenarios": {
+        "spec": 2,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/util_everyone"
+    },
+    {
+      "id": "util_calladms",
+      "title": "Call the admins",
+      "area": "util",
+      "layer": "gateway",
+      "milestone": "M2",
+      "status": "partial",
+      "triggers": [
+        "/adm",
+        "@admin",
+        "/report"
+      ],
+      "v1_source": "UserRegisters.py:168-203",
+      "notes": "group ping done; v1 also DMs each admin - needs a cb-worker fan-out job",
+      "contract": "docs/contracts/util_calladms.md",
+      "scenarios": {
+        "spec": 1,
+        "ported": 4,
+        "green": 7,
+        "failing": 0
+      },
+      "url": "/docs/features/util_calladms"
+    },
+    {
+      "id": "util_embedder",
+      "title": "Rewrite social links",
+      "area": "util",
+      "layer": "gateway",
+      "milestone": "M2",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "SocialContent.py:79-84",
+      "notes": "rewrites the 3 hosts v1 actually rewrites; vm.tiktok.com short links need a redirect resolve",
+      "contract": "docs/contracts/util_embedder.md",
+      "scenarios": {
+        "spec": 2,
+        "ported": 9,
+        "green": 16,
+        "failing": 0
+      },
+      "url": "/docs/features/util_embedder"
+    },
+    {
+      "id": "util_youtube",
+      "title": "YouTube search",
+      "area": "util",
+      "layer": "gateway",
+      "milestone": "M2",
+      "status": "planned",
+      "triggers": [
+        "/youtube"
+      ],
+      "v1_source": "SocialContent.py:172-189",
+      "notes": "",
+      "contract": null,
+      "scenarios": {
+        "spec": 1,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/util_youtube"
+    },
+    {
+      "id": "core_musicdetection",
+      "title": "Identify music in voice notes",
+      "area": "core",
+      "layer": "worker",
+      "milestone": "M3",
+      "status": "planned",
+      "triggers": [],
+      "v1_source": "Audio.py:6-20",
+      "notes": "ShazamAPI is unofficial - feature-flag it behind a breaker",
+      "contract": null,
+      "scenarios": {
+        "spec": 1,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/core_musicdetection"
+    },
+    {
+      "id": "util_postforwarder",
+      "title": "Cross-group post forwarding",
+      "area": "util",
+      "layer": "worker",
+      "milestone": "M3",
+      "status": "planned",
+      "triggers": [],
+      "v1_source": "Publisher.py:46-92",
+      "notes": "",
+      "contract": null,
+      "scenarios": {
+        "spec": 2,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/util_postforwarder"
+    },
+    {
+      "id": "util_postgetter",
+      "title": "Receive forwarded posts",
+      "area": "util",
+      "layer": "gateway",
+      "milestone": "M3",
+      "status": "planned",
+      "triggers": [],
+      "v1_source": "Publisher.py:46-55",
+      "notes": "",
+      "contract": null,
+      "scenarios": {
+        "spec": 1,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/util_postgetter"
+    },
+    {
+      "id": "util_deletereposts",
+      "title": "Delete scheduled reposts",
+      "area": "util",
+      "layer": "gateway",
+      "milestone": "M3",
+      "status": "planned",
+      "triggers": [
+        "/deletereposts",
+        "/deleteposts",
+        "/apagarposts"
+      ],
+      "v1_source": "Publisher.py:316-327",
+      "notes": "QA says /deletereposts, v1 ships /deleteposts",
+      "contract": null,
+      "scenarios": {
+        "spec": 2,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/util_deletereposts"
+    },
+    {
+      "id": "x_giveaways",
+      "title": "Giveaways",
+      "area": "util",
+      "layer": "gateway",
+      "milestone": "M3",
+      "status": "planned",
+      "triggers": [
+        "/giveaway"
+      ],
+      "v1_source": "Giveaways.py:25-173",
+      "notes": "no QA scenario exists - write one",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/x_giveaways"
+    },
+    {
+      "id": "x_conversational_ai",
+      "title": "Conversational AI replies",
+      "area": "fun",
+      "layer": "gateway",
+      "milestone": "M3",
+      "status": "partial",
+      "triggers": [],
+      "v1_source": "NaturalLanguage.py:65-77",
+      "notes": "LLM router + cost metering done; handler and quota not written",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/x_conversational_ai"
+    },
+    {
+      "id": "x_speech_to_text",
+      "title": "Voice transcription",
+      "area": "util",
+      "layer": "worker",
+      "milestone": "M3",
+      "status": "partial",
+      "triggers": [],
+      "v1_source": "Audio.py:22-32",
+      "notes": "transcribe task routed to the openai provider; handler not written",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/x_speech_to_text"
+    },
+    {
+      "id": "x_reverse_search",
+      "title": "Reverse image search",
+      "area": "util",
+      "layer": "gateway",
+      "milestone": "M3",
+      "status": "planned",
+      "triggers": [
+        "/searchsource",
+        "/buscarfonte"
+      ],
+      "v1_source": "SocialContent.py:113-142",
+      "notes": "",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/x_reverse_search"
+    },
+    {
+      "id": "x_distortion",
+      "title": "Media distortion",
+      "area": "fun",
+      "layer": "worker",
+      "milestone": "M3",
+      "status": "planned",
+      "triggers": [
+        "/destroy",
+        "/zoar"
+      ],
+      "v1_source": "Distortioner.py:114-156",
+      "notes": "v1 busy-waits on a module global; replace with a worker semaphore",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/x_distortion"
+    },
+    {
+      "id": "x_owner_commands",
+      "title": "Owner-only operations",
+      "area": "util",
+      "layer": "gateway",
+      "milestone": "M3",
+      "status": "planned",
+      "triggers": [
+        "/grupos",
+        "/broadcast",
+        "/leave",
+        "/blacklist",
+        "/stop",
+        "/restart"
+      ],
+      "v1_source": "COOKIEBOT.py:83-105",
+      "notes": "",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/x_owner_commands"
+    },
+    {
+      "id": "x_custom_commands",
+      "title": "Per-group custom commands",
+      "area": "fun",
+      "layer": "gateway",
+      "milestone": "M3",
+      "status": "planned",
+      "triggers": [],
+      "v1_source": "Miscellaneous.py:145-158",
+      "notes": "the seed of tenant handler packs",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/x_custom_commands"
+    },
+    {
+      "id": "x_webhub_login",
+      "title": "Telegram-login JWT for the web console",
+      "area": "platform",
+      "layer": "api",
+      "milestone": "M4",
+      "status": "planned",
+      "triggers": [],
+      "v1_source": "Server.py:25-52",
+      "notes": "v1 regenerates the signing key on every restart (D7) - persist it",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/x_webhub_login"
+    },
+    {
+      "id": "x_analytics_api",
+      "title": "Per-group analytics endpoints",
+      "area": "platform",
+      "layer": "api",
+      "milestone": "M4",
+      "status": "planned",
+      "triggers": [],
+      "v1_source": "",
+      "notes": "rollup tables exist; no HTTP surface yet",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/x_analytics_api"
+    }
+  ],
+  "scenarios": [
+    {
+      "stem": "core_botskins",
+      "spec": 3,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "core_groupguardian",
+      "spec": 2,
+      "ported": 9,
+      "green": 9,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "core_listcommand",
+      "spec": 2,
+      "ported": 4,
+      "green": 6,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "core_llm_provider",
+      "spec": 0,
+      "ported": 9,
+      "green": 9,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "core_media_storage",
+      "spec": 0,
+      "ported": 8,
+      "green": 8,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "core_mediarestrict",
+      "spec": 2,
+      "ported": 6,
+      "green": 9,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "core_musicdetection",
+      "spec": 1,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "core_privacy",
+      "spec": 1,
+      "ported": 3,
+      "green": 7,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "core_rules",
+      "spec": 4,
+      "ported": 9,
+      "green": 14,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "core_setlang",
+      "spec": 3,
+      "ported": 8,
+      "green": 8,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "core_stickerspam",
+      "spec": 2,
+      "ported": 6,
+      "green": 9,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "core_welcome",
+      "spec": 3,
+      "ported": 10,
+      "green": 18,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "fun_battle",
+      "spec": 1,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "fun_complaint",
+      "spec": 2,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "fun_death",
+      "spec": 2,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "fun_dice",
+      "spec": 3,
+      "ported": 8,
+      "green": 9,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "fun_firecracker",
+      "spec": 1,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "fun_meme",
+      "spec": 2,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "fun_partneredcons",
+      "spec": 7,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "fun_random",
+      "spec": 1,
+      "ported": 5,
+      "green": 33,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "fun_ship",
+      "spec": 3,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "util_birthday",
+      "spec": 1,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "util_calladms",
+      "spec": 1,
+      "ported": 4,
+      "green": 7,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "util_config",
+      "spec": 2,
+      "ported": 4,
+      "green": 5,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "util_deletereposts",
+      "spec": 2,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "util_doomlist",
+      "spec": 1,
+      "ported": 6,
+      "green": 4,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "util_embedder",
+      "spec": 2,
+      "ported": 9,
+      "green": 16,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "util_everyone",
+      "spec": 2,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "util_isalive",
+      "spec": 2,
+      "ported": 4,
+      "green": 4,
+      "failing": 0,
+      "state": "green"
+    },
+    {
+      "stem": "util_nextbirthday",
+      "spec": 1,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "util_postforwarder",
+      "spec": 2,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "util_postgetter",
+      "spec": 1,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    },
+    {
+      "stem": "util_youtube",
+      "spec": 1,
+      "ported": 0,
+      "green": 0,
+      "failing": 0,
+      "state": "not ported"
+    }
+  ],
+  "defects": [
+    {
+      "id": "D1",
+      "text": "Write calls share the read memo-cache; duplicate writes silently no-op",
+      "addressed": true
+    },
+    {
+      "id": "D2",
+      "text": "verify=False on every backend call",
+      "addressed": true
+    },
+    {
+      "id": "D3",
+      "text": "Busy-wait spin lock serialises all media distortion",
+      "addressed": false
+    },
+    {
+      "id": "D4",
+      "text": "Fixed temp filenames raced across 50 threads",
+      "addressed": true
+    },
+    {
+      "id": "D5",
+      "text": "Shared unlocked SQLite connection",
+      "addressed": true
+    },
+    {
+      "id": "D6",
+      "text": "Unbounded, unlocked, never-expiring caches",
+      "addressed": true
+    },
+    {
+      "id": "D7",
+      "text": "JWT signing key regenerated on every restart",
+      "addressed": false
+    },
+    {
+      "id": "D8",
+      "text": "sleep() in a loop over every group, on a worker thread",
+      "addressed": false
+    },
+    {
+      "id": "D9",
+      "text": "deleteAdmins missing @RequestBody",
+      "addressed": true
+    },
+    {
+      "id": "D10",
+      "text": "No index on Event.groupId, User.username, User.birthdate",
+      "addressed": true
+    },
+    {
+      "id": "D11",
+      "text": "No pagination anywhere",
+      "addressed": true
+    },
+    {
+      "id": "D12",
+      "text": "Actuator health and metrics exposed anonymously",
+      "addressed": true
+    },
+    {
+      "id": "D13",
+      "text": "CORS allowed-origins '*' with credentials",
+      "addressed": true
+    }
+  ],
+  "problems": []
+}

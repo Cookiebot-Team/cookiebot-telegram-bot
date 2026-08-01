@@ -82,7 +82,7 @@ def run(loop: asyncio.AbstractEventLoop) -> Callable[[Coroutine[Any, Any, Any]],
 @pytest.fixture(scope="session")
 def telegram(run: Callable[[Coroutine[Any, Any, Any]], Any]) -> Iterator[TelegramFake]:
     """The suite's one Telegram fake — `MockTelegram` by default, or, with
-    `CB_QA_SANDBOX=1`, `cb_sandbox.app:app` itself served on a real loopback
+    `CB_QA_SANDBOX=1`, `tg_sandbox.app:app` itself served on a real loopback
     port (`qa/sandbox_harness.py`). Either way `CB_TELEGRAM_API_BASE` ends up
     pointing at whichever is listening, which is the only thing the rest of
     the fixtures (`bot`, `dispatcher`) need to know.
@@ -508,7 +508,7 @@ def feed(
     from aiogram.types import Update
 
     # A no-op unless CB_QA_SANDBOX=1: `feed()` hands `payload` straight to the
-    # dispatcher, the same as it always has, skipping cb_sandbox's own
+    # dispatcher, the same as it always has, skipping tg_sandbox's own
     # `/api/...` surface entirely — so the sandbox store never learns about
     # the *inbound* half of a scenario (the user's message, a join, a leave)
     # unless something tells it. This does exactly that.

@@ -1,6 +1,6 @@
 # Synced from Cookiebot-QA/features/fun_dice.feature. That spec's own trigger
 # ("roll 6") has no v1 equivalent at all -- v1 ships /dado, /dice and /d<N>
-# (docs/FEATURE-MAP.md's fun_dice row: "spec/code trigger mismatch"). Scenarios
+# (docs/site/content/docs/feature-map.mdx's fun_dice row: "spec/code trigger mismatch"). Scenarios
 # below "User rolls a die without specifying sides" are additions covering v1's
 # real behaviour (Miscellaneous.py:160-183, dispatched from COOKIEBOT.py:248-255)
 # that the upstream spec never exercises: see docs/contracts/fun_dice.md for the

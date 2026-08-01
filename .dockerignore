@@ -21,11 +21,6 @@ videos/
 demo.duckdb*
 sandbox-e2e.duckdb
 
-# web hub has its own build and its own image
-web/node_modules
-web/.next
-web/out
-
 # test + docs surfaces
 qa/
 docs/

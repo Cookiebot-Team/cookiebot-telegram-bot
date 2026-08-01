@@ -21,7 +21,7 @@ into the *same* `elif` at `COOKIEBOT.py:142`:
 elif check_human(cookiebot, msg, chat_id, language) or check_cas(cookiebot, msg, chat_id, language) or check_banlist(cookiebot, msg, chat_id, language) or check_banlist_public(cookiebot, msg, chat_id, language):
 ```
 
-`check_human` is **not** ported here. `docs/FEATURE-MAP.md`'s own `util_doomlist`
+`check_human` is **not** ported here. `docs/site/content/docs/feature-map.mdx`'s own `util_doomlist`
 row cites only `check_cas`/`check_banlist`/`check_banlist_public`; "listed on the
 Doomlist" (the QA spec's own wording) describes a user matching a *list*
 (CAS/blacklist/public raid feed), not "has no username or avatar yet". It belongs

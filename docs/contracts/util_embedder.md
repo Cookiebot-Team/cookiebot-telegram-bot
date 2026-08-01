@@ -236,5 +236,5 @@ unchanged), then added, for v1 behaviour the original spec never exercises:
   which v1's source defines but has disabled. Not this port's file to edit;
   recorded here per the task's instruction to report the disagreement rather
   than silently pick a side.
-- `docs/FEATURE-MAP.md`'s `util_embedder` row could use a note pointing at the
+- `docs/site/content/docs/feature-map.mdx`'s `util_embedder` row could use a note pointing at the
   host-list mismatch above; this agent could not edit that file.

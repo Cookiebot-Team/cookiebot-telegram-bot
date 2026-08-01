@@ -15,7 +15,7 @@ Scope decisions, out of this port (full reasoning in the contract doc):
 
 - `check_human` (`GroupShield.py:172-191`, "no username + no profile photo ->
   kick") is a *different* heuristic — bot suspicion, not "listed user" — and
-  `docs/FEATURE-MAP.md`'s own `util_doomlist` row names only the three
+  `docs/site/content/docs/feature-map.mdx`'s own `util_doomlist` row names only the three
   functions above. It belongs to whichever feature owns
   `core_groupguardian`'s bot-suspicion heuristics.
 - The `funfunctions`-gated 1-in-10 "silence_scammer.jpg" photo

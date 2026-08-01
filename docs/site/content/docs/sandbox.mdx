@@ -1,0 +1,193 @@
+---
+title: "Sandbox"
+description: "Driving the real bot by hand against a local Telegram"
+---
+
+A Telegram-shaped client and a fake Bot API, so a person can drive the bot by
+hand: switch users, join a group, send `/rules`, press a config button, watch a
+sticker flood get deleted. It exists because reading a passing test tells you
+the handler did something; this tells you *what a user sees*.
+
+The important property: **the bot is not modified or mocked.** cb-gateway
+points its Telegram API base at the sandbox and uses its polling ingest, so
+every click runs the production stack — the same routers, filters,
+middlewares, Postgres and Valkey. If the sandbox shows the wrong thing, the bot
+is wrong.
+
+The sandbox itself knows nothing about Cookiebot. It is a general-purpose,
+open-source tool in its own repository —
+[Cookiebot-Team/telegram-sandbox](https://github.com/Cookiebot-Team/telegram-sandbox),
+whose README, [Bot API coverage](https://github.com/Cookiebot-Team/telegram-sandbox/blob/main/docs/BOT-API.md),
+[configuration reference](https://github.com/Cookiebot-Team/telegram-sandbox/blob/main/docs/CONFIGURATION.md)
+and [test kit guide](https://github.com/Cookiebot-Team/telegram-sandbox/blob/main/docs/TESTKIT.md)
+are the reference for everything the tool itself does. It arrives here as a dev
+dependency (`telegram-sandbox = { git = ... }` in `pyproject.toml`); the web
+client is part of that repository too, so `cb.py sandbox-web` expects it cloned
+next to this one.
+
+What makes it *this* bot's sandbox is one generated file — see
+[Configuration](#configuration) below.
+
+```
+telegram-sandbox/web (Next.js, :3001)  ──REST + SSE──►  telegram-sandbox (:8083)
+                                                      ├── /bot<token>/<method>   ← cb-gateway polls this
+                                                      └── /api/...               ← the client drives this
+cb-gateway (unchanged)  ──CB_TELEGRAM_API_BASE + CB_TELEGRAM_INGEST=polling──►
+```
+
+## Running it
+
+```bash
+python scripts/cb.py sandbox-up      # prints the exact wiring for three terminals
+```
+
+In short: `cb.py up` (Postgres + Valkey), `cb.py sandbox`, the gateway with
+
+```bash
+CB_TELEGRAM_API_BASE=http://localhost:8083 \
+CB_TELEGRAM_INGEST=polling \
+CB_BOT_TOKENS='{"cookiebot": "424242:SANDBOX"}' \
+python scripts/cb.py gateway
+```
+
+and `cb.py sandbox-web`. Open [http://localhost:3001](http://localhost:3001) and press a seed button.
+
+The client is not in this repository. Clone it once, next to this one:
+
+```bash
+git clone https://github.com/Cookiebot-Team/telegram-sandbox ../telegram-sandbox
+```
+
+The server half needs no clone — `cb.py install` pulls it from git as a dev
+dependency, and `cb.py sandbox` runs its `telegram-sandbox serve` entry point.
+To pick up a new version of the tool:
+
+```bash
+uv lock --upgrade-package telegram-sandbox && python scripts/cb.py install
+```
+
+The gateway *must* be started with both variables. Pointed at the real
+api.telegram.org it will sit there politely doing nothing, and the UI will look
+broken for a reason that has nothing to do with the sandbox.
+
+## Configuration
+
+`sandbox.config.json` at the repository root is what turns the generic tool
+into Cookiebot's workbench: the bot identity (`424242` / `CookieMWbot`, which
+must match `CB_BOT_TOKENS`' prefix), the seed worlds, every feature from
+`scripts/spec.py`, and the whole command palette.
+
+It is **generated**, not hand-written:
+
+```bash
+python scripts/cb.py sandbox-config
+```
+
+Re-run it after adding a command alias in `cb_core.textmatch.COMMAND_ALIASES`
+or changing a feature's status in `scripts/spec.py`. Otherwise the palette and
+the feature view describe the bot as it was — worse than describing nothing,
+because a tester trusts them.
+
+`scripts/cb.py sandbox` passes `--config` explicitly rather than relying on
+discovery: the sandbox looks for the file from its working directory upwards,
+and a shell started in a subdirectory would silently get the built-in defaults,
+with nothing to explain why the bot's username no longer matches.
+
+The one hand-written part of that generator is the seeds and presets at the
+bottom of `scripts/gen_sandbox_config.py` — including `doomlist`, which seeds a
+raider account whose name carries a glyph `check_local_blacklist` matches
+(`cb_gateway/handlers/doomlist.py:_FORBIDDEN_NAME_CHARS`). That check runs
+entirely off `User.full_name` against a fixed table, so it fires
+deterministically the moment the account self-joins, unlike the
+`cas.chat`/burrbot branches of the same handler, which depend on a vendor's
+live opinion of a sandbox-only id.
+
+## What it is for
+
+| Question | How to answer it here |
+|---|---|
+| Does `/rules` answer in Portuguese for a `pt` group? | switch the group's language in `/config`, send `/regras` |
+| Does an **anonymous admin** still get the config menu? | press the "Anonymous admin -> /config" preset — the v1 defect the port fixed |
+| Does sticker spam actually delete? | send stickers past the limit, watch the API-call log fill with `deleteMessage` |
+| Is a new member's media really restricted? | press "Newcomer media restriction", join, immediately send a photo |
+| Does a doomlisted account get banned on join? | press "Doomlisted join", then "+ Join as me" |
+| Did the bot answer the callback? | press an inline button, look for `answerCallbackQuery` in the log |
+| Does the image handler read *this* picture correctly? | attach a real file in the composer — the bot receives real bytes and real dimensions |
+
+The right-hand **API call log** is the validation surface: it shows what the
+bot actually asked Telegram to do, including the calls a chat window cannot
+show — `restrictChatMember`, `banChatMember`, `deleteMessage`.
+
+Above it sits the **feature rail**, which is the other half of the answer: one
+row per feature in `scripts/spec.py`, showing how many scenarios exercised it
+and how they ended. The row worth looking for is the one reading `untested` — a
+feature nobody checked looks exactly like a passing feature in every per-test
+report ever written.
+
+## Running the BDD suite through it
+
+```bash
+TG_SANDBOX_DB=/tmp/qa-sandbox.duckdb CB_QA_SANDBOX=1 python scripts/cb.py test
+```
+
+Opt-in. With `CB_QA_SANDBOX` unset the acceptance suite runs against
+`qa/mock_telegram.py` exactly as before — same pass count, same speed — because
+that suite is the CI gate and must not get slower or flakier to feed a viewer.
+
+With it set, the scenarios drive `tg_sandbox` instead, so the run leaves a
+DuckDB file you can open (or point the sandbox server at) and read back what
+the scenarios actually did.
+
+Known gap, worth understanding before reading a failure here: this mode feeds
+updates straight into the aiogram dispatcher rather than through the control
+plane, so `qa/sandbox_harness.py` mirrors by hand everything the control plane
+would otherwise have recorded — the join/leave service message a captcha
+replies to, the callback-query id `answerCallbackQuery` is validated against.
+
+Three `core_welcome` scenarios still fail in this mode, and they fail for a
+**real** reason: `WELCOME_PROMPT` contains a literal `<user>`, the bot's
+default parse mode is HTML, and real Telegram rejects `<user>` as an
+unsupported start tag. `qa/mock_telegram.py` never parsed entities, so it never
+noticed. That is the sandbox doing exactly the job it exists for; the fix
+belongs in `welcome.py`, not here.
+
+## End-to-end suite
+
+`qa/e2e/` runs cb-gateway and telegram-sandbox as two real subprocesses over HTTP and
+uses the sandbox's own pytest plugin (`tg_sandbox.testkit`) for scenario
+bookkeeping — this repository no longer carries its own copy. Each module
+declares which feature it exercises (`_MODULE_FEATURES` in
+`qa/e2e/conftest.py`), each test is tagged with its language, and the run
+leaves `sandbox-e2e.duckdb` behind:
+
+```bash
+python scripts/cb.py test-e2e
+TG_SANDBOX_DB=sandbox-e2e.duckdb python scripts/cb.py sandbox   # then open :3001
+```
+
+See [E2E.md](/docs/e2e).
+
+## Shape
+
+What lives here, now that the tool is its own repository:
+
+```
+sandbox.config.json           generated — identity, seeds, features, commands, presets
+scripts/gen_sandbox_config.py the generator (reads COMMAND_ALIASES and spec.py)
+scripts/cb.py sandbox…        the four tasks that wire it to this bot
+qa/sandbox_harness.py         acceptance suite driven through the sandbox, in-process
+qa/e2e/                       the real two-subprocess suite
+```
+
+Everything else — the server, the Bot API surface, the web client, the test kit
+— is in [telegram-sandbox](https://github.com/Cookiebot-Team/telegram-sandbox).
+A behaviour that is wrong *in the sandbox* is a bug to file there; a behaviour
+that is wrong *in the bot* is one to fix here. Telling them apart is what the
+Bot API coverage document is for.
+
+**Reset** clears the world and reseeds the default. It is meant to be pressed
+often, and it is safe: the update-id counter deliberately survives it, because
+cb-gateway's Valkey dedupe has no idea the sandbox was reset and would
+otherwise drop the next batch as redeliveries — see
+`SandboxStore.next_update_id`, which is the single most confusing failure this
+tool can produce if it ever goes backwards.

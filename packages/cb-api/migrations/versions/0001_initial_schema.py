@@ -171,7 +171,7 @@ def upgrade() -> None:
     #                     joining user's Telegram language_code (COOKIEBOT.py:133-134),
     #                     which v2 does too, so this only decides what a group with no
     #                     language signal gets. 'en' is the neutral answer for a
-    #                     multi-tenant deployment; see docs/FEATURE-MAP.md.
+    #                     multi-tenant deployment; see docs/site/content/docs/feature-map.mdx.
     #   sticker_spam_window_s  v1 has no window at all — its counter never resets
     #                     (Cooldowns.py), so a group accumulates strikes forever.
     #                     That is a defect, not behaviour worth preserving.

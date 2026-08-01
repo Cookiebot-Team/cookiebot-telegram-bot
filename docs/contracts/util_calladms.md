@@ -11,7 +11,7 @@ Phase 2 of `/migrate-feature` for the `/adm` "summon the group's admins" flow.
   guard that gates dice/giveaway/youtube/etc. two branches down
   (`COOKIEBOT.py:248-263`). `/adm`, `@admin`, `@adm` and `/report` fire
   regardless of the group's `functionsUtility` setting, even though
-  `docs/FEATURE-MAP.md` files this feature under "Util".
+  `docs/site/content/docs/feature-map.mdx` files this feature under "Util".
 - Prompt: `UserRegisters.py:168-176` `call_admins_ask`.
 - Ping + DM fan-out: `UserRegisters.py:178-203` `call_admins`.
 - Callback handling: `COOKIEBOT.py:396-408`, the `elif query_data.startswith('ADM'):` branch

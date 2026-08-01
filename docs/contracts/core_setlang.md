@@ -2,7 +2,7 @@
 
 Phase 2/6 of `/migrate-feature` for language selection. FEATURE-MAP row:
 `core_setlang`, status "spec says web UI, bot does in-chat menu"
-(`docs/FEATURE-MAP.md` §1, and §5 "`core_setlang` as a **web settings page** —
+(`docs/site/content/docs/feature-map.mdx` §1, and §5 "`core_setlang` as a **web settings page** —
 only in-chat `/configurar` exists"). This closes the locale loop opened by the
 string-catalog port (`docs/contracts/locales.md`) and the `group_configs` port
 (`docs/contracts/group-config.md`): both already exist and are used here
@@ -175,7 +175,7 @@ of scope for a two-item task brief.
 page**: a "Cookiebot settings page" with a "language settings page" the user
 navigates to and picks a language from. No such surface exists in v1 (a Python
 `telepot` bot with no web frontend) or in v2's gateway/API today.
-`docs/FEATURE-MAP.md` already records this exact mismatch (§1 row `core_setlang`,
+`docs/site/content/docs/feature-map.mdx` already records this exact mismatch (§1 row `core_setlang`,
 §5 "core_setlang as a web settings page — only in-chat /configurar exists").
 Per AGENTS.md §1 ("v1 code wins for observable behaviour... record the conflict
 rather than silently picking"): the three copied scenarios are kept verbatim in

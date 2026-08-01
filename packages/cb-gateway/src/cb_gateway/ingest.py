@@ -11,7 +11,7 @@ swappable. Three modes:
   operator/console channel and for tenant-supplied bots that push updates to us
   over a persistent connection instead of us polling them. Declaring it here
   (rather than bolting it on later) is what keeps `main.py` from growing a second
-  update path. See docs/MULTI-TENANT.md.
+  update path. See docs/site/content/docs/multi-tenant.mdx.
 
 Everything funnels through `Dispatcher.feed_update`, so dedupe, telemetry and the
 analytics row happen identically regardless of transport.
@@ -141,7 +141,7 @@ class WebsocketIngest:
 
     async def start(self) -> None:
         raise NotImplementedError(
-            "websocket ingest is not implemented yet — see docs/MULTI-TENANT.md; "
+            "websocket ingest is not implemented yet — see docs/site/content/docs/multi-tenant.mdx; "
             "use CB_TELEGRAM_INGEST=webhook or polling"
         )
 

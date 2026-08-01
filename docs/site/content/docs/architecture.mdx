@@ -1,0 +1,276 @@
+---
+title: "Architecture"
+description: "How v2 is built — four services, Citus, the compiled hot path — and why each choice was made"
+---
+
+## 0. What v1 is (measured, not guessed)
+
+| | v1 |
+|---|---|
+| Bot | Python, **telepot** (dead since ~2018), sync, long-polling, `ThreadPoolExecutor(50)`, 5 OS processes (one per bot persona), supervised by a CPU/RAM-polling `LAUNCHER.py` that `kill -9`s the child over 70% |
+| Backend | **Java 17 / Spring Boot 3.4.3 / MongoDB 8**, Spring MVC (blocking), no cache, no scheduler, no transactions, no pagination, 1 index in the whole schema |
+| State | Mongo + 2 local SQLite files + `Captcha.txt` + unlocked process-local dicts |
+| Observability | actuator `health` + `prometheus` (unauthenticated), no tracing, no structured logs, no correlation IDs |
+| Tests | 61 Gherkin scenarios, **0 executable**; `Testing/` = 16 manual smoke scripts that duplicate prod logic |
+
+Cost drivers: 5 processes × 50 threads polling; every message triggers `get_admins()` + `get_config()`; no HTTP connection reuse anywhere; busy-wait spin loops; full-collection Mongo reads on random/list endpoints.
+
+---
+
+## 1. Target shape
+
+Three deployables, one uv workspace monorepo. All async, all Python 3.13, all instrumented by default.
+
+```
+                 Telegram
+                    │ webhook (TLS, secret_token)
+            ┌───────▼────────┐
+            │  cb-gateway    │  aiogram 3 + granian(RSGI)   stateless, N replicas
+            │  ingest only   │  → validate, dedupe, enrich, emit
+            └───┬────────┬───┘
+     fast path  │        │  slow path (media/AI/fanout)
+   (<50ms reply)│        ▼
+                │   ┌─────────────┐
+                │   │  cb-worker  │  arq consumers, CPU pool for ffmpeg/opencv/PIL
+                │   └──────┬──────┘
+                ▼          ▼
+            ┌────────────────────┐
+            │      cb-api        │  FastAPI + asyncpg, replaces the Java backend
+            └─────────┬──────────┘
+                      ▼
+        Postgres 17 + Citus 13   ──►  analytics rollups (pg_cron)
+              Redis/Valkey       ──►  cooldowns, cache, arq queue, dedupe
+              OTel Collector     ──►  Tempo (traces) + Prometheus (metrics) + Loki (logs)
+```
+
+**Why the split:** v1's core failure is that a `/destroy` video job and a captcha reply share the same 50-thread pool and the same global spin-lock. Separating ingest from work makes the reply path p99 independent of ffmpeg. Gateway is stateless → horizontal scale replaces `LAUNCHER.py` + `restart_vm.py`.
+
+**Bot personas** (`core_botskins`): one gateway process serving N tokens via aiogram's multi-bot webhook routing, skin resolved from `bots` table — replaces 5 separate OS processes and their 5 divergent caches.
+
+---
+
+## 2. Library choices (Rust/C-backed preferred)
+
+| Concern | Pick | Rust/C? | Replaces |
+|---|---|---|---|
+| Telegram | **aiogram 3.x** (async, FSM, webhook, native multi-bot) | — | telepot fork |
+| ASGI/RSGI server | **granian** | 🦀 | gunicorn |
+| Event loop | **uvloop** | C (libuv) | stdlib |
+| API framework | **FastAPI** (`litestar` viable alt) | — | Spring MVC |
+| Validation/settings | **pydantic v2** + `pydantic-settings` | 🦀 pydantic-core | manual dict poking |
+| Serialization (hot path) | **msgspec** for internal msgs, **orjson** for HTTP | C | `json` stdlib |
+| JSON parsing | **jiter** (via pydantic) | 🦀 | — |
+| Postgres driver | **asyncpg**; evaluate **psqlpy** (tokio-postgres) in bench | C / 🦀 | Mongo driver |
+| SQL layer | **SQLAlchemy 2.0 Core** (async) — Core not ORM, so Citus DDL stays explicit | — | Spring Data |
+| Migrations | **alembic** + explicit `create_distributed_table()` steps | — | none existed |
+| Cache/queue | **Valkey** + `redis-py[hiredis]`, **arq** for jobs | C | in-proc dicts, SQLite |
+| HTTP client | **httpx** (pooled, HTTP/2) — one shared client, not per-call `requests` | — | `requests` (no pooling, `verify=False`) |
+| Hashing/dedupe | **blake3** | 🦀 | — |
+| UUIDs | **uuid-utils** | 🦀 | stdlib |
+| Compression | **zstandard** | C | — |
+| Analytics/reports | **polars** | 🦀 | in-JVM loops |
+| Datetime | **whenever** | 🦀 | naive `datetime` + string dates |
+| Regex (embedder, link parse) | **`regex`** or `re2`-style; benchmark **`rure`** | 🦀 | `re` |
+| Tokenizer (LLM cost metering) | **tiktoken** | 🦀 | — |
+| Lint/format | **ruff** | 🦀 | none |
+| Type check | **ty** or mypy | 🦀 / — | none |
+| Pkg mgmt | **uv** (workspace, lockfile) | 🦀 | unpinned `requirements.txt` |
+| Images | Pillow (SIMD build) + opencv headless — worker only | C | same, but off hot path |
+| Video/audio | ffmpeg via subprocess in worker, bounded semaphore | — | busy-wait booleans |
+
+**Explicitly dropped:** `ShazamAPI` and `saucenao_api` (unofficial, no SLA) stay but move behind a circuit breaker with a feature flag; `beautifulsoup4` avatar scraping of `telegram.me` replaced by `getUserProfilePhotos` Bot API call.
+
+### Blob storage — `cb_core.storage`
+
+One protocol (`BlobStore`), one implementation, four backends: **S3, GCS**, local
+filesystem and in-memory. All of it is `obstore` — PyO3 bindings to the Rust
+`object_store` crate — so GCP and S3 share a single code path and there is no
+per-cloud SDK to age out. Credentials resolve exactly as each cloud's own SDK
+resolves them (`AWS_*`/instance role, `GOOGLE_APPLICATION_CREDENTIALS`/workload
+identity). Selection is a URI: `CB_STORAGE_URI=gs://bucket/prefix`.
+
+Above it, `MediaService` splits blobs from tenancy:
+
+- **Blobs are content-addressed** (`media/<kind>/<hh>/<blake3><ext>`), so the same
+  sticker posted in fifty groups is stored once. v1 stored a fresh copy per
+  forwarded item (`SocialContent.py:191-196`).
+- **References are per-group rows** in `media_objects`, distributed on `group_id`.
+  So `/random` is a single-shard router query rather than v1's
+  load-the-whole-collection-into-the-JVM (`RandomDatabaseService.getRandom`), and
+  "this group left" is one local DELETE.
+- **GC** is a scheduled worker job: `media_blobs` is a reference table, so the
+  anti-join runs node-local, and unreferenced blobs are deleted off the reply path.
+
+Local and memory backends deliberately **raise** on `signed_url` rather than
+faking one — a dev environment that silently produced unusable URLs would hide
+the failure until production.
+
+### LLM — `cb_core.llm`
+
+Handlers ask for a **task** (`chat`, `moderate`, `summarize`, `vision`,
+`transcribe`), never a model. Task → provider/model/limits is configuration
+(`CB_LLM_TASKS`), so changing model or vendor is an env change.
+
+| Piece | Role |
+|---|---|
+| `catalog.py` | per-model capabilities and pricing |
+| `anthropic_provider.py` | Claude via the official async SDK |
+| `openai_provider.py` | OpenAI **and every OpenAI-compatible endpoint** (`base_url` → Ollama, vLLM, OpenRouter); also carries speech-to-text |
+| `router.py` | task routing, cost metering, circuit breaker, `llm_usage` rows |
+
+The catalog is load-bearing, not documentation. Current Claude models **reject**
+`temperature`/`top_p`/`top_k` and the old `thinking.budget_tokens` form with a 400,
+and reject disabled thinking above `high` effort. A generic wrapper that forwarded
+whatever it was handed would break on the default model, so every optional
+parameter is filtered against the model's spec before it goes on the wire — and
+that filtering is unit-tested directly.
+
+Other deliberate choices:
+
+- **Refusals are values, not exceptions.** A safety decline is a successful HTTP
+  200 with `stop_reason == "refusal"`; callers branch on `completion.refused`.
+  Server-side refusal fallback is on by default where the model supports it, so a
+  declined request is re-served by a fallback model inside the same call.
+- **Unknown models are allowed**, with every optional parameter disabled and
+  pricing `None`. Operators must be able to point at a new or self-hosted model
+  without a code change; a guessed price would be worse than an absent one.
+- **OpenAI prices are unset on purpose.** Tokens are metered; USD counters stay
+  dark until someone fills in the authoritative figure.
+- **Token counting uses the provider's own endpoint** where one exists. Estimating
+  Claude tokens with another vendor's tokenizer is off by 15–30%.
+- Every call writes an `llm_usage` row on the group's shard, so "which group is
+  spending the money" has an answer. v1 called OpenAI from three places with no
+  accounting at all.
+
+### Identifiers — UUIDv7
+
+Surrogate keys are UUIDv7 generated in the application (`cb_core.ids.uuid7`,
+Rust `uuid_utils`). v7 embeds a millisecond timestamp in the high bits, so inserts
+append to the right edge of the index instead of scattering, `ORDER BY id` is
+chronological for free, and — the Citus-specific reason — there is no shared
+sequence and no coordinator round trip on insert. The shard key stays `group_id`;
+the UUID is only the row's local identity. `cb_uuid_v7()` exists in SQL for the
+rare server-side default.
+
+### Minimising block exchange
+
+Colocation is a correctness property here, not tuning, so it is asserted rather
+than assumed (`qa/integration/test_citus_topology.py`):
+
+1. Everything tenant-scoped is distributed on `group_id` with
+   `colocate_with => 'groups'` — one colocation group, so per-group joins are
+   node-local.
+2. Small cross-tenant tables (`users`, `blacklist`, `bots`, `command_catalog`,
+   `media_blobs`) are **reference tables**, replicated, so joining them from a
+   distributed table never repartitions.
+3. Every hot query filters on `group_id`; composite indexes lead with it; rollup
+   `GROUP BY`s include it, so aggregation is per-shard and only the small result
+   crosses the network.
+4. `group_id` is in every PK, unique constraint and FK on a distributed table —
+   Citus requires it, and a test asserts it.
+5. Anything that genuinely needs a cross-shard scan (media GC) lives in the
+   scheduled worker and says so in a comment.
+
+The topology tests `EXPLAIN` the reply-path queries and assert `Task Count: 1`.
+
+### Cythonize policy
+Cython buys ~nothing on `await`-heavy IO code. Compile only pure-CPU, no-IO modules, keeping them import-compatible via Cython's **pure Python mode** (`@cython.cclass` / `@cython.ccall` in ordinary `.py` files), so every module runs and tests uncompiled too.
+
+Gate in CI: ≥1.5× against a pure-Python baseline, or the module ships pure. Measured (M0, Python 3.14 arm64, best-of-5):
+
+| module | pure ns/op | compiled ns/op | speedup | outcome |
+|---|---|---|---|---|
+| `cb_core/cooldowns` — token bucket, sliding window, quota ledger | 84.7 | 42.4 | 2.00× | compiled |
+| `cb_core/dedupe` — update-id LRU + blake3 fingerprints | 107.9 | 67.2 | 1.61× | compiled |
+| `cb_core/textmatch` — command parse + link dispatch | 396.2 | 252.5 | 1.57× | compiled |
+| `cb_core/captcha` — challenge gen/verify | 11073 | 10983 | 1.01× | **ships pure** |
+
+Two findings worth keeping:
+- Plain PEP 484 annotations plus `annotation_typing` made the compiled build **slower** than pure Python (146 vs 85 ns/op on `cooldowns`) — the classes were still Python objects with added conversion overhead. Only `@cython.cclass` extension types paid off.
+- `captcha` is bounded by a CSPRNG syscall, so it was removed from `HOT_MODULES` instead of kept for appearances. That is the gate working as intended.
+
+`mypyc` remains the fallback if pure-mode friction grows.
+
+---
+
+## 3. Data model on Postgres + Citus
+
+Mongo's 12 collections → relational, distributed by **`group_id`** (the natural tenant key). Colocation means a group's config + members + messages + posts all live on one shard → single-node joins.
+
+**Distributed (shard key `group_id`)**
+`groups`, `group_configs`, `group_rules`, `group_welcomes`, `group_members`, `group_admins`, `posts`, `post_schedule`, `giveaways`, `giveaway_entries`, `captcha_challenges`, `events`, `message_events`
+
+**Reference tables** (replicated to every node, small + joined everywhere)
+`users`, `blacklist`, `bots`, `command_catalog`, `locales`
+
+**Local/coordinator only**
+`schema_migrations`, `feature_flags`
+
+Key fixes vs v1 schema:
+- `users.birthdate` → real `date` + **generated columns** `birth_month`, `birth_day` with a composite index → kills the un-indexable `$expr` full scan (D10).
+- `user_registers.date` → `timestamptz`, not a string.
+- Every FK real, every hot predicate indexed (`events(group_id)`, `users(username)`, `group_members(group_id,user_id)`).
+- Pagination mandatory: keyset pagination on all list endpoints (D11).
+
+**Analytics by default** — the whole point of Citus here:
+
+```sql
+message_events (          -- append-only, distributed by group_id, partitioned by day
+  ts timestamptz, group_id bigint, user_id bigint, bot_id int,
+  event_type text,        -- message|command|join|leave|callback|captcha|moderation
+  command text, outcome text,
+  latency_ms int, handler text,
+  media_kind text, llm_tokens int, llm_cost_usd numeric,
+  trace_id text           -- joins straight to the OTel trace
+)
+```
+- `pg_partman` daily partitions; partitions older than 7d converted to **Citus columnar** (~5-10× compression, fast scans).
+- `pg_cron` rollups → `group_daily_stats`, `command_daily_stats`, `user_daily_activity`, `retention_cohorts`.
+- Grafana reads rollups, never raw.
+
+**Migration from Mongo:** one-shot ETL (`polars` + motor) + optional dual-write window in cb-api so v1 Java can keep serving while v2 catches up. `Raffle` domain is dropped unless the orphan feature is actually wanted (no repo/service/controller exists today).
+
+---
+
+## 4. Observability (default-on, not bolted on)
+
+**Traces (OTel → OTLP → Tempo)**
+- Root span per Telegram update, `update_id` + `group_id` + `command` as attributes.
+- Auto-instrumentation: `aiogram`(manual middleware), `fastapi`, `httpx`, `asyncpg`, `redis`, `arq`.
+- Context propagated gateway → queue → worker → api (W3C traceparent in the job payload), so one media command is a single trace end to end.
+- `trace_id` written into `message_events` → click a Grafana analytics row, land on the trace.
+
+**Metrics (prometheus-client, `/metrics` per service, granian multiprocess dir)**
+- RED per handler: `cb_handler_duration_seconds{handler,command,outcome}`, `cb_handler_errors_total`.
+- `cb_telegram_api_duration_seconds{method}`, `cb_telegram_rate_limited_total`.
+- `cb_queue_depth{queue}`, `cb_job_duration_seconds{job}`, `cb_worker_saturation`.
+- `cb_db_pool_in_use`, `cb_db_query_duration_seconds{stmt}`.
+- `cb_llm_tokens_total{model,kind}`, `cb_llm_cost_usd_total` — v1 has zero LLM cost visibility.
+- `cb_external_dep_up{dep}` for cas.chat / burrbot / saucenao / shazam.
+
+**Logs** — `structlog` JSON, `trace_id`/`span_id` injected, no PII bodies. Health `/healthz` `/readyz` **authenticated or network-scoped** (fixes D12).
+
+---
+
+## 5. MVP ladder
+
+Each MVP ends with its QA scenarios green — the Gherkin gets real step definitions against a **mock Telegram API** (local aiohttp server implementing `getUpdates`/`sendMessage`/…), so acceptance runs in CI with no live token.
+
+| MVP | Scope | QA gate |
+|---|---|---|
+| **M0 — skeleton** | uv workspace, 3 services, docker-compose (citus coordinator+2 workers, valkey, otel-collector, prometheus, grafana, tempo), alembic + Citus distribution, structlog/OTel/prom wired, ruff+ty+pytest in CI, cython build pipeline w/ benchmark gate | `util_isalive` (2) |
+| **M1 — survival core** | config, rules, welcome, captcha/GroupGuardian, sticker-spam, media-restrict, blacklist/doomlist, `/commands`, `/privacy`, language, admin resolution + cache invalidation via Valkey pub/sub | core_* (22) + `util_config`, `util_doomlist` |
+| **M2 — social/util** | dice, ship, death, meme, battle, random, firecracker, complaint, partnered cons (**incl. missing `/trex`**), youtube, embedder, birthday/nextbirthday, everyone (batched, no N+1), calladms | fun_* (21) + util birthday/everyone/calladms/embedder/youtube |
+| **M3 — publisher + AI** | post forwarder/getter, approval workflow (`publicador`), scheduled reposts (arq cron, not `threading.Timer`), giveaways, STT, conversational AI w/ token+cost metering | `util_postforwarder`, `util_postgetter`, `util_deletereposts` + **new specs** for giveaways/AI |
+| **M4 — analytics & web** | `message_events` pipeline, pg_cron rollups, Grafana dashboards, BFF endpoints for WebHub, Telegram-login JWT with **persisted** signing key (fixes D7), group-admin analytics in-chat (`/analise` for real) | new specs; `core_setlang` as web page |
+
+Regression suite seeded from FEATURE-MAP §6 (D1–D13) — each defect becomes a failing test first.
+
+---
+
+## 6. Open decisions
+
+1. **Java backend fate** — this doc assumes cb-api replaces it entirely in Python. Keeping Spring Boot + porting only the DB to Postgres is the alternative (less rewrite, but no shared Python analytics/Cython story and two runtimes to operate).
+2. **Citus at this scale** — v1 serves ~1275 groups. Citus is right for the analytics ambition and future-proof sharding, but a single Postgres 17 + partitioning would carry this load today. Citus is a cluster to operate (rebalancer, colocation discipline, no cross-shard FKs). Recommendation: build the schema Citus-shaped (group_id everywhere) and run single-node Citus initially — same DDL, one box, scales by adding workers later.
+3. **WebHub** — `COOKIEBOT-WebHub` isn't in this workspace; BFF contract in M4 needs its repo.
+4. **Unofficial APIs** — keep Shazam/SauceNao (feature-flagged, circuit-broken) or drop.

@@ -3,7 +3,7 @@
 The simplest possible scenario in this suite on purpose: neither command needs
 an admin, a database write, or any prior group configuration, so a failure
 here can only be about the plumbing (sandbox <-> gateway over HTTP, the
-control API, the poll loop) — see `docs/E2E.md`. Everything after this file
+control API, the poll loop) — see `docs/site/content/docs/e2e.mdx`. Everything after this file
 builds on the same pattern with progressively more state.
 
 Both tests run once per language in `qa/e2e/conftest.py`'s `lang` fixture

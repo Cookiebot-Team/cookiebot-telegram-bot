@@ -191,7 +191,7 @@ Do not rediscover these:
 - **`/trex`** is specified in `fun_partneredcons.feature` but does not exist in
   v1. It is net-new, not a port.
 - **20+ v1 features have no QA scenario at all** (giveaways, conversational AI,
-  reverse search, distortion, owner commands…). See `docs/FEATURE-MAP.md` §4.
+  reverse search, distortion, owner commands…). See `docs/site/content/docs/feature-map.mdx` §4.
   Write the scenario as part of the port.
 - **v1 defaults do NOT live in the Java backend.** The previous handoff said
   they did; `Config.java` is a bare Lombok class whose fields are all nullable,
@@ -233,18 +233,22 @@ Nothing here is open any more. Owner's answers, 2026-07-25:
    verbatim from `../COOKIEBOT-Telegram-Group-Bot/LICENSE`.
 6. **Tenant billing** — **hard cap.** Over budget, LLM calls are refused and the
    user is told the quota is spent; no soft multiplier, no warn-and-continue.
-   `docs/MULTI-TENANT.md` should be updated when the enforcement lands.
+   `docs/site/content/docs/multi-tenant.mdx` should be updated when the enforcement lands.
 
 ## 7. Keeping the status honest
 
-`docs/MIGRATION-STATUS.md` is generated, never hand-edited. When a feature lands:
+The progress board and every feature page's frontmatter are generated, never
+hand-edited. When a feature lands:
 
 1. Flip its `status` in `scripts/spec.py`.
-2. `python scripts/cb.py status` to regenerate.
-3. `python scripts/cb.py check` — it runs `status --check`, which fails if a
-   feature claims `done` without a ported, passing scenario.
+2. `python scripts/cb.py docs-sync` — regenerates `docs/site/content/progress.json`
+   and rewrites each feature page's frontmatter. The prose in those pages is
+   yours and is never touched.
+3. `python scripts/cb.py check` — runs `status --check` (fails if a feature
+   claims `done` without a ported, passing scenario) and `docs-sync --check`
+   (fails if a page's frontmatter disagrees with the spec).
 
-That check is the guard against a report that drifts away from the code.
+Those two checks are the guard against a site that drifts away from the code.
 
 ## 8. Environment notes from this session
 

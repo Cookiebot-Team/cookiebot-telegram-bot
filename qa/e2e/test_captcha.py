@@ -2,7 +2,7 @@
 challenges them, and the *right button* lets them through.
 
 This is the one scenario in the suite that could not run at all until
-`cb_sandbox.control_api.join_chat` started storing the join's own service
+`tg_sandbox.control_api.join_chat` started storing the join's own service
 message. `groupguardian._issue_challenge` answers a join with
 `message.reply(...)`, which sends `reply_to_message_id` pointing at that
 message, and `telegram_api._require_message` looks the id up in the store —

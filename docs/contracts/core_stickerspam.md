@@ -88,7 +88,7 @@ If Valkey is down, `cache.incr_window` raises. The handler (`_bump` in `stickers
 
 ### QA-spec mismatch found while writing this contract
 
-The upstream scenario "The feature is set up to allow sticker spam" has no v1 equivalent switch — `stickerSpamLimit` (`Configurations.py:111`, `Config.java:23`) is only ever a number, never a boolean toggle. The only real lever an admin has is a limit high enough that no realistic flood trips it, so this port's step for that Given seeds `sticker_spam_limit = 1_000_000` rather than any "disabled" flag. Recorded here per AGENTS.md ("record the conflict... rather than silently picking"); `docs/FEATURE-MAP.md`'s `core_stickerspam` row could use a note pointing at this, but that file is out of this port's ownership.
+The upstream scenario "The feature is set up to allow sticker spam" has no v1 equivalent switch — `stickerSpamLimit` (`Configurations.py:111`, `Config.java:23`) is only ever a number, never a boolean toggle. The only real lever an admin has is a limit high enough that no realistic flood trips it, so this port's step for that Given seeds `sticker_spam_limit = 1_000_000` rather than any "disabled" flag. Recorded here per AGENTS.md ("record the conflict... rather than silently picking"); `docs/site/content/docs/feature-map.mdx`'s `core_stickerspam` row could use a note pointing at this, but that file is out of this port's ownership.
 
 ## Phase 3 — QA scenario
 
@@ -155,6 +155,6 @@ new v2-only concerns, it is instead covered by a plain (non-BDD) pytest test in
   register `stickerspam.router` — needs `root.include_router(stickerspam.router)`
   (plus the import) for `qa/test_core_stickerspam.py` to pass end to end. Out
   of this port's file ownership.
-- `docs/FEATURE-MAP.md`'s `core_stickerspam` row could use a note that the
+- `docs/site/content/docs/feature-map.mdx`'s `core_stickerspam` row could use a note that the
   QA-spec "allow sticker spam" scenario has no real v1 toggle (see the
   mismatch above); this agent could not edit that file.

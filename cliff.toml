@@ -78,7 +78,8 @@ protect_breaking_commits = false
 # Assigns commits to groups.
 #
 # Scopes are the workspace's own package names minus the `cb-` prefix —
-# `core`, `gateway`, `api`, `worker`, `sandbox` — plus `web`, `qa` and `ops`.
+# `core`, `gateway`, `api`, `worker` — plus `qa`, `deploy` and `ops`. (The
+# sandbox and its web client are a separate repository now: Cookiebot-Team/telegram-sandbox.)
 # Nothing enforces that (git-cliff groups by *type*, not scope), but a
 # changelog whose scopes are the same words as the directories is one a reader
 # can navigate without being told the convention.

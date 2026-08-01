@@ -18,12 +18,12 @@ group to demonstrate i18n.
 
 ## Why this is not an illustration
 
-Every screen in this video is a real capture of the running stack — cb-sandbox
-on :8083, cb-gateway on :8084 polling it, the web client on :3001, against a
-real Postgres and Valkey. The Portuguese replies were produced by the actual
-handler stack; the group's language was derived the way production derives it
-(the founder's own Telegram `language_code` when the bot is added), not set by
-writing a column.
+Every screen in this video is a real capture of the running stack —
+telegram-sandbox on :8083, cb-gateway on :8084 polling it, the web client on
+:3001, against a real Postgres and Valkey. The Portuguese replies were
+produced by the actual handler stack; the group's language was derived the way
+production derives it (the founder's own Telegram `language_code` when the bot
+is added), not set by writing a column.
 
 That constraint is the point. A demo of a testing tool that used mocked-up
 screens would be the exact failure the tool exists to prevent.

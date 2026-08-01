@@ -95,13 +95,16 @@ schema, observability, storage, AI routing, the self-hosted API option, and a
 test suite that runs the specs. One command is live end to end (`/isalive`);
 the rest are being ported in order.
 
-Live progress, generated from the code rather than written by hand:
-**[`docs/MIGRATION-STATUS.md`](docs/MIGRATION-STATUS.md)**
+Live progress, measured from the spec and a real test run rather than written
+by hand — the documentation site's **[progress board](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/progress)**:
 
 ```
-features   ████░░░░░░░░░░░░░░░░░░░░  9/50 done
-scenarios  ██░░░░░░░░░░░░░░░░░░░░░░  4/63 of the v1 spec ported
+features   ███████████░░░░░░░░░░░░░  25/53 done
+v1 specs   ████████████░░░░░░░░░░░░  15/31 covered by an executable scenario
 ```
+
+Regenerate it with `python scripts/cb.py docs-sync`; read it locally with
+`python scripts/cb.py docs` (:3002).
 
 Nothing is switched over yet — v1 keeps serving every group until a feature's
 scenarios pass here.
@@ -122,13 +125,18 @@ Dashboards land on <http://localhost:3000>.
 
 ## Documentation
 
+Everything below lives in the documentation site (`docs/site`, Fumadocs) —
+published at **https://cookiebot-team.github.io/cookiebot-telegram-bot**, or run locally with `python scripts/cb.py docs`.
+
 | | |
 |---|---|
-| [`docs/MIGRATION-STATUS.md`](docs/MIGRATION-STATUS.md) | what's ported, what's next, which scenarios pass |
-| [`docs/FEATURE-MAP.md`](docs/FEATURE-MAP.md) | every v1 feature traced to its source, with the known bugs |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | how v2 is built and why |
-| [`docs/MULTI-TENANT.md`](docs/MULTI-TENANT.md) | running many bots on one core |
-| [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) | setup, tasks, testing, the compiled hot path |
+| [Progress board](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/progress) | what's ported, what's next, which scenarios pass — all measured |
+| [Features](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/features) | one page per feature: what it does, what must not change, whether it works yet |
+| [Architecture](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/architecture) | how v2 is built and why |
+| [Development](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/development) | setup, tasks, testing, the compiled hot path |
+| [Sandbox](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/sandbox) | driving the real bot by hand against [telegram-sandbox](https://github.com/Cookiebot-Team/telegram-sandbox), the local Telegram we open-sourced out of this repo |
+| [v1 feature map](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/feature-map) | every v1 feature traced to its source, with the known bugs |
+| [Multi-tenant](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/multi-tenant) | running many bots on one core |
 | [`HANDOFF.md`](HANDOFF.md) | where the last session stopped and what to pick up |
 | [`AGENTS.md`](AGENTS.md) | rules for anyone (or anything) writing code here |
 

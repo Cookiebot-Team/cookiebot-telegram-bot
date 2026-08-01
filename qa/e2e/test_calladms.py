@@ -7,7 +7,7 @@ admins, and — the v1 defect this port fixes (`cb_gateway/handlers/calladms.py`
 own docstring) — the callback is *answered* either way, so a real Telegram
 client's loading spinner actually stops. `answerCallbackQuery` and
 `deleteMessage` are exactly the two calls a chat transcript cannot show,
-which is the whole reason `docs/SANDBOX.md` calls the api_calls log the real
+which is the whole reason `docs/site/content/docs/sandbox.mdx` calls the api_calls log the real
 validation surface.
 
 Runs once per language (`qa/e2e/conftest.py`'s `lang` fixture). `/adm` itself

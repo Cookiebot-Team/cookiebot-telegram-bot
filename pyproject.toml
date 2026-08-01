@@ -8,7 +8,6 @@ dependencies = [
     "cb-api",
     "cb-gateway",
     "cb-worker",
-    "cb-sandbox",
 ]
 
 [tool.uv.workspace]
@@ -19,10 +18,15 @@ cb-core = { workspace = true }
 cb-api = { workspace = true }
 cb-gateway = { workspace = true }
 cb-worker = { workspace = true }
-cb-sandbox = { workspace = true }
+# The sandbox is its own tool, in its own repository — nothing about it is
+# specific to this bot (what makes it *ours* is `sandbox.config.json`). It is a
+# dev dependency, not a runtime one: no deployable imports it, and pulling it
+# in here would put DuckDB in every production image.
+telegram-sandbox = { git = "https://github.com/Cookiebot-Team/telegram-sandbox", branch = "main" }
 
 [dependency-groups]
 dev = [
+    "telegram-sandbox",
     "pytest>=8.3",
     "pytest-asyncio>=0.25",
     "pytest-bdd>=8.1",
@@ -70,7 +74,7 @@ filterwarnings = [
 ]
 markers = [
     "integration: needs a reachable Postgres/Citus; skipped by `make test`",
-    "e2e: real end-to-end suite against cb-gateway + cb-sandbox subprocesses over HTTP; opt-in via `cb.py test-e2e`",
+    "e2e: real end-to-end suite against cb-gateway + telegram-sandbox subprocesses over HTTP; opt-in via `cb.py test-e2e`",
 ]
 
 [tool.mypy]
@@ -79,7 +83,7 @@ ignore_missing_imports = true
 # The packages are namespace packages under separate src/ roots, so the four
 # `main.py` modules collide unless mypy is told where each root starts.
 explicit_package_bases = true
-mypy_path = "packages/cb-core/src:packages/cb-api/src:packages/cb-gateway/src:packages/cb-worker/src:packages/cb-sandbox/src"
+mypy_path = "packages/cb-core/src:packages/cb-api/src:packages/cb-gateway/src:packages/cb-worker/src"
 # Ruff's ANN rules cover signatures; these cover what ANN cannot see — a body
 # that quietly degrades to Any, an annotation that does not match what the
 # function returns, and calls into untyped code. Both matter for the compiled

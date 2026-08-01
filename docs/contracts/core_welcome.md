@@ -145,7 +145,7 @@ its step definitions in `qa/test_core_welcome.py` drive the actual v1 trigger
 point (a reply attempt) and assert the *intent* of the scenario (a non-admin
 cannot successfully set the welcome message and is told so) rather than the
 exact copied wording, which does not exist anywhere in v1 for this command. This
-conflict could not be recorded in `docs/FEATURE-MAP.md` (out of this task's file
+conflict could not be recorded in `docs/site/content/docs/feature-map.mdx` (out of this task's file
 ownership) so it lives here instead.
 
 ## Phase 3 — QA scenario

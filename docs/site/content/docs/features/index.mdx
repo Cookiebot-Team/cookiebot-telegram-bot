@@ -1,0 +1,41 @@
+---
+title: Features
+description: Every Cookiebot feature, what it must keep doing, and whether v2 does it yet
+---
+
+One page per feature. The header block on each is generated from the migration
+spec and the last test run; everything under it is written by whoever ported
+the feature — what it does, what a group would notice if it changed, and how to
+check it by hand.
+
+Status means exactly one thing here:
+
+| | |
+|---|---|
+| <StatusBadge status="done" /> | Implemented, with at least one scenario executing green |
+| <StatusBadge status="partial" /> | Implemented, but the spec is incomplete or scenarios are missing |
+| <StatusBadge status="planned" /> | Scheduled in a milestone, not started |
+| <StatusBadge status="blocked" /> | Cannot start until something else lands |
+
+## Core moderation
+
+The survival set: what a group needs the bot to do while nobody is watching.
+
+<FeatureTable area="core" />
+
+## Utility
+
+<FeatureTable area="util" />
+
+## Fun
+
+The reason members interact with the bot at all — and the reason v1 got
+installed in the first place.
+
+<FeatureTable area="fun" />
+
+## Platform
+
+Not user-visible, but everything above stands on it.
+
+<FeatureTable area="platform" />

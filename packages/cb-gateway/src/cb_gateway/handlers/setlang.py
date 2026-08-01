@@ -1,7 +1,7 @@
 """core_setlang — first-contact language derivation + per-chat command relabeling.
 
 FEATURE-MAP row: `core_setlang`, status "spec says web UI, bot does in-chat menu"
-(`docs/FEATURE-MAP.md` §1 and §5). QA: `../Cookiebot-QA/features/core_setlang.feature`
+(`docs/site/content/docs/feature-map.mdx` §1 and §5). QA: `../Cookiebot-QA/features/core_setlang.feature`
 describes a **web settings page** — v1 has no such thing. v1's only language
 selection surface is the in-chat `/config` menu's Language button, and that
 button already lives in `handlers/config_menu.py` (callback letter `k`), owned by

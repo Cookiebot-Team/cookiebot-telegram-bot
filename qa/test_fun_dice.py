@@ -19,7 +19,7 @@ Telegram command — unlike every sibling `*.feature` file this port has seen
 (`core_privacy.feature`, `core_rules.feature`, `fun_random.feature`: always a
 literal "/word"). `cb_core/textmatch.py:COMMAND_ALIASES` maps "roll" to the
 canonical `"dice"` name only for a real slash command ("/roll 6") — there is no
-bare-word trigger path anywhere in this codebase (docs/FEATURE-MAP.md's own
+bare-word trigger path anywhere in this codebase (docs/site/content/docs/feature-map.mdx's own
 "spec/code trigger mismatch" note for fun_dice). `_to_command` below adds the
 leading "/" a real Telegram command needs without changing the Gherkin wording
 itself, which stays byte-identical to the upstream spec.

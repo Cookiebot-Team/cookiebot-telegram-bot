@@ -2,9 +2,9 @@
 
 `CB_QA_SANDBOX=1` (`qa/sandbox_harness.py`) feeds updates straight into the
 aiogram dispatcher in-process and only *mirrors* them into the sandbox store —
-`cb_sandbox.control_api` is never called and `getUpdates` polling never runs.
-This package closes that gap: `cb_sandbox.app:app` and `cb_gateway.main:app`
-run as two real subprocesses, wired exactly as `docs/SANDBOX.md` describes
+`tg_sandbox.control_api` is never called and `getUpdates` polling never runs.
+This package closes that gap: `tg_sandbox.app:app` and `cb_gateway.main:app`
+run as two real subprocesses, wired exactly as `docs/site/content/docs/sandbox.mdx` describes
 (`CB_TELEGRAM_API_BASE` + `CB_TELEGRAM_INGEST=polling`), and every scenario
 drives the gateway purely by calling the sandbox's `/api/...` control surface
 over real HTTP — the same surface a human clicks through in the web UI.
@@ -27,7 +27,7 @@ than paying for two extra processes and a shared database on the fast CI gate.
 
 Known trap, already fixed here rather than rediscovered: the gateway's dedupe
 middleware is Valkey-backed, keyed on `update_id`
-(`cb_gateway/middlewares.py:DedupeMiddleware`), and `cb_sandbox`'s own
+(`cb_gateway/middlewares.py:DedupeMiddleware`), and `tg_sandbox`'s own
 `update_id` counter restarts at 1 on every `/api/reset` or `/api/seed`
 (`SandboxStore.reset`). Two things keep that from silently eating this suite's
 first updates as replays: a Valkey database index of its own
@@ -55,12 +55,12 @@ import httpx
 import psycopg
 import pytest
 import redis
-from cb_sandbox.config import load_config
+from tg_sandbox.config import load_config
 
 from qa.e2e.client import SandboxClient, calls_to, describe_recent_calls, wait_for
 
 ROOT = Path(__file__).resolve().parents[2]
-#: What makes cb-sandbox *this* bot's sandbox — see `scripts/gen_sandbox_config.py`.
+#: What makes telegram-sandbox *this* bot's sandbox — see `scripts/gen_sandbox_config.py`.
 SANDBOX_CONFIG = ROOT / "sandbox.config.json"
 
 #: The bot the sandbox is configured to be, read from the same file the
@@ -82,7 +82,7 @@ _DEFAULT_REDIS_DSN = "redis://localhost:6379/14"
 
 #: Every scenario in this suite runs once per language in this tuple. `en` is
 #: the baseline; `pt` is the majority of real traffic and, before this suite
-#: existed, had never been checked end to end at all (docs/E2E.md's own
+#: existed, had never been checked end to end at all (docs/site/content/docs/e2e.mdx's own
 #: scenario table only ever exercised `en`). `es` is a real v1 language too,
 #: but the task this tuple was added for is "prove a `pt` group gets
 #: Portuguese", not "triple the suite" — adding it later is one line here.
@@ -103,7 +103,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     if os.environ.get(_RUN_ENV_VAR) == "1":
         return
     skip_e2e = pytest.mark.skip(
-        reason="opt-in only — run `python scripts/cb.py test-e2e` (see docs/E2E.md)"
+        reason="opt-in only — run `python scripts/cb.py test-e2e` (see docs/site/content/docs/e2e.mdx)"
     )
     for item in items:
         if "e2e" in item.keywords:
@@ -234,7 +234,7 @@ def _infra_ready() -> None:
 def sandbox_process(
     _infra_ready: None, tmp_path_factory: pytest.TempPathFactory
 ) -> Iterator[ProcessHandle]:
-    """The real, unmodified `cb_sandbox.app:app`, on its own port and its own
+    """The real, unmodified `tg_sandbox.app:app`, on its own port and its own
     DuckDB file — never the developer's `sandbox.duckdb`.
 
     That file is deliberately *not* a `tmp_path` one: the run it records is
@@ -242,7 +242,7 @@ def sandbox_process(
     the `scenario` fixture below), so once the suite finishes, pointing a
     sandbox server at this file and opening the web UI shows every check this
     suite made, filterable down to one test — which is a far better answer to
-    "what does the bot actually do" than a row of green dots. `docs/E2E.md`
+    "what does the bot actually do" than a row of green dots. `docs/site/content/docs/e2e.mdx`
     has the two commands."""
     port = _free_port()
     db_path = _run_db_path()
@@ -254,22 +254,22 @@ def sandbox_process(
     # `gateway_process`), so the two stay consistent with each other.
     for stale in (db_path, db_path.with_suffix(db_path.suffix + ".wal")):
         stale.unlink(missing_ok=True)
-    log_path = tmp_path_factory.mktemp("cb-sandbox-logs") / "sandbox.log"
+    log_path = tmp_path_factory.mktemp("telegram-sandbox-logs") / "sandbox.log"
     env = {
         **os.environ,
         # Unbuffered: structlog's output otherwise sits in the subprocess's
         # own stdout buffer until it exits, so a failure's log tail
-        # (`_wait_ready`, `docs/E2E.md`'s troubleshooting section) would show
+        # (`_wait_ready`, `docs/site/content/docs/e2e.mdx`'s troubleshooting section) would show
         # nothing from a process still running.
         "PYTHONUNBUFFERED": "1",
         "CB_ENV": "e2e",
-        "CB_SANDBOX_DB": str(db_path),
+        "TG_SANDBOX_DB": str(db_path),
         # Explicit rather than discovered: the subprocess inherits this
         # process's working directory today, but a launcher that changes it
         # would silently give the sandbox the built-in defaults — a different
         # bot username, no features, no doomlist seed — and the symptom would
         # be a suite that fails for reasons nothing in it explains.
-        "CB_SANDBOX_CONFIG": str(SANDBOX_CONFIG),
+        "TG_SANDBOX_CONFIG": str(SANDBOX_CONFIG),
         "CB_TRACES_ENABLED": "false",
         "CB_LOG_JSON": "false",
         "CB_LOG_LEVEL": "WARNING",
@@ -293,7 +293,7 @@ def sandbox_process(
             # requests, paying for a fresh connection per call is free; losing
             # a real request to a stale one is not.
             "--no-http1-keep-alive",
-            "cb_sandbox.app:app",
+            "tg_sandbox.app:app",
         ],
         env,
         log_path,
@@ -301,7 +301,7 @@ def sandbox_process(
     base_url = f"http://127.0.0.1:{port}"
     try:
         _wait_ready(
-            process, f"{base_url}/healthz", timeout=20, name="cb-sandbox", log_path=log_path
+            process, f"{base_url}/healthz", timeout=20, name="telegram-sandbox", log_path=log_path
         )
         yield ProcessHandle(process=process, base_url=base_url, log_path=log_path)
     finally:
@@ -338,7 +338,7 @@ def _warm_up_database_pool(sandbox: SandboxClient, pg_conn: psycopg.Connection[A
         (chat_id,),
     )
     # Captcha off, same reason as `group_id`: the warm-up user's self-join
-    # would otherwise hit cb_sandbox's missing-reply-target gap and waste a
+    # would otherwise hit tg_sandbox's missing-reply-target gap and waste a
     # retry cycle on an exception this function does not care about.
     pg_conn.execute(
         "INSERT INTO group_configs (group_id, captcha_timeout_seconds) VALUES (%s, 0) "
@@ -385,7 +385,7 @@ def gateway_process(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> Iterator[ProcessHandle]:
     """The real, unmodified `cb_gateway.main:app`, polling `sandbox_process`
-    instead of `api.telegram.org` — the pairing `docs/SANDBOX.md` describes,
+    instead of `api.telegram.org` — the pairing `docs/site/content/docs/sandbox.mdx` describes,
     started as a subprocess instead of by hand in a second terminal.
     """
     redis_dsn = _redis_dsn()
@@ -399,7 +399,7 @@ def gateway_process(
     # `getMe()` (`cb_gateway.bots.BotRegistry.resolve_usernames`, run inside
     # `main.py`'s lifespan before the app serves a single request). That call
     # is what materialises the sandbox's bot user
-    # (`cb_sandbox.telegram_api._ensure_bot_user`) — seeding *after* the
+    # (`tg_sandbox.telegram_api._ensure_bot_user`) — seeding *after* the
     # gateway is already up would wipe the very account this suite joins into
     # every group it creates (`/api/seed` clears every user, per
     # `SandboxStore.reset`). Seeding here, once, is also what keeps the
@@ -445,7 +445,7 @@ def gateway_process(
         # open for 30s — and a lot to lose: aiogram's own polling loop treats
         # any dropped connection as a bug and retries with growing backoff, and
         # the sandbox now (correctly) answers a second concurrent long-poll
-        # with `409 Conflict` (docs/SANDBOX.md, "Bot API compatibility") until
+        # with `409 Conflict` (docs/site/content/docs/sandbox.mdx, "Bot API compatibility") until
         # the stale one's own timeout lapses server-side. At 30s that turns
         # one transient reconnect into a ~30s stall no per-test `wait_for`
         # budget should have to absorb; at a few seconds it clears in a few
@@ -569,7 +569,7 @@ def _make_group(
     """
     chat = sandbox.create_chat(title)
     chat_id = int(chat["id"])
-    # `cb_sandbox`'s chat-id counter restarts at the same value every time a
+    # `tg_sandbox`'s chat-id counter restarts at the same value every time a
     # process gets a fresh DuckDB file (every session of this suite), but
     # Postgres is the *shared*, persistent half of this fixture — so a group
     # id this session just minted can collide with a row an earlier, killed
@@ -659,13 +659,13 @@ def group_id(
     captcha against). The title carries the test's own name — including the
     `[en]`/`[pt]` pytest already appends for `lang`'s two parameters — so a
     human opening the sandbox's own DuckDB file mid-run — or reading
-    `docs/E2E.md`'s troubleshooting section — can tell which test, in which
+    `docs/site/content/docs/e2e.mdx`'s troubleshooting section — can tell which test, in which
     language, owns which chat.
 
     The bot joins and is promoted to administrator here, once, because most of
     what this suite exercises (captcha, config, calladms' admin mention list,
     mediarestrict) first asks "is the bot even an admin here?" — the same
-    reason `cb_sandbox.control_api._seed_default` seeds it for the web UI.
+    reason `tg_sandbox.control_api._seed_default` seeds it for the web UI.
     Postgres is shared across the whole session (unlike the sandbox, which gets
     a fresh DuckDB file), so every test gets its own group id and cleans up its
     own row — never a shared/reseeded one, unlike the acceptance suite's single
@@ -710,7 +710,7 @@ def captcha_group_id(
 # The mechanics — one scenario per test, opened before any other function-scoped
 # fixture so even the traffic `group_id` generates while building the world is
 # attributed, and closed with the test's real outcome — now live in
-# `cb_sandbox.testkit.plugin`, which ships with the sandbox and is loaded as a
+# `tg_sandbox.testkit.plugin`, which ships with the sandbox and is loaded as a
 # pytest plugin by installing it. What stays here is only what is specific to
 # *this* suite: which feature each module checks, the language dimension, and
 # the group id, none of which the sandbox could know.
@@ -812,6 +812,6 @@ def pytest_terminal_summary(terminalreporter: Any) -> None:
     terminalreporter.write_sep("-", "sandbox recording")
     terminalreporter.write_line(f"  {db_path}")
     terminalreporter.write_line(
-        f"  browse it:  CB_SANDBOX_DB={db_path} python scripts/cb.py sandbox"
+        f"  browse it:  TG_SANDBOX_DB={db_path} python scripts/cb.py sandbox"
     )
     terminalreporter.write_line("              python scripts/cb.py sandbox-web   # then :3001")

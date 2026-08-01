@@ -1,0 +1,87 @@
+name: Docs
+
+# The progress board is only worth publishing if its numbers were measured on
+# the commit being published, so this job regenerates them here rather than
+# trusting whatever `progress.json` happened to be committed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'scripts/spec.py'
+      - 'scripts/status.py'
+      - 'scripts/docs_sync.py'
+      - 'qa/**'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'scripts/spec.py'
+      - 'scripts/docs_sync.py'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install Python workspace
+        run: uv sync --all-packages
+
+      - name: Measure the spec and regenerate the site's data
+        # The QA repository holding v1's Gherkin is not checked out here, so the
+        # v1-scenario counts fall back to zero rather than failing the build —
+        # `status.py:read_scenarios` returns {} for a missing directory. Feature
+        # status, milestones and the test run are all measured either way.
+        run: uv run python scripts/docs_sync.py
+
+      - name: Frontmatter matches the spec
+        run: uv run python scripts/docs_sync.py --check --no-tests
+
+      - name: Install docs dependencies
+        working-directory: docs/site
+        run: bun install --frozen-lockfile
+
+      - name: Type-check
+        working-directory: docs/site
+        run: bun run types:check
+
+      - name: Build static export
+        working-directory: docs/site
+        env:
+          DOCS_BASE_PATH: /${{ github.event.repository.name }}
+        run: bun run build
+
+      - name: Upload artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/site/out
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

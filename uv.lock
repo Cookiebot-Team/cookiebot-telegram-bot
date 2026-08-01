@@ -12,7 +12,6 @@ members = [
     "cb-api",
     "cb-core",
     "cb-gateway",
-    "cb-sandbox",
     "cb-worker",
     "cookiebot-v2",
 ]
@@ -473,34 +472,6 @@ requires-dist = [
 ]
 
 [[package]]
-name = "cb-sandbox"
-version = "0.1.0"
-source = { editable = "packages/cb-sandbox" }
-dependencies = [
-    { name = "duckdb" },
-    { name = "fastapi" },
-    { name = "granian" },
-    { name = "httpx" },
-    { name = "python-multipart" },
-]
-
-[package.optional-dependencies]
-log = [
-    { name = "structlog" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "duckdb", specifier = ">=1.1" },
-    { name = "fastapi", specifier = ">=0.115" },
-    { name = "granian", specifier = ">=1.7" },
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "python-multipart", specifier = ">=0.0.20" },
-    { name = "structlog", marker = "extra == 'log'", specifier = ">=24" },
-]
-provides-extras = ["log"]
-
-[[package]]
 name = "cb-worker"
 version = "0.1.0"
 source = { editable = "packages/cb-worker" }
@@ -557,7 +528,6 @@ dependencies = [
     { name = "cb-api" },
     { name = "cb-core" },
     { name = "cb-gateway" },
-    { name = "cb-sandbox" },
     { name = "cb-worker" },
 ]
 
@@ -573,6 +543,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "ruff" },
     { name = "setuptools" },
+    { name = "telegram-sandbox" },
 ]
 
 [package.metadata]
@@ -580,7 +551,6 @@ requires-dist = [
     { name = "cb-api", editable = "packages/cb-api" },
     { name = "cb-core", editable = "packages/cb-core" },
     { name = "cb-gateway", editable = "packages/cb-gateway" },
-    { name = "cb-sandbox", editable = "packages/cb-sandbox" },
     { name = "cb-worker", editable = "packages/cb-worker" },
 ]
 
@@ -596,6 +566,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=6.0" },
     { name = "ruff", specifier = ">=0.9" },
     { name = "setuptools", specifier = ">=75" },
+    { name = "telegram-sandbox", git = "https://github.com/Cookiebot-Team/telegram-sandbox?branch=main" },
 ]
 
 [[package]]
@@ -2280,6 +2251,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5e/89/b4a0bcfdf4f71a3dea31379f095929613d7e4528a0996bca6aa964cd0dca/structlog-26.1.0.tar.gz", hash = "sha256:f63a716cbd1b1291cf7661de7794b455acfa4c43c5bcf1630e6ad5ddc1adb3b7", size = 1459881, upload-time = "2026-06-06T07:33:39.348Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a9/18/489c97b834dfff9cf2fc2507cede4bcd4b11e67f84bc462acd1992496f86/structlog-26.1.0-py3-none-any.whl", hash = "sha256:e081a26d6c373e6d201eca24eede26d8ffab07f88f477822e679183428d3d91e", size = 73764, upload-time = "2026-06-06T07:33:38.046Z" },
+]
+
+[[package]]
+name = "telegram-sandbox"
+version = "0.1.0"
+source = { git = "https://github.com/Cookiebot-Team/telegram-sandbox?branch=main#a405a6867b9ab43d7b0b70ea24602a388827be28" }
+dependencies = [
+    { name = "duckdb" },
+    { name = "fastapi" },
+    { name = "granian" },
+    { name = "httpx" },
+    { name = "python-multipart" },
 ]
 
 [[package]]
