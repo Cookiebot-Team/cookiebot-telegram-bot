@@ -1,8 +1,17 @@
 name: Docs
 
-# The progress board is only worth publishing if its numbers were measured on
-# the commit being published, so this job regenerates them here rather than
-# trusting whatever `progress.json` happened to be committed.
+# The board publishes the *committed* `content/progress.json`, and deliberately
+# does not regenerate it here. A measurement is only worth publishing if it is
+# complete, and this runner cannot produce a complete one: the v1 Gherkin lives
+# in a separate private repository that is not checked out, and the acceptance
+# suite needs Valkey. Measuring anyway published `0/0 specs covered` and 49
+# "failing" scenarios that were connection errors — a dashboard that lies,
+# which is the exact failure this site exists to prevent.
+#
+# So: `cb.py docs-sync` runs on a developer machine (where both are available),
+# its output is committed, and every page states the commit and date it was
+# measured from. What CI still enforces is the half it *can* verify without
+# infrastructure — that no page's frontmatter disagrees with scripts/spec.py.
 
 on:
   push:
@@ -42,14 +51,9 @@ jobs:
       - name: Install Python workspace
         run: uv sync --all-packages
 
-      - name: Measure the spec and regenerate the site's data
-        # The QA repository holding v1's Gherkin is not checked out here, so the
-        # v1-scenario counts fall back to zero rather than failing the build —
-        # `status.py:read_scenarios` returns {} for a missing directory. Feature
-        # status, milestones and the test run are all measured either way.
-        run: uv run python scripts/docs_sync.py
-
       - name: Frontmatter matches the spec
+        # Spec-only: no database, no QA repo, no test run. Fails when someone
+        # hand-edits a `status:` in an .mdx instead of `scripts/spec.py`.
         run: uv run python scripts/docs_sync.py --check --no-tests
 
       - name: Install docs dependencies
