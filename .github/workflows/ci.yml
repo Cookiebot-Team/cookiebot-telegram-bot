@@ -64,6 +64,14 @@ jobs:
         run: |
           CB_SKIP_CYTHON=1 uv sync --reinstall-package cb-core
           uv run pytest -q packages
+      # The scenarios read and write real tables, so the schema has to exist.
+      # Without this they reach the pool and fail on
+      # `relation "groups" does not exist`.
+      - name: schema
+        env:
+          CB_PG_DSN: postgresql://cookiebot:cookiebot@localhost:5432/cookiebot
+        run: cd packages/cb-api && uv run alembic upgrade head
+
       - name: qa acceptance (mock telegram, no live token)
         env:
           CB_PG_DSN: postgresql://cookiebot:cookiebot@localhost:5432/cookiebot
@@ -95,22 +103,23 @@ jobs:
         env:
           CB_BENCH_BASELINE: /tmp/cb-bench-baseline.json
         run: |
-          # --no-cache is load-bearing. CB_SKIP_CYTHON changes what the build
-          # produces but not the package source, and uv keys its build cache on
-          # the source — so a plain --reinstall-package hands back the wheel
-          # compiled by the `uv sync --all-packages` step above.
+          # Delete the in-place extensions first. uv installs workspace
+          # members as editable, so `uv sync --all-packages` above builds
+          # .so files into packages/cb-core/src/cb_core/ and imports resolve
+          # there. CB_SKIP_CYTHON only skips *building* them — it does not
+          # remove one that already exists, so the "uncompiled" baseline run
+          # still imports a compiled module.
           #
-          # bench_hot.py only writes a baseline when NO module is compiled, so
-          # one stale module is enough to skip writing it, and the gate step at
-          # the end of this job then fails with "no baseline ... cannot judge"
-          # — pointing at the step that did run, rather than at the cache.
-          CB_SKIP_CYTHON=1 uv sync --reinstall-package cb-core --no-cache
+          # bench_hot.py writes a baseline only when NO module is compiled, so
+          # a single survivor is enough to skip writing it, and the gate step
+          # at the end of this job then fails with "no baseline ... cannot
+          # judge" — pointing at the gate rather than at the leftover artefact.
+          find packages -name '*.so' -delete
+          CB_SKIP_CYTHON=1 uv sync --reinstall-package cb-core
           uv run python packages/cb-core/bench/bench_hot.py
       - name: compile hot modules
         run: |
-          # Same reason in reverse: without --no-cache this can hand back the
-          # uncompiled wheel the baseline step just built.
-          uv sync --reinstall-package cb-core --no-cache
+          uv sync --reinstall-package cb-core
           cd packages/cb-core && uv run python setup.py build_ext --inplace
       - name: same tests, compiled build
         run: uv run pytest -q packages
