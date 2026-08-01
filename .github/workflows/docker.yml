@@ -56,7 +56,13 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.service }}
+          # github.repository is <owner>/<repo>, which would publish to
+          # ghcr.io/cookiebot-team/cookiebot-telegram-bot/cb-gateway. The chart
+          # resolves {registry}/{repository}/{service} from its values and asks
+          # for ghcr.io/cookiebot-team/cookiebot/cb-gateway — the path this
+          # file's own header comment documents. repository_owner drops the
+          # repo name and makes the two agree.
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/cookiebot/${{ matrix.service }}
           tags: |
             type=raw,value=dev,enable={{is_default_branch}}
             type=raw,value=dev-{{sha}},enable={{is_default_branch}}
