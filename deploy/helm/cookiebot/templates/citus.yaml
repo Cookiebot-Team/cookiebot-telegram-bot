@@ -23,6 +23,21 @@ spec:
   primaryUpdateStrategy: unsupervised
 
   postgresql:
+    # Citus registers the coordinator in pg_dist_node as localhost:5432 and
+    # reaches its own shards over a real TCP connection even when every shard
+    # is local. That connection carries no password and CloudNativePG's
+    # generated pg_hba ends at `host all all all scram-sha-256`, so without
+    # this every distributed write fails:
+    #
+    #   WARNING: could not connect to shard "…" on node "localhost:5432"
+    #   ERROR:   could not commit transaction for shard … on at least one active node
+    #
+    # A plain initdb leaves loopback on trust, which is why this only bites
+    # under CNPG. The scope is one pod's own network namespace.
+    pg_hba:
+      - host all all 127.0.0.1/32 trust
+      - host all all ::1/128 trust
+
     shared_preload_libraries:
       - citus
       - pg_stat_statements
@@ -33,9 +48,24 @@ spec:
     initdb:
       database: {{ .Values.citus.database }}
       owner: {{ .Values.citus.owner }}
-      postInitTemplateSQL:
-        - CREATE EXTENSION IF NOT EXISTS citus;
-        - CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+      # No postInitTemplateSQL. Creating the citus extension in template1
+      # starts Citus's maintenance daemon against template1, and CNPG's very
+      # next bootstrap step is CREATE DATABASE … TEMPLATE template1, which
+      # fails while any session holds it open:
+      #
+      #   ERROR: source database "template1" is being accessed by other users
+      #
+      # Measured on this image: 9 of 10 back-to-back attempts blocked. Being a
+      # race it fails most of the time and succeeds occasionally, which is the
+      # worst way for a bootstrap to behave.
+      #
+      # No postInitApplicationSQL either — CNPG runs it as the application
+      # owner, and these extensions write to pg_catalog:
+      #
+      #   ERROR: permission denied to create "pg_catalog.pg_stat_statements"
+      #
+      # The Database resource below is reconciled by the operator as a
+      # superuser, which is the only one of the three that works.
 
   storage:
     size: {{ .Values.citus.storage.size }}
@@ -51,6 +81,16 @@ spec:
 
   resources:
     {{- toYaml .Values.citus.resources | nindent 4 }}
+
+  # CNPG runs a Postgres exporter on 9187 in every instance pod. Annotation
+  # based scraping reads POD annotations, so they have to reach the pods —
+  # inheritedMetadata is how CNPG propagates them.
+  inheritedMetadata:
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9187"
+    labels:
+      {{- include "cookiebot.labels" . | nindent 6 }}
 
   monitoring:
     enablePodMonitor: false # scraped by annotation, not by PodMonitor
@@ -72,22 +112,38 @@ spec:
     retentionPolicy: {{ .Values.citus.backup.retention | quote }}
   {{- end }}
 ---
-apiVersion: v1
-kind: Service
+# The Database resource carries the extensions. It is applied by the operator
+# as a superuser, and re-applied whenever its spec changes — postInit SQL runs
+# once at bootstrap, so an extension added to it later is an edit that appears
+# to work and does nothing. Note that `applied: true` in its status is a record
+# of a past action, not a live assertion: the controller acts on a generation
+# change and does not re-verify.
+#
+# There is no metrics Service any more. The one that used to be here selected
+# `role: primary`, a label CloudNativePG replaced with cnpg.io/instanceRole, so
+# it matched no endpoints — and it was annotated for scraping where nothing
+# reads Service annotations.
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
 metadata:
-  name: {{ include "cookiebot.fullname" . }}-citus-metrics
+  name: {{ include "cookiebot.fullname" . }}-citus-db
   labels:
     {{- include "cookiebot.labels" . | nindent 4 }}
-    app.kubernetes.io/name: citus
-  annotations:
-    prometheus.io/scrape: "true"
-    prometheus.io/port: "9187"
 spec:
-  selector:
-    cnpg.io/cluster: {{ include "cookiebot.fullname" . }}-citus
-    role: primary
-  ports:
-    - name: metrics
-      port: 9187
-      targetPort: 9187
+  cluster:
+    name: {{ include "cookiebot.fullname" . }}-citus
+  name: {{ .Values.citus.database }}
+  owner: {{ .Values.citus.owner }}
+  ensure: present
+  # A prune or a rename must not drop the database.
+  databaseReclaimPolicy: retain
+  extensions:
+    - name: citus
+      ensure: present
+    - name: pg_stat_statements
+      ensure: present
+{{- range .Values.citus.extraExtensions }}
+    - name: {{ . }}
+      ensure: present
+{{- end }}
 {{- end }}

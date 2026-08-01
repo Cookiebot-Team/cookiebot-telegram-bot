@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await storage.init_storage(settings)
     from cb_core.cooldowns import COMPILED
 
-    metrics.start_metrics_server(9102, "cb-api", "0.1.0", COMPILED)
+    metrics.start_metrics_server(settings.metrics_port, "cb-api", "0.1.0", COMPILED)
     log.info("api.started", env=settings.env, cython=COMPILED)
     try:
         yield

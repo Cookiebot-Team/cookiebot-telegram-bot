@@ -153,7 +153,7 @@ async def startup(ctx: dict[str, Any]) -> None:
     await storage.init_storage(settings)
     from cb_core.cooldowns import COMPILED
 
-    metrics.start_metrics_server(9103, "cb-worker", "0.1.0", COMPILED)
+    metrics.start_metrics_server(settings.metrics_port, "cb-worker", "0.1.0", COMPILED)
     log.info("worker.started", cython=COMPILED, storage=storage.store().scheme)
 
 

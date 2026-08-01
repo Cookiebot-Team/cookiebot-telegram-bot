@@ -136,7 +136,13 @@ telegramBotApi:
   enabled: true
   # Upstream publishes only `latest`. Resolve it once with
   # `docker buildx imagetools inspect` and pin the digest here.
-  image: aiogram/telegram-bot-api:latest
+  # Pinned by digest. Upstream publishes no tag but `latest`, so the only way
+  # to know which build is running is to name it — otherwise every pod restart
+  # is a silent, unreviewed upgrade of the component that terminates traffic
+  # from Telegram. Resolve a new digest deliberately:
+  #   podman pull aiogram/telegram-bot-api:latest && \
+  #     podman inspect --format '{{index .RepoDigests 0}}' aiogram/telegram-bot-api:latest
+  image: docker.io/aiogram/telegram-bot-api@sha256:48423ea05e00bea8f68252c0214e95ea0c65458e048fc4685437b1b664fa3039
   port: 8081
   statsPort: 8082
   local: true
@@ -220,6 +226,9 @@ citus:
     retention: 14d
   # Set when citus.enabled=false. Use externalDsnSecret when the DSN carries a
   # password — a plain externalDsn lands in a ConfigMap.
+  # Extra extensions to create in the application database. citus and
+  # pg_stat_statements are always present.
+  extraExtensions: []
   externalDsn: ""
   externalDsnSecret: {}
   # externalDsnSecret:
