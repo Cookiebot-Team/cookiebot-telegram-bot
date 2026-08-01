@@ -14,11 +14,11 @@ from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject, Update
 from opentelemetry.trace import SpanKind
 
-from cb_core import cache, groups, metrics
+from cb_core import cache, groups, locales, metrics
 from cb_core.dedupe import RecentIds, idempotency_key
 from cb_core.events import recorder
 from cb_core.logging import get_logger
-from cb_core.telemetry import record_error, span
+from cb_core.telemetry import current_trace_id, record_error, span
 from cb_core.textmatch import parse_command
 from cb_gateway.telemetry import OUTCOME_ATTR
 
@@ -75,6 +75,47 @@ def _ids(update: Update) -> tuple[int, int | None]:
         chat_id = msg.chat.id if msg and msg.chat else 0
         return (chat_id if chat_id < 0 else 0, event.from_user.id if event.from_user else None)
     return (0, None)
+
+
+async def _tell_user(update: Update, group_id: int) -> None:
+    """Answer a failed update with its trace id.
+
+    Before this the user got nothing at all — the handler raised, the gateway
+    still returned 200 so Telegram would not redeliver, and the bot simply went
+    quiet. "It ignored me" and "it broke" look identical from the chat, and
+    neither gives anyone a way to find the failure in the logs.
+
+    The trace id is the join key: every log line carries it (cb_core.logging),
+    every span carries it, and the Loki datasource links it through to Tempo.
+    Pasting it into the Errors dashboard's log panel narrows hours of traffic to
+    one interaction.
+
+    Everything here is best-effort. This runs inside the `except` of the failing
+    handler and must not replace the original exception with one of its own —
+    the raise that follows is what records the failure properly.
+    """
+    event = getattr(update, "event", None)
+    reply = getattr(event, "reply", None) or getattr(event, "answer", None)
+    if reply is None:
+        return
+
+    trace = current_trace_id()
+    if not trace:
+        return
+
+    lang = "en"
+    if group_id:
+        try:
+            from cb_core import group_config
+
+            lang = locales.resolve_language((await group_config.get_config(group_id)).language)
+        except Exception:  # noqa: BLE001 - a language lookup must not swallow the real error
+            pass
+
+    try:
+        await reply(locales.get("handler_error", lang, trace=trace))
+    except Exception as exc:  # noqa: BLE001 - the chat may be gone, or the bot muted
+        log.warning("handler.error_reply_failed", error=str(exc))
 
 
 class DedupeMiddleware(BaseMiddleware):
@@ -180,6 +221,7 @@ class TelemetryMiddleware(BaseMiddleware):
                     handler=command or utype, exc_type=type(exc).__name__
                 ).inc()
                 log.exception("handler.failed", command=command, skin=skin)
+                await _tell_user(update, group_id)
                 raise
             finally:
                 elapsed = time.perf_counter() - start

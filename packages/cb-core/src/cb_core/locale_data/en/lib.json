@@ -1,301 +1,302 @@
 {
-    "welcomecard": "Welcome to",
-    "reload": "Memory reloaded successfully!",
-    "canceled": "Command canceled",
-    "new_bot_participant": "A new bot companion has been added!\n<blockquote> If any command conflicts, talk to Mekhy </blockquote>",
-    "restrict_message": "ATTENTION! Your media is restricted for <b> %(time)s minutes </b>. Please introduce yourself and get to know the members in the conversation.\n<blockquote> Press the button below or use /rules to see the group rules </blockquote>",
-    "rules": "See the Rules!",
-    "no_rules": "There are no rules set for this group yet\n<blockquote> If you are an admin and want to set rules, use /newrules </blockquote>",
-    "questions": "\n\nQuestions about the bot? Send to @MekhyW",
-    "kick": "Kicked the new user for <b> suspicion of being a bot </b>\n<blockquote> If this was a mistake, ask them to add a username (@) or profile picture and an ADM to add them back </blockquote>",
-    "ban_cas": "Banned the new user for <b> being flagged by the anti-spam system CAS (https://cas.chat/) </b>",
-    "ban": "Banned the new user for <b> being reported in other chats </b>",
-    "captcha": {
-        "title": "⚠️%(name)s, Type the code OR press the 'I'm not a Robot!' button ⚠️\n\nYou have %(time)s minutes, if you don't solve it in this time I'll remove you from the chat ⏳\n(If 4 digits don't appear, open the full photo)",
-        "limit": "exceed the limit of attempts to solve the captcha",
-        "time": "not solving the captcha in time",
-        "kick": "Kicked user with ID <b> %(user)s </b> for <b> %(reason)s </b>\n<blockquote> If this was a mistake, ask a staff to add them back </blockquote>",
-        "error_kick": "Error kicking user with ID <b> %(user)s </b> for <b> %(reason)s </b>\n<blockquote> User is no longer in the chat, or I don't have permission to kick </blockquote>",
-        "button_approve": "ADMINS: Approve",
-        "button_call_admin": "Call Admins",
-        "button_not_robot": "I'm not a Robot!"
+  "welcomecard": "Welcome to",
+  "reload": "Memory reloaded successfully!",
+  "canceled": "Command canceled",
+  "new_bot_participant": "A new bot companion has been added!\n<blockquote> If any command conflicts, talk to Mekhy </blockquote>",
+  "restrict_message": "ATTENTION! Your media is restricted for <b> %(time)s minutes </b>. Please introduce yourself and get to know the members in the conversation.\n<blockquote> Press the button below or use /rules to see the group rules </blockquote>",
+  "rules": "See the Rules!",
+  "no_rules": "There are no rules set for this group yet\n<blockquote> If you are an admin and want to set rules, use /newrules </blockquote>",
+  "questions": "\n\nQuestions about the bot? Send to @MekhyW",
+  "kick": "Kicked the new user for <b> suspicion of being a bot </b>\n<blockquote> If this was a mistake, ask them to add a username (@) or profile picture and an ADM to add them back </blockquote>",
+  "ban_cas": "Banned the new user for <b> being flagged by the anti-spam system CAS (https://cas.chat/) </b>",
+  "ban": "Banned the new user for <b> being reported in other chats </b>",
+  "captcha": {
+    "title": "⚠️%(name)s, Type the code OR press the 'I'm not a Robot!' button ⚠️\n\nYou have %(time)s minutes, if you don't solve it in this time I'll remove you from the chat ⏳\n(If 4 digits don't appear, open the full photo)",
+    "limit": "exceed the limit of attempts to solve the captcha",
+    "time": "not solving the captcha in time",
+    "kick": "Kicked user with ID <b> %(user)s </b> for <b> %(reason)s </b>\n<blockquote> If this was a mistake, ask a staff to add them back </blockquote>",
+    "error_kick": "Error kicking user with ID <b> %(user)s </b> for <b> %(reason)s </b>\n<blockquote> User is no longer in the chat, or I don't have permission to kick </blockquote>",
+    "button_approve": "ADMINS: Approve",
+    "button_call_admin": "Call Admins",
+    "button_not_robot": "I'm not a Robot!"
+  },
+  "teste": [
+    "WIP"
+  ],
+  "private_chat": "This is a private chat, send a message in a group chat to use me!",
+  "welcome_user": "Hello! Welcome to the group %(user)s!",
+  "welcome": "Hello! Welcome to the group!",
+  "caption": "Obrigado por me adicionar!\nThanks for adding me!\n\n--> Use /comandos para ver todas as minhas funcionalidades\n--> /configurar para ligar/desligar funções ou alterar valores\n--> Não esqueça de me dar direitos administrativos para poder defender o grupo de raiders/spammers ou apagar mensagens\n--> Website, painel de controle e tutoriais virão em breve. Estou em crescimento!\n\nIf this chat is not in portuguese language, you can use /configure to change my lang.\nIf you have any questions or want something added, message @MekhyW",
+  "image_limit": "Image search limit reached",
+  "account_report": "Account with ID %(targetid)s marked as spam\n<blockquote> Thank you for the report! </blockquote>",
+  "adverbial_phrases": [
+    "Without a doubt",
+    "Without a shadow of a doubt",
+    "I suppose",
+    "I bet",
+    "Maybe",
+    "Who knows",
+    "Apparently"
+  ],
+  "no_ship": "I haven't seen enough members to ship yet!",
+  "ship": "I detected a Couple! @%(target_a)s + @%(target_b)s = ❤️\n\nDynamics: %(ship_dynamic)s\nChildren: %(children_quantity)s 🧸\nChance of divorce: %(divorce_prob)s%% 📈",
+  "flood_stickers": "Be careful with sticker flood",
+  "blocked_raid": "🚨 Detected and blocked a raid attempt! Multiple users tried joining simultaneously (if it didn't work, check my admin permissions).",
+  "everyone_no": "You don't have permission to call all members of the group!\n<blockquote>If you're speaking as a channel, join and use the command as a user</blockquote>",
+  "everyone_len": "I haven't seen any members in the chat to call yet!\nOver time, the bot will recognize members and allow calling everyone.",
+  "everyone_call": "You were called in the chat <b> %(title)s </b>",
+  "call_admin_ask": "Do you confirm to call the admins?",
+  "call_admin": "\n%(caller)s calling all admins!",
+  "notification_admin": "You were called in the chat <b> %(title)s </b>",
+  "reverse_image": "Reply an image with the command to search for the source (reverse search)\n<blockquote> For direct search, use /anything </blockquote>",
+  "reverse_other": "I'm still processing other results, please wait and try again",
+  "reverse_limit": "Daily search limit reached, please wait and try again",
+  "reverse_best": "Best match found:\n\n",
+  "reverse_no_found": "The search found no matches, it seems to be an original image!",
+  "anything_prompt": "You need to type the name of what you want to search for\n<blockquote> EXAMPLE: /french fries </blockquote>",
+  "anything_no_find": "I couldn't find an image <i> (or it was NSFW and I filtered it) </i>",
+  "youtube_need": "You need to type the name of the video\n<blockquote> EXAMPLE: /youtube baked potato </blockquote>",
+  "youtube_no_find": "I couldn't find any video",
+  "meme_no": "It is not possible to create memes with more than 5 members",
+  "meme_error": "I couldn't extract the profile picture of this user. Check if it's public!",
+  "battle_no": "Not enough members to battle",
+  "battle_extract": "I couldn't extract the photo of %(user)s. Check if it's public!",
+  "battle_title": "WHO WINS?",
+  "battle_type": [
+    "Boxing 🥊🥊",
+    "Wrestling 🎭",
+    "Greco Wrestling 🤼‍♂️",
+    "Martial Arts 🥋",
+    "Sambo 👊",
+    "Muay Thai 🥋",
+    "Street Fighting 👊",
+    "Pool Fighting💧",
+    "Judo 🇯🇵",
+    "Sumo ⛩",
+    "Gutpunching 💪",
+    "Ballbusting 🍳🍳"
+  ],
+  "battle_rule": [
+    "KO by rounds",
+    "KO without rounds",
+    "Anything goes",
+    "Most goals in Bomba Patch",
+    "Most cans of drinks",
+    "Biggest number of liters",
+    "Until Drinking, Falling, Getting Up",
+    "The last of the magic table"
+  ],
+  "battle_equip": [
+    "Full Gear",
+    "Gloves Only",
+    "In Panties",
+    "Naked",
+    "Fighting Uniform",
+    "Anything Goes",
+    "Sumo Thong",
+    "Giant Robot",
+    "Maid Uniform",
+    "Judo Kimono",
+    "Samurai Armor",
+    "Nerd Towel",
+    "School Waifu Uniform",
+    "Sailor Moon Outfit",
+    "Magical Little Girl",
+    "Akatsuki Cosplay",
+    "Those Japanese Swimming Swimsuits",
+    "Bunnysuit",
+    "Cyberpunk Winter Coat",
+    "Flip Flops",
+    "Witch Outfit",
+    "Thong"
+  ],
+  "battle_full": "\n\nType: %(type)s\nRules: %(rule)s\nEquipment: %(equip)s",
+  "battle_private": "I couldn't extract the profile picture of this user. Check if it's public!",
+  "battle_no_picture": "You need to have a profile picture <i> (or it's private) </i>",
+  "privacy": "Cookiebot's privacy terms (and its clones) are available at https://cookiebotfur.net/privacy",
+  "alive": "<b> I'm alive </b>\n\nPing sent at:\n",
+  "analyze": "Reply to a message with the command to ",
+  "fun_off": "<i> Fun functions are disabled in this chat </i>",
+  "utility_off": "<i> Utility functions are disabled in this chat </i>",
+  "drawing_idea": "Reference ID %(idea_id)s\n\nDo not trace without credits! (use the reverse google images search)",
+  "custom_photo": "Custom photo of %(name)s with ID %(image_id)s",
+  "dice_exemple": "Roll a dice from 1 to x, n times\n<blockquote> EXAMPLE: /d20 5\nRolls a d20 5 times </blockquote>",
+  "dice_roll": "\n%(vez)sth Roll: 🎲 -> %(roll)s",
+  "age": "Type a name, and I’ll tell you the age!\n<blockquote> Example: '/age Mekhy'\n(note: only the first name counts) </blockquote>",
+  "not_know": "I don't know that name!",
+  "age_yes": "Your age is <span class='tg-spoiler'>%(age)s years! 👴</span>\nRegistered <b>%(registered_times)s</b> times",
+  "gender_exemple": "Enter a name, I'll tell you your gender!\n<blockquote> Example: '/gender Mekhy'</blockquote>",
+  "gender": {
+    "male": "Its <span class='tg-spoiler'>a boy! 👨</span> \n\nProbability --> %(probability)s%%\nRegistered %(registered_times)s times",
+    "female": "Its <span class='tg-spoiler'>a girl! 👩</span> \n\nProbability --> %(probability)s%%\nRegistered %(registered_times)s times",
+    "unknown": "It's a baby! 🍼\n\nProbability → %(probability_str)s%%\nRegistered %(registered_times)s"
+  },
+  "complaint": "Good morning/afternoon/evening, %(user)s,\nIf you have any complaints, feel free to reply to this message. If not, we continue with our activities.\nSincerely,\nMilton from HR.",
+  "event": {
+    "patas": {
+      "name": "Patas",
+      "cta": [
+        "Já comprou o seu ingresso? Não perca a oportunidade de participar do maior evento furry de Sorocaba-SP!",
+        "Este é um evento beneficiente em formato de convenção, para promover e celebrar a cultura de apreciação animais antropomóficos na região de Sorocaba. Foi criado para ajudar as entidades que prestam apoio aos idosos da região.",
+        "O evento vai acontecer no SOROCABA PARK HOTEL, um local que oferece comodidade e conforto para todos os participantes do evento!",
+        "As atrações incluem:\n\n-Show com Banda\n-Balada Furry com DJ\n-Pool Party com brinquedos de piscina e DJ\n-Mercadinho Furry\n-E muito mais!"
+      ],
+      "caption": "%(headline)s\n\n%(cta_line)s\n\n%(when_line)s, %(where_line)s\n%(links_line)s"
     },
-    "teste": [
-        "WIP"
+    "bff": {
+      "name": "Brasil FurFest 2026 — Sem Tempo Irmão!",
+      "cta": [
+        "A Brasil FurFest tem, entre outros objetivos, levantar fundos para caridade em prol do Projeto Social SOS Vida Pet Litoral, que ajuda protetores a manter abrigos para animais de rua na Baixada Santista",
+        "Quem são os furries? O que é a Brasil FurFest? Descubra em youtube.com/watch?v=vuFGHSL8X34&ab_channel=BrasilFurFest",
+        "Esperamos para ver todos os furries nos parques da maravilhosa cidade de São Paulo para essa festa que será inesquecível!",
+        "Entre as atividades planejadas, temos atividades de social mixer (dinâmicas de grupo) no início do evento para que você engrene os primeiros contatos com os demais participantes no evento.",
+        "Bombom nasceu na Fantástica Fábrica de Doces com intuito de reunir os furries na Brasil FurFest para muita festa e diversão. Aliás, se a festa tiver caipirinhas melhor ainda!",
+        "Em 2026, o tempo vai dar tilt! Preparem-se para uma viagem maluca por uma linha do tempo quebrada - passado, presente e futuro colidindo em um só lugar!",
+        "Mais de mil participantes! Isso mesmo: MIL! Desde 2024, batemos um recorde histórico para o furry fandom brasileiro, e tudo graças a vocês que vieram com toda a energia e alegria que só a nossa comunidade furry sabe trazer!",
+        "O evento utiliza o ConCat, um sistema de gerenciamento de eventos usado em algumas das maiores convenções furry do mundo!",
+        "Nosso novo lar será em Campinas, no Hotel Premium, que conta com um espaço de lazer incrível e muito mais conforto no centro de convenções para todo mundo curtir ao máximo.",
+        "O Premium Hotel é a opção perfeita para quem procura a melhor hospedagem na região de Campinas, seja para desfrutar de momentos agradáveis e relaxantes com a família ou então participar de eventos como a BFF!",
+        "O Premium Hotel dispõe de wi-fi cortesia para hóspedes, restaurante, american bar, business center e ampla área de lazer com academia, sauna, duas piscinas externas, uma piscina climatizada, quadras esportivas, espaço kids e playground.",
+        "O Premium Hotel Campinas está localizado na R. Novotel, 931 - Jardim Nova Aparecida, oferecendo fácil acesso às principais atrações e rodovias da cidade."
+      ],
+      "caption": "%(headline)s\n\n%(cta_line)s\n\n%(when_line)s\n%(where_line)s\n%(links_line)s"
+    },
+    "fursmeet": {
+      "name": "FurSMeet %(year)s",
+      "cta": [
+        "Mas bá, guri! Dá um chego aqui no FurSMeet! É aqui no Rio Grande do Sul, em Santa Maria! Vem conhecer um pessoal tri legal e fazer festa!",
+        "Assim, ó: Tu tens agora a oportunidade perfeita para te conectar com outros furries e criar memórias pra tu contar mais pra frente na vida.",
+        "Nosso objetivo é reunir amantes da cultura antropomórfica da região Sul e de todo o Brasil e criar grandes memórias. Vem ser um bichinho colorido com a gente!",
+        "Ó, tchê: Lucro do evento não fica com a gente. É reservado pros próximos eventos e pretendemos começar a ajudar instituições carentes com doações! Tu vem, te diverte e ainda ajuda uma boa causa.",
+        "Aproveita, piá. Rateia, não. Esse é o último evento antes do hiato. Te apruma e separa uns pila pra ir porque a gente não sabe quando vamos ter o próximo. Se te falta motivo pra ir, lembra que a gente tem chimarrão!",
+        "O Capibára pode ter essa fuça de chinelo, mas tem um coração grande que nem o Rio Grande do Sul. Tchê, ele faz amizade com qualquer um; não importa se é cusco ou se é jacaré. E quanto mais colorido, melhor.",
+        "Pozólha, este ano a gente tem umas participações tri legais! Ainda mais nesses erre pê gê aí que os guri jogam hoje, os cusco tão tudo louco. Bá, meu, vai ser de cair os butiá dos bolso!",
+        "Ôôôôô piá, tu curte RPG? Tu curte chimarrão? Tu curte evento de bichinho colorido? Bora ir num evento furry tematizado nisso! Que tal? Ali em Santa Maria, no Rio Grande do Sul, meu!"
+      ],
+      "caption": "%(headline)s\n\n%(cta_line)s\n\n%(when_line)s\n%(where_line)s\n🎫 Ingressos: fursmeet.carrd.co\n%(links_line)s"
+    },
+    "furcamp": {
+      "name": "FurCamp",
+      "cta": [
+        "O FURCAMP é um evento furry criado no Brasil e acontece todos os anos em meados de fevereiro (durante o Carnaval). Com sua primeira edição piloto em março de 2019 sendo um sucesso, o evento cativou seus participantes e a equipe que o criou.",
+        "Com sua bela paisagem, o Acampamento Aruanã possui pomar, trilhas e lagos para a pesca esportiva. É destinado a grupos grandes e especialmente aos visitantes que estejam em busca de uma acomodação diferenciada, podendo contar com todo o conforto da hospedagem em suítes e também em alojamentos.",
+        "O Acampamento Aruanã conta com alojamentos com beliches, refeitórios, salões para reunião, janelas com tela de proteção contra insetos, banheiros com aquecimento central a gás, reservatórios de água, poços artesianos e muito mais.",
+        "O FURCAMP oferece várias atividades emocionantes para os participantes durante todo o evento, como Batalha no Campo e Gincana, Show de Talentos e Balada Furry, com cada atividade tendo uma pontuação para o participante ou equipe do participante!",
+        "Se você sabe atuar, dançar, cantar, tocar um instrumento, fazer truques de mágica ou tem qualquer habilidade maluca, este é o lugar para mostrá-las. Que tal contar uma piada ruim, fazer o público chorar ou rir com um stand-up? No Show de Talentos, vale tudo!",
+        "Prepare-se para dançar, agitar, pular e se divertir na boate do FURCAMP com música eletrizante e um show de luzes, junto com um set incrível dos DJs Furries!",
+        "Você perdeu as nossas livestreams? Quer saber tudo que rolou sobre as atualizações do evento e informações cruciais que não pode deixar passar? Não se preocupe! Assista ao VOD da live no nosso canal do YouTube e fique por dentro de tudo! 🎥✨"
+      ],
+      "caption": "%(headline)s\n\n%(cta_line)s\n\n%(when_line)s\n%(where_line)s\n🎫 Ingressos em: furcamp.com\n📲 Grupo do evento: @FurcampOficial fursmeet.carrd.co\n%(links_line)s"
+    },
+    "pawstral": {
+      "name": "Pawstral",
+      "cta": [
+        "The furry convention that will fill the city of Santiago with color and energy!",
+        "Pawstral is more than just a convention; it is a space for furries, artists, and fans of furry culture to come together, celebrate, and share their passion.",
+        "There will be activities for everyone, from workshops and presentations to an amazing fursuiting space, art, and much more.",
+        "Santiago awaits you with its urban charm, surrounded by mountains and beautiful landscapes, perfect for enjoying the last days of winter.",
+        "With modern design and a privileged location in the district of Las Condes, you will find it at Alonso de Córdova #6050, Santiago de Chile. Just steps away from the Manquehue Metro Station.",
+        "Gastronomic proposals at ICON Hotel are designed to complete a unique and total experience during your stay, as well as to delight everyone who visits as a client or guest at an event."
+      ],
+      "caption": "%(headline)s\n\n%(cta_line)s\n\n%(when_line)s\n%(where_line)s\n🎫 Tickets at: https://pawstral.cl/\n📲 Event chat: @PawstralFurcon"
+    },
+    "error": "Event not found!"
+  },
+  "death": {
+    "template": " %(variant)s! 💀💀💀",
+    "variants": [
+      "is dead",
+      "is gone",
+      "is deceased"
     ],
-    "private_chat": "This is a private chat, send a message in a group chat to use me!",
-    "welcome_user": "Hello! Welcome to the group %(user)s!",
-    "welcome": "Hello! Welcome to the group!",
-    "caption": "Obrigado por me adicionar!\nThanks for adding me!\n\n--> Use /comandos para ver todas as minhas funcionalidades\n--> /configurar para ligar/desligar funções ou alterar valores\n--> Não esqueça de me dar direitos administrativos para poder defender o grupo de raiders/spammers ou apagar mensagens\n--> Website, painel de controle e tutoriais virão em breve. Estou em crescimento!\n\nIf this chat is not in portuguese language, you can use /configure to change my lang.\nIf you have any questions or want something added, message @MekhyW",
-    "image_limit": "Image search limit reached",
-    "account_report": "Account with ID %(targetid)s marked as spam\n<blockquote> Thank you for the report! </blockquote>",
-    "adverbial_phrases": [
-        "Without a doubt",
-        "Without a shadow of a doubt",
-        "I suppose",
-        "I bet",
-        "Maybe",
-        "Who knows",
-        "Apparently"
+    "Reason": "\nReason: <b> %(line)s </b> 🔥\nF in chat. 🫡"
+  },
+  "luck": "Your luck:\n 🥠 <span class='tg-spoiler'> %(line)s </span> 🥠\nYour lucky numbers: <span class='tg-spoiler'>%(num)s</span>",
+  "destroy": {
+    "instru": "Reply to a photo, audio or sticker with the command to distort (or use /destroy pfp)",
+    "video": "Video distortioning is currently disabled.",
+    "gif": "GIF distortioning is currently disabled."
+  },
+  "giveaway": {
+    "permission": "You don't have permission to create giveaways! \n <blockquote> If you are speaking as a user and not as a channel? The 'stay anonymous' permission must be turned off! </blockquote>",
+    "raffled": "You need to type what is being raffled! \n <blockquote> EXAMPLE: /giveaway Fursuit of Mekhy 🐾🦝 </blockquote>",
+    "create": "Let's create a giveaway! \n How many users will be drawn?",
+    "strftime": "%m/%d, %H:%M",
+    "time": "🎰 IT'S GIVEAWAY TIME! 🎰 \n \n 🎯 The Prize is: <b>%(prize)s</b> \n 👥 Number of winners: %(win)s \n ⌛ Started on: %(date)s",
+    "buttons": [
+      "Put me in!",
+      "ADMINS: End Giveaway"
     ],
-    "no_ship": "I haven't seen enough members to ship yet!",
-    "ship": "I detected a Couple! @%(target_a)s + @%(target_b)s = ❤️\n\nDynamics: %(ship_dynamic)s\nChildren: %(children_quantity)s 🧸\nChance of divorce: %(divorce_prob)s%% 📈",
-    "flood_stickers": "Be careful with sticker flood",
-    "blocked_raid": "🚨 Detected and blocked a raid attempt! Multiple users tried joining simultaneously (if it didn't work, check my admin permissions).",
-    "everyone_no": "You don't have permission to call all members of the group!\n<blockquote>If you're speaking as a channel, join and use the command as a user</blockquote>",
-    "everyone_len": "I haven't seen any members in the chat to call yet!\nOver time, the bot will recognize members and allow calling everyone.",
-    "everyone_call": "You were called in the chat <b> %(title)s </b>",
-    "call_admin_ask": "Do you confirm to call the admins?",
-    "call_admin": "\n%(caller)s calling all admins!",
-    "notification_admin": "You were called in the chat <b> %(title)s </b>",
-    "reverse_image": "Reply an image with the command to search for the source (reverse search)\n<blockquote> For direct search, use /anything </blockquote>",
-    "reverse_other": "I'm still processing other results, please wait and try again",
-    "reverse_limit": "Daily search limit reached, please wait and try again",
-    "reverse_best": "Best match found:\n\n",
-    "reverse_no_found": "The search found no matches, it seems to be an original image!",
-    "anything_prompt": "You need to type the name of what you want to search for\n<blockquote> EXAMPLE: /french fries </blockquote>",
-    "anything_no_find": "I couldn't find an image <i> (or it was NSFW and I filtered it) </i>",
-    "youtube_need": "You need to type the name of the video\n<blockquote> EXAMPLE: /youtube baked potato </blockquote>",
-    "youtube_no_find": "I couldn't find any video",
-    "meme_no": "It is not possible to create memes with more than 5 members",
-    "meme_error": "I couldn't extract the profile picture of this user. Check if it's public!",
-    "battle_no": "Not enough members to battle",
-    "battle_extract": "I couldn't extract the photo of %(user)s. Check if it's public!",
-    "battle_title": "WHO WINS?",
-    "battle_type": [
-        "Boxing 🥊🥊",
-        "Wrestling 🎭",
-        "Greco Wrestling 🤼‍♂️",
-        "Martial Arts 🥋",
-        "Sambo 👊",
-        "Muay Thai 🥋",
-        "Street Fighting 👊",
-        "Pool Fighting💧",
-        "Judo 🇯🇵",
-        "Sumo ⛩",
-        "Gutpunching 💪",
-        "Ballbusting 🍳🍳"
+    "not_found": "Giveaway not found",
+    "in": "You are already participating!",
+    "enter": "YAY! You entered the giveaway!",
+    "error": "Error entering giveaway",
+    "no_one": "No participants in the giveaway!",
+    "end_adm": "Only admins can end!",
+    "end": "Giveaway ended",
+    "winnner": {
+      "one": "We have a winner!\n 🎉 Congratulations %(winner)s, you won <b>%(prize)s </b>! 🎉",
+      "more": "Our %(idx)s winner is...\n 🎉 Congratulations %(winner)s, you won <b>%(prize)s </b>! 🎉"
+    },
+    "draw_more": "Draw more winners?",
+    "selected": "Winners selected",
+    "end_error": "Error ending giveaway"
+  },
+  "pv": {
+    "title": "*Hello %(first_name)s, I'm %(name)s!*",
+    "commands": "/configurar to change my settings (including language)\nUse /comandos to see all my features\n\n",
+    "contact": "If you have any questions or want something added, send a message to @MekhyW",
+    "buttons": {
+      "add_group": "Add me to a Group 👋",
+      "website": "Website / Control Panel 🌐",
+      "shared_posts": "Shared Posts 📬",
+      "updates": "Updates Channel 📢",
+      "test_group": "Test/assistance Group 🧪"
+    },
+    "user_fallback": "there"
+  },
+  "bots": {
+    "bombot": {
+      "name": "BomBot",
+      "description": "I'm a clone of @CookieMWbot created for Brasil FurFest (BFF) chats"
+    },
+    "pawsy": {
+      "name": "Pawsy",
+      "description": "I'm a clone of @CookieMWbot created for the groups of Pawstral, a furry event that takes place in Chile!"
+    },
+    "tarinbot": {
+      "name": "TarinBot",
+      "description": "I'm a clone of @CookieMWbot created for the state group of furries from Santa Catarina (Brazil), SCFurs (Santa Catarina Furries)"
+    },
+    "connectbot": {
+      "name": "ConnectBot",
+      "description": "I'm a clone of @CookieMWbot developed for the FurConect event in Goiás (Brazil)!"
+    },
+    "cookiebot": {
+      "name": "CookieBot",
+      "description": "I'm currently present in %(num_chats)s active chats! Feel free to add me to yours :)",
+      "additional_info": "\n\nI'm an AI Conversation, Group Defense, Search, Custom Content and Automated Publication bot."
+    }
+  },
+  "groups": {
+    "total": "Total groups found: %(value)s",
+    "new": "New groups found: %(text)s",
+    "remove": "Removed groups: %(text)s"
+  },
+  "bday": {
+    "title": "You need to type the usernames of today's birthday people!",
+    "cta": [
+      "WOW! It's %(names)s's birthday today! 🎉 May your day be full of fluff and tons of uwu!",
+      "Best day of the year! Know why? Because it's %(names)s's cake day! Don't forget to load up on cake and snacks! ^^",
+      "Awoo! It's a special day because it's %(names)s's birthday! 🥳 May it be packed with cuteness, warm hugs, and amazing moments! UwU 🎂✨",
+      "MEOW! 🎉 Party time — %(names)s turns another year! May your day be as awesome as a furry friend's hug! 🐾💖",
+      "OMG!! 🦊💖 It's %(names)s's birthday! Wishing you lots of love, fluffy hugs, and mountains of cake! 🎂🥰",
+      "AAAAH! 🎊 Happy birthday, %(names)s! May your day be as special as you are — with lots of nibbles of affection and purrs! 🐾💞",
+      "YIP YIP! 🐺💙 The world shines brighter because %(names)s is celebrating today! 🎂 Don't forget to enjoy every moment and eat lots of sweets! 🍩✨"
     ],
-    "battle_rule": [
-        "KO by rounds",
-        "KO without rounds",
-        "Anything goes",
-        "Most goals in Bomba Patch",
-        "Most cans of drinks",
-        "Biggest number of liters",
-        "Until Drinking, Falling, Getting Up",
-        "The last of the magic table"
-    ],
-    "battle_equip": [
-        "Full Gear",
-        "Gloves Only",
-        "In Panties",
-        "Naked",
-        "Fighting Uniform",
-        "Anything Goes",
-        "Sumo Thong",
-        "Giant Robot",
-        "Maid Uniform",
-        "Judo Kimono",
-        "Samurai Armor",
-        "Nerd Towel",
-        "School Waifu Uniform",
-        "Sailor Moon Outfit",
-        "Magical Little Girl",
-        "Akatsuki Cosplay",
-        "Those Japanese Swimming Swimsuits",
-        "Bunnysuit",
-        "Cyberpunk Winter Coat",
-        "Flip Flops",
-        "Witch Outfit",
-        "Thong"
-    ],
-    "battle_full": "\n\nType: %(type)s\nRules: %(rule)s\nEquipment: %(equip)s",
-    "battle_private": "I couldn't extract the profile picture of this user. Check if it's public!",
-    "battle_no_picture": "You need to have a profile picture <i> (or it's private) </i>",
-    "privacy": "Cookiebot's privacy terms (and its clones) are available at https://cookiebotfur.net/privacy",
-    "alive": "<b> I'm alive </b>\n\nPing sent at:\n",
-    "analyze": "Reply to a message with the command to ",
-    "fun_off": "<i> Fun functions are disabled in this chat </i>",
-    "utility_off": "<i> Utility functions are disabled in this chat </i>",
-    "drawing_idea": "Reference ID %(idea_id)s\n\nDo not trace without credits! (use the reverse google images search)",
-    "custom_photo": "Custom photo of %(name)s with ID %(image_id)s",
-    "dice_exemple": "Roll a dice from 1 to x, n times\n<blockquote> EXAMPLE: /d20 5\nRolls a d20 5 times </blockquote>",
-    "dice_roll": "\n%(vez)sth Roll: 🎲 -> %(roll)s",
-    "age": "Type a name, and I’ll tell you the age!\n<blockquote> Example: '/age Mekhy'\n(note: only the first name counts) </blockquote>",
-    "not_know": "I don't know that name!",
-    "age_yes": "Your age is <span class='tg-spoiler'>%(age)s years! 👴</span>\nRegistered <b>%(registered_times)s</b> times",
-    "gender_exemple": "Enter a name, I'll tell you your gender!\n<blockquote> Example: '/gender Mekhy'</blockquote>",
-    "gender": {
-        "male": "Its <span class='tg-spoiler'>a boy! 👨</span> \n\nProbability --> %(probability)s%%\nRegistered %(registered_times)s times",
-        "female": "Its <span class='tg-spoiler'>a girl! 👩</span> \n\nProbability --> %(probability)s%%\nRegistered %(registered_times)s times",
-        "unknown": "It's a baby! 🍼\n\nProbability → %(probability_str)s%%\nRegistered %(registered_times)s"
-    },
-    "complaint": "Good morning/afternoon/evening, %(user)s,\nIf you have any complaints, feel free to reply to this message. If not, we continue with our activities.\nSincerely,\nMilton from HR.",
-    "event": {
-        "patas": {
-            "name": "Patas",
-            "cta": [
-                "Já comprou o seu ingresso? Não perca a oportunidade de participar do maior evento furry de Sorocaba-SP!",
-                "Este é um evento beneficiente em formato de convenção, para promover e celebrar a cultura de apreciação animais antropomóficos na região de Sorocaba. Foi criado para ajudar as entidades que prestam apoio aos idosos da região.",
-                "O evento vai acontecer no SOROCABA PARK HOTEL, um local que oferece comodidade e conforto para todos os participantes do evento!",
-                "As atrações incluem:\n\n-Show com Banda\n-Balada Furry com DJ\n-Pool Party com brinquedos de piscina e DJ\n-Mercadinho Furry\n-E muito mais!"
-            ],
-            "caption": "%(headline)s\n\n%(cta_line)s\n\n%(when_line)s, %(where_line)s\n%(links_line)s"
-        },
-        "bff": {
-            "name": "Brasil FurFest 2026 — Sem Tempo Irmão!",
-            "cta": [
-                "A Brasil FurFest tem, entre outros objetivos, levantar fundos para caridade em prol do Projeto Social SOS Vida Pet Litoral, que ajuda protetores a manter abrigos para animais de rua na Baixada Santista",
-                "Quem são os furries? O que é a Brasil FurFest? Descubra em youtube.com/watch?v=vuFGHSL8X34&ab_channel=BrasilFurFest",
-                "Esperamos para ver todos os furries nos parques da maravilhosa cidade de São Paulo para essa festa que será inesquecível!",
-                "Entre as atividades planejadas, temos atividades de social mixer (dinâmicas de grupo) no início do evento para que você engrene os primeiros contatos com os demais participantes no evento.",
-                "Bombom nasceu na Fantástica Fábrica de Doces com intuito de reunir os furries na Brasil FurFest para muita festa e diversão. Aliás, se a festa tiver caipirinhas melhor ainda!",
-                "Em 2026, o tempo vai dar tilt! Preparem-se para uma viagem maluca por uma linha do tempo quebrada - passado, presente e futuro colidindo em um só lugar!",
-                "Mais de mil participantes! Isso mesmo: MIL! Desde 2024, batemos um recorde histórico para o furry fandom brasileiro, e tudo graças a vocês que vieram com toda a energia e alegria que só a nossa comunidade furry sabe trazer!",
-                "O evento utiliza o ConCat, um sistema de gerenciamento de eventos usado em algumas das maiores convenções furry do mundo!",
-                "Nosso novo lar será em Campinas, no Hotel Premium, que conta com um espaço de lazer incrível e muito mais conforto no centro de convenções para todo mundo curtir ao máximo.",
-                "O Premium Hotel é a opção perfeita para quem procura a melhor hospedagem na região de Campinas, seja para desfrutar de momentos agradáveis e relaxantes com a família ou então participar de eventos como a BFF!",
-                "O Premium Hotel dispõe de wi-fi cortesia para hóspedes, restaurante, american bar, business center e ampla área de lazer com academia, sauna, duas piscinas externas, uma piscina climatizada, quadras esportivas, espaço kids e playground.",
-                "O Premium Hotel Campinas está localizado na R. Novotel, 931 - Jardim Nova Aparecida, oferecendo fácil acesso às principais atrações e rodovias da cidade."
-            ],
-            "caption": "%(headline)s\n\n%(cta_line)s\n\n%(when_line)s\n%(where_line)s\n%(links_line)s"
-        },
-        "fursmeet": {
-            "name": "FurSMeet %(year)s",
-            "cta": [
-                "Mas bá, guri! Dá um chego aqui no FurSMeet! É aqui no Rio Grande do Sul, em Santa Maria! Vem conhecer um pessoal tri legal e fazer festa!",
-                "Assim, ó: Tu tens agora a oportunidade perfeita para te conectar com outros furries e criar memórias pra tu contar mais pra frente na vida.",
-                "Nosso objetivo é reunir amantes da cultura antropomórfica da região Sul e de todo o Brasil e criar grandes memórias. Vem ser um bichinho colorido com a gente!",
-                "Ó, tchê: Lucro do evento não fica com a gente. É reservado pros próximos eventos e pretendemos começar a ajudar instituições carentes com doações! Tu vem, te diverte e ainda ajuda uma boa causa.",
-                "Aproveita, piá. Rateia, não. Esse é o último evento antes do hiato. Te apruma e separa uns pila pra ir porque a gente não sabe quando vamos ter o próximo. Se te falta motivo pra ir, lembra que a gente tem chimarrão!",
-                "O Capibára pode ter essa fuça de chinelo, mas tem um coração grande que nem o Rio Grande do Sul. Tchê, ele faz amizade com qualquer um; não importa se é cusco ou se é jacaré. E quanto mais colorido, melhor.",
-                "Pozólha, este ano a gente tem umas participações tri legais! Ainda mais nesses erre pê gê aí que os guri jogam hoje, os cusco tão tudo louco. Bá, meu, vai ser de cair os butiá dos bolso!",
-                "Ôôôôô piá, tu curte RPG? Tu curte chimarrão? Tu curte evento de bichinho colorido? Bora ir num evento furry tematizado nisso! Que tal? Ali em Santa Maria, no Rio Grande do Sul, meu!"
-            ],
-            "caption": "%(headline)s\n\n%(cta_line)s\n\n%(when_line)s\n%(where_line)s\n🎫 Ingressos: fursmeet.carrd.co\n%(links_line)s"
-        },
-        "furcamp": {
-            "name": "FurCamp",
-            "cta": [
-                "O FURCAMP é um evento furry criado no Brasil e acontece todos os anos em meados de fevereiro (durante o Carnaval). Com sua primeira edição piloto em março de 2019 sendo um sucesso, o evento cativou seus participantes e a equipe que o criou.",
-                "Com sua bela paisagem, o Acampamento Aruanã possui pomar, trilhas e lagos para a pesca esportiva. É destinado a grupos grandes e especialmente aos visitantes que estejam em busca de uma acomodação diferenciada, podendo contar com todo o conforto da hospedagem em suítes e também em alojamentos.",
-                "O Acampamento Aruanã conta com alojamentos com beliches, refeitórios, salões para reunião, janelas com tela de proteção contra insetos, banheiros com aquecimento central a gás, reservatórios de água, poços artesianos e muito mais.",
-                "O FURCAMP oferece várias atividades emocionantes para os participantes durante todo o evento, como Batalha no Campo e Gincana, Show de Talentos e Balada Furry, com cada atividade tendo uma pontuação para o participante ou equipe do participante!",
-                "Se você sabe atuar, dançar, cantar, tocar um instrumento, fazer truques de mágica ou tem qualquer habilidade maluca, este é o lugar para mostrá-las. Que tal contar uma piada ruim, fazer o público chorar ou rir com um stand-up? No Show de Talentos, vale tudo!",
-                "Prepare-se para dançar, agitar, pular e se divertir na boate do FURCAMP com música eletrizante e um show de luzes, junto com um set incrível dos DJs Furries!",
-                "Você perdeu as nossas livestreams? Quer saber tudo que rolou sobre as atualizações do evento e informações cruciais que não pode deixar passar? Não se preocupe! Assista ao VOD da live no nosso canal do YouTube e fique por dentro de tudo! 🎥✨"
-            ],
-            "caption": "%(headline)s\n\n%(cta_line)s\n\n%(when_line)s\n%(where_line)s\n🎫 Ingressos em: furcamp.com\n📲 Grupo do evento: @FurcampOficial fursmeet.carrd.co\n%(links_line)s"
-        },
-        "pawstral": {
-            "name": "Pawstral",
-            "cta": [
-                "The furry convention that will fill the city of Santiago with color and energy!",
-                "Pawstral is more than just a convention; it is a space for furries, artists, and fans of furry culture to come together, celebrate, and share their passion.",
-                "There will be activities for everyone, from workshops and presentations to an amazing fursuiting space, art, and much more.",
-                "Santiago awaits you with its urban charm, surrounded by mountains and beautiful landscapes, perfect for enjoying the last days of winter.",
-                "With modern design and a privileged location in the district of Las Condes, you will find it at Alonso de Córdova #6050, Santiago de Chile. Just steps away from the Manquehue Metro Station.",
-                "Gastronomic proposals at ICON Hotel are designed to complete a unique and total experience during your stay, as well as to delight everyone who visits as a client or guest at an event."
-            ],
-            "caption": "%(headline)s\n\n%(cta_line)s\n\n%(when_line)s\n%(where_line)s\n🎫 Tickets at: https://pawstral.cl/\n📲 Event chat: @PawstralFurcon"
-        },
-        "error": "Event not found!"
-    },
-    "death": {
-        "template": " %(variant)s! 💀💀💀",
-        "variants": [
-            "is dead",
-            "is gone",
-            "is deceased"
-        ],
-        "Reason": "\nReason: <b> %(line)s </b> 🔥\nF in chat. 🫡"
-    },
-    "luck": "Your luck:\n 🥠 <span class='tg-spoiler'> %(line)s </span> 🥠\nYour lucky numbers: <span class='tg-spoiler'>%(num)s</span>",
-    "destroy": {
-        "instru": "Reply to a photo, audio or sticker with the command to distort (or use /destroy pfp)",
-        "video": "Video distortioning is currently disabled.",
-        "gif": "GIF distortioning is currently disabled."
-    },
-    "giveaway": {
-        "permission": "You don't have permission to create giveaways! \n <blockquote> If you are speaking as a user and not as a channel? The 'stay anonymous' permission must be turned off! </blockquote>",
-        "raffled": "You need to type what is being raffled! \n <blockquote> EXAMPLE: /giveaway Fursuit of Mekhy 🐾🦝 </blockquote>",
-        "create": "Let's create a giveaway! \n How many users will be drawn?",
-        "strftime": "%m/%d, %H:%M",
-        "time": "🎰 IT'S GIVEAWAY TIME! 🎰 \n \n 🎯 The Prize is: <b>%(prize)s</b> \n 👥 Number of winners: %(win)s \n ⌛ Started on: %(date)s",
-        "buttons": [
-            "Put me in!",
-            "ADMINS: End Giveaway"
-        ],
-        "not_found": "Giveaway not found",
-        "in": "You are already participating!",
-        "enter": "YAY! You entered the giveaway!",
-        "error": "Error entering giveaway",
-        "no_one": "No participants in the giveaway!",
-        "end_adm": "Only admins can end!",
-        "end": "Giveaway ended",
-        "winnner": {
-            "one": "We have a winner!\n 🎉 Congratulations %(winner)s, you won <b>%(prize)s </b>! 🎉",
-            "more": "Our %(idx)s winner is...\n 🎉 Congratulations %(winner)s, you won <b>%(prize)s </b>! 🎉"
-        },
-        "draw_more": "Draw more winners?",
-        "selected": "Winners selected",
-        "end_error": "Error ending giveaway"
-    },
-    "pv": {
-        "title": "*Hello %(first_name)s, I'm %(name)s!*",
-        "commands": "/configurar to change my settings (including language)\nUse /comandos to see all my features\n\n",
-        "contact": "If you have any questions or want something added, send a message to @MekhyW",
-        "buttons": {
-            "add_group": "Add me to a Group 👋",
-            "website": "Website / Control Panel 🌐",
-            "shared_posts": "Shared Posts 📬",
-            "updates": "Updates Channel 📢",
-            "test_group": "Test/assistance Group 🧪"
-        },
-        "user_fallback": "there"
-    },
-    "bots": {
-        "bombot": {
-            "name": "BomBot",
-            "description": "I'm a clone of @CookieMWbot created for Brasil FurFest (BFF) chats"
-        },
-        "pawsy": {
-            "name": "Pawsy",
-            "description": "I'm a clone of @CookieMWbot created for the groups of Pawstral, a furry event that takes place in Chile!"
-        },
-        "tarinbot": {
-            "name": "TarinBot",
-            "description": "I'm a clone of @CookieMWbot created for the state group of furries from Santa Catarina (Brazil), SCFurs (Santa Catarina Furries)"
-        },
-        "connectbot": {
-            "name": "ConnectBot",
-            "description": "I'm a clone of @CookieMWbot developed for the FurConect event in Goiás (Brazil)!"
-        },
-        "cookiebot": {
-            "name": "CookieBot",
-            "description": "I'm currently present in %(num_chats)s active chats! Feel free to add me to yours :)",
-            "additional_info": "\n\nI'm an AI Conversation, Group Defense, Search, Custom Content and Automated Publication bot."
-        }
-    },
-    "groups": {
-        "total": "Total groups found: %(value)s",
-        "new": "New groups found: %(text)s",
-        "remove": "Removed groups: %(text)s"
-    },
-    "bday": {
-        "title": "You need to type the usernames of today's birthday people!",
-        "cta": [
-            "WOW! It's %(names)s's birthday today! 🎉 May your day be full of fluff and tons of uwu!",
-            "Best day of the year! Know why? Because it's %(names)s's cake day! Don't forget to load up on cake and snacks! ^^",
-            "Awoo! It's a special day because it's %(names)s's birthday! 🥳 May it be packed with cuteness, warm hugs, and amazing moments! UwU 🎂✨",
-            "MEOW! 🎉 Party time — %(names)s turns another year! May your day be as awesome as a furry friend's hug! 🐾💖",
-            "OMG!! 🦊💖 It's %(names)s's birthday! Wishing you lots of love, fluffy hugs, and mountains of cake! 🎂🥰",
-            "AAAAH! 🎊 Happy birthday, %(names)s! May your day be as special as you are — with lots of nibbles of affection and purrs! 🐾💞",
-            "YIP YIP! 🐺💙 The world shines brighter because %(names)s is celebrating today! 🎂 Don't forget to enjoy every moment and eat lots of sweets! 🍩✨"
-        ],
-        "closing": "\n\n<i>Happy birthday!</i>\n%(date)s",
-        "next": "UPCOMING BIRTHDAYS (all groups):\n\n"
-    },
-    "dummy": "DO NOT USE ME"
+    "closing": "\n\n<i>Happy birthday!</i>\n%(date)s",
+    "next": "UPCOMING BIRTHDAYS (all groups):\n\n"
+  },
+  "dummy": "DO NOT USE ME",
+  "handler_error": "⚠️ Something went wrong handling that.\nReference: <code>{trace}</code>"
 }
