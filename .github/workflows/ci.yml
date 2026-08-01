@@ -7,6 +7,20 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    services:
+      # qa/conftest.py connects to CB_TEST_REDIS_DSN, defaulting to
+      # redis://localhost:6379/15. Nothing provided it, so every test that
+      # touches the cache errored with ConnectionError — not a failure anyone
+      # introduced, just a service container that was never added.
+      #
+      # valkey/valkey:8-alpine is what the chart deploys, so CI exercises the
+      # same server the cluster runs rather than a near approximation.
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "valkey-cli ping" --health-interval 5s
+          --health-timeout 3s --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -40,6 +54,20 @@ jobs:
 
   cython-gate:
     runs-on: ubuntu-latest
+    services:
+      # qa/conftest.py connects to CB_TEST_REDIS_DSN, defaulting to
+      # redis://localhost:6379/15. Nothing provided it, so every test that
+      # touches the cache errored with ConnectionError — not a failure anyone
+      # introduced, just a service container that was never added.
+      #
+      # valkey/valkey:8-alpine is what the chart deploys, so CI exercises the
+      # same server the cluster runs rather than a near approximation.
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "valkey-cli ping" --health-interval 5s
+          --health-timeout 3s --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -80,6 +108,12 @@ jobs:
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U cookiebot" --health-interval 5s
+          --health-timeout 3s --health-retries 20
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "valkey-cli ping" --health-interval 5s
           --health-timeout 3s --health-retries 20
     steps:
       - uses: actions/checkout@v4
