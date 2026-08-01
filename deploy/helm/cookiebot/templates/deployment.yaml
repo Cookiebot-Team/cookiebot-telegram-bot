@@ -12,6 +12,13 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "cookiebot.fullname" $ }}-{{ $svc.name }}
+  annotations:
+    # After the migrate Job, which is wave 1. The Job used to be a PreSync hook
+    # so that ordering was implicit; it is a sync-phase hook now, because the
+    # ConfigMap and ServiceAccount it needs are ordinary resources that the
+    # long-running pods hold for their whole life and so cannot themselves be
+    # hooks — Argo deletes a hook before recreating it.
+    argocd.argoproj.io/sync-wave: "2"
   labels:
     {{- include "cookiebot.labels" $ | nindent 4 }}
     app.kubernetes.io/name: {{ $svc.name }}
