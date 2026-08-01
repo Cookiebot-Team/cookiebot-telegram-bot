@@ -8,6 +8,21 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     services:
+      # qa/conftest.py's pool fixture skips when nothing is listening, so these
+      # scenarios silently degraded to "not run" rather than failing — until
+      # the Redis fix let them get far enough to reach the pool and raise
+      # "pg pool not initialised" instead. They are marked `not integration`
+      # because they mock Telegram, not because they avoid the database.
+      citus:
+        image: citusdata/citus:13.0
+        env:
+          POSTGRES_USER: cookiebot
+          POSTGRES_PASSWORD: cookiebot
+          POSTGRES_DB: cookiebot
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cookiebot" --health-interval 5s
+          --health-timeout 3s --health-retries 20
       # qa/conftest.py connects to CB_TEST_REDIS_DSN, defaulting to
       # redis://localhost:6379/15. Nothing provided it, so every test that
       # touches the cache errored with ConnectionError — not a failure anyone
@@ -50,6 +65,9 @@ jobs:
           CB_SKIP_CYTHON=1 uv sync --reinstall-package cb-core
           uv run pytest -q packages
       - name: qa acceptance (mock telegram, no live token)
+        env:
+          CB_PG_DSN: postgresql://cookiebot:cookiebot@localhost:5432/cookiebot
+          CB_TEST_PG_DSN: postgresql://cookiebot:cookiebot@localhost:5432/cookiebot
         run: uv run pytest -q -m "not integration" qa
 
   cython-gate:
@@ -77,11 +95,22 @@ jobs:
         env:
           CB_BENCH_BASELINE: /tmp/cb-bench-baseline.json
         run: |
-          CB_SKIP_CYTHON=1 uv sync --reinstall-package cb-core
+          # --no-cache is load-bearing. CB_SKIP_CYTHON changes what the build
+          # produces but not the package source, and uv keys its build cache on
+          # the source — so a plain --reinstall-package hands back the wheel
+          # compiled by the `uv sync --all-packages` step above.
+          #
+          # bench_hot.py only writes a baseline when NO module is compiled, so
+          # one stale module is enough to skip writing it, and the gate step at
+          # the end of this job then fails with "no baseline ... cannot judge"
+          # — pointing at the step that did run, rather than at the cache.
+          CB_SKIP_CYTHON=1 uv sync --reinstall-package cb-core --no-cache
           uv run python packages/cb-core/bench/bench_hot.py
       - name: compile hot modules
         run: |
-          uv sync --reinstall-package cb-core
+          # Same reason in reverse: without --no-cache this can hand back the
+          # uncompiled wheel the baseline step just built.
+          uv sync --reinstall-package cb-core --no-cache
           cd packages/cb-core && uv run python setup.py build_ext --inplace
       - name: same tests, compiled build
         run: uv run pytest -q packages
