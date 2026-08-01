@@ -38,9 +38,16 @@ spec:
       - host all all 127.0.0.1/32 trust
       - host all all ::1/128 trust
 
+    # citus and pg_stat_statements are always preloaded. Anything else that
+    # registers a background worker — pg_durable, pg_cron — has to be listed
+    # too, and the failure if it is not is quiet: CREATE EXTENSION succeeds and
+    # the worker never runs.
     shared_preload_libraries:
       - citus
       - pg_stat_statements
+      {{- range .Values.citus.extraPreloadLibraries }}
+      - {{ . }}
+      {{- end }}
     parameters:
       {{- toYaml .Values.citus.parameters | nindent 6 }}
 

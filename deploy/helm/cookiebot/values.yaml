@@ -229,6 +229,7 @@ citus:
   # Extra extensions to create in the application database. citus and
   # pg_stat_statements are always present.
   extraExtensions: []
+  extraPreloadLibraries: []
   externalDsn: ""
   externalDsnSecret: {}
   # externalDsnSecret:
