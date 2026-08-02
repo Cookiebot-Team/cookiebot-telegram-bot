@@ -3,25 +3,34 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Upcoming birthdays"
-description: "util · M2"
-status: planned
+description: "not group-scoped, matching v1 exactly - see docs/contracts/util_nextbirthday.md"
+status: done
 milestone: M2
 area: util
 layer: gateway
 triggers: ["/nextbirthday", "/proximosaniversarios"]
 v1_source: "Birthdays.py:104-117"
+contract: "docs/contracts/util_nextbirthday.md"
 ---
 <FeatureHeader id="util_nextbirthday" />
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+`/nextbirthday` lists whose birthday is coming up over the next four days.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+This one is **not** limited to the group you run it in — it lists upcoming
+birthdays for every known user in the whole system, exactly like v1 does.
+That's a real privacy detail worth knowing: someone in one group can learn
+about an upcoming birthday of a person in a completely different group this
+way. It's preserved because it's what v1 actually does, not something this
+port added — narrowing it would be a deliberate product decision for
+someone to make on purpose, not a side effect of porting the command.
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/features/util_nextbirthday.feature` — run with
+`python scripts/cb.py test`. By hand in the sandbox: run `/nextbirthday`
+in any group and confirm you get a four-day list back, even if most days
+say nobody's celebrating.

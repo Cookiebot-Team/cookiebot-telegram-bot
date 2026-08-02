@@ -17,17 +17,21 @@ file only records what is specific to `/nextbirthday` itself.
 | Triggers | `/proximosaniversarios`, `/nextbirthdays`, `/proximoscumpleanos` (`COOKIEBOT.py:244-245`) |
 | Preconditions | `functionsFun` (same `elif` chain as `/birthday`) |
 | Cooldowns / quotas | None |
-| Success output | `bday.next` header (`"UPCOMING BIRTHDAYS (all groups):\n\n"` — hardcoded, never localised beyond `en`/`pt`/`es` catalog value, and the "(all groups)" wording is stale even for the manual, single-group invocation this port builds — preserved, a cosmetic label, not a behaviour bug) then, for `offset` in `1..4`: `f"{offset} dias:\n"` (also hardcoded Portuguese — `"dias"`, never `"days"`, regardless of group language — another preserved quirk) then one `@username`/`firstName lastName` line per person whose `birth_month`/`birth_day` matches `today + offset`, or `"- \n"` if nobody that day |
+| Success output | `bday.next` header, via `i18n.get` — each language has its own translated value (`en` "UPCOMING BIRTHDAYS (all groups):\n\n", `pt`/`es` their own), but the "(all groups)" wording is stale in every language for this port's single-group manual scope — preserved, a cosmetic label, not a behaviour bug — then, for `offset` in `1..4`: `f"{offset} dias:\n"` (literally not through `i18n` at all, `Birthdays.py:110` — Portuguese `"dias"` hardcoded regardless of group language, unlike the header above — a genuinely different, second quirk, both preserved) then one `@username`/`firstName lastName` line per person whose `birth_month`/`birth_day` matches `today + offset`, or `"- \n"` if nobody that day |
 | Scope in v1's real function | `next_birthdays` takes a single `chat_id` and sends directly to it — no group iteration of its own; `Birthdays.py:112` sends one message via `send_message(cookiebot, chat_id)`. It is also v1's own 900-second cron follow-up target (`threading.Timer(900, next_birthdays, ...)`, `util_birthday`'s D-BD-2) — this port's manual command and the deferred-follow-up job (once `util_birthday`'s scope is confirmed) both call the same underlying function, matching v1's own reuse |
 | Persistence | None — read-only |
 | External calls | None beyond the reply itself — no photo, no Bot API call beyond `sendMessage` |
 
-## Verbatim strings, both preserved quirks
+## Verbatim strings, two distinct preserved quirks
 
-- `bday.next`: `"UPCOMING BIRTHDAYS (all groups):\n\n"` — English only, all
-  three locales carry the same key (already ported, `cb_core/locale_data/`).
+- `bday.next` (localised, `cb_core.birthdays.bday_next_header`): each
+  language's own translated value, all three already ported byte-identical
+  (`cb_core/locale_data/`) — but "(all groups)"/"(todos os grupos)" is stale
+  wording for this port's single-group scope, in every language.
 - `f"{offset} dias:\n"` — literally not through `i18n` at all
-  (`Birthdays.py:110`), Portuguese `"dias"` hardcoded regardless of language.
+  (`Birthdays.py:110`), Portuguese `"dias"` hardcoded regardless of the
+  group's actual language. A different, second quirk from the header above,
+  not the same one restated.
 
 ## QA
 
@@ -36,7 +40,6 @@ v1 exactly, no conflict.
 
 ## Status
 
-Same open decision as `util_birthday` — this feature is small enough that
-it does not, on its own, need the collage/Pillow/`_defer_by` questions
-answered, but it shares the same data source (`users.birthdate`) and is
-built in the same slice once that's confirmed.
+Scope approved alongside `util_birthday` (manual-only, no cron). Built in
+the same slice — see `.specs/features/util_birthday/design.md` (R2, R4) for
+the shared query and where `/nextbirthday`'s own logic lives.

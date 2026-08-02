@@ -26,6 +26,7 @@ from cb_core.logging import configure_logging, get_logger
 from cb_core.migrations import ensure_schema
 from cb_core.settings import Settings, get_settings
 from cb_core.telemetry import context_from_carrier, setup_tracing, span
+from cb_worker.jobs.birthday import next_birthdays_followup, post_birthday_collage
 from cb_worker.jobs.calladms import notify_admins_of_call
 from cb_worker.jobs.everyone import everyone_fanout
 from cb_worker.jobs.youtube import search_youtube
@@ -197,6 +198,8 @@ class WorkerSettings:
         everyone_fanout,  # first non-cron job: util_everyone's DM fan-out (design R5.1)
         notify_admins_of_call,  # util_calladms's DM fan-out (.specs/features/util_calladms)
         search_youtube,  # util_youtube's search + reply (.specs/features/util_youtube)
+        post_birthday_collage,  # util_birthday's collage (.specs/features/util_birthday)
+        next_birthdays_followup,  # the durable replacement for v1's threading.Timer
         maintain_partitions,
         rollup_yesterday,
         rollup_llm_costs,

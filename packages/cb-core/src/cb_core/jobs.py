@@ -25,4 +25,21 @@ CALLADMS_NOTIFY_ADMINS = "notify_admins_of_call"
 #: "nothing slow on the reply path" applied to the third consumer of this wiring.
 YOUTUBE_SEARCH = "youtube_search"
 
-__all__ = ["CALLADMS_NOTIFY_ADMINS", "EVERYONE_FANOUT", "YOUTUBE_SEARCH"]
+#: `util_birthday`'s collage — image compositing, AGENTS.md §2.4
+#: (`cb_worker/jobs/birthday.py`), enqueued from
+#: `cb_gateway/handlers/birthday.py`.
+BIRTHDAY_COLLAGE = "birthday_collage"
+
+#: The 900-second follow-up v1 scheduled with an in-process `threading.Timer`
+#: (a restart silently drops it — `.specs/features/util_birthday/spec.md`'s
+#: D-BD-2). `cb_worker/jobs/birthday.py:post_birthday_collage` enqueues this
+#: one with arq's native `_defer_by` instead — durable, in Redis, not memory.
+NEXT_BIRTHDAYS_FOLLOWUP = "next_birthdays_followup"
+
+__all__ = [
+    "BIRTHDAY_COLLAGE",
+    "CALLADMS_NOTIFY_ADMINS",
+    "EVERYONE_FANOUT",
+    "NEXT_BIRTHDAYS_FOLLOWUP",
+    "YOUTUBE_SEARCH",
+]

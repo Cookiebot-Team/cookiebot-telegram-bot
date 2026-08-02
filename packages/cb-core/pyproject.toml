@@ -62,3 +62,4 @@ where = ["src"]
 # v1 static media ported verbatim (see cb_core/assets.py); same reason as
 # locale_data above — importlib.resources needs it inside the wheel.
 "cb_core.asset_data.complaint" = ["*.jpg", "*.wav"]
+"cb_core.asset_data.birthday" = ["*.jpg", "*.png"]

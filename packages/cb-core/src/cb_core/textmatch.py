@@ -52,7 +52,7 @@ COMMAND_ALIASES: dict[str, str] = {
     "birthday": "birthday", "aniversario": "birthday", "aniversário": "birthday",
     "cumpleanos": "birthday", "cumpleaños": "birthday",
     "nextbirthday": "nextbirthday", "nextbirthdays": "nextbirthday",
-    "proximosaniversarios": "nextbirthday",
+    "proximosaniversarios": "nextbirthday", "proximoscumpleanos": "nextbirthday",
     "everyone": "everyone",
     "adm": "calladms", "admin": "calladms", "report": "calladms",
     "youtube": "youtube",
