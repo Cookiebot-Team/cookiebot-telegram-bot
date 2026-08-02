@@ -34,20 +34,44 @@ Dispatched from two places in the `if/elif` chain in
 
 Copied `../Cookiebot-QA/features/core_privacy.feature` verbatim into
 `qa/features/core_privacy.feature`, then added scenarios v1's code supports that
-the spec didn't cover: the Portuguese/Spanish aliases, the `@botname` form, and a
+the spec didn't cover: the Portuguese/Spanish aliases, the `@botname` form, a
 command addressed at a different bot being ignored (mirrors the pattern already
-established in `qa/features/util_isalive.feature`).
+established in `qa/features/util_isalive.feature`), and — landed alongside
+`.specs/features/private_dispatch/` — `/privacy` in a private chat, which
+upstream QA has no scenario for at all.
 
 ## Implementation (v2)
 
-`packages/cb-gateway/src/cb_gateway/handlers/privacy.py`:
+`packages/cb-gateway/src/cb_gateway/handlers/privacy.py`, two handlers on one
+router:
 
-- `router.message(CommandName("privacy"))` — `CommandName` resolves via
-  `cb_core.textmatch.parse_command`, which already maps `privacy` / `privacidade`
-  / `privacidad` to canonical `"privacy"` and rejects `@OtherBot`-addressed
-  commands outright (stricter than v1's bare prefix match — see Phase 6).
-- No `FeatureGate`, no `AdminOnly` — matches v1's unconditional dispatch.
-- `ctx = await context_for(bot, message)`; reply text is `t(ctx, "privacy")`.
+- `privacy_private` — `router.message(F.chat.type == ChatType.PRIVATE,
+  CommandName("privacy"))`. Replies `locales.get("privacy", "en")` directly,
+  matching v1's hardcoded `'eng'` private-chat branch
+  (`COOKIEBOT.py:87-88`). No `context_for` call — see "The private-chat fix"
+  below.
+- `privacy` — `router.message(F.chat.type != ChatType.PRIVATE,
+  CommandName("privacy"))`, unchanged from before this port: `ctx =
+  await context_for(bot, message)`; reply text is `t(ctx, "privacy")`.
+- `CommandName` resolves via `cb_core.textmatch.parse_command`, which already
+  maps `privacy` / `privacidade` / `privacidad` to canonical `"privacy"` and
+  rejects `@OtherBot`-addressed commands outright (stricter than v1's bare
+  prefix match — see Phase 6) — unchanged, applies to both handlers.
+- No `FeatureGate`, no `AdminOnly` on either — matches v1's unconditional
+  dispatch in both chat kinds.
+
+### The private-chat fix (`.specs/features/private_dispatch/`)
+
+Before this landed, this file had **one** handler with no chat-type filter
+at all — a private-chat `/privacy` matched it and called `context_for`,
+which reads `group_id = message.chat.id` and queries `group_configs`
+(distributed on `group_id`) with a DM's own chat id, a "group" that never
+existed. Not hypothetical: reproduced, then fixed. See
+`cb_gateway/private_context.py`'s module docstring and
+`.specs/features/private_dispatch/spec.md` ("The live bug") for the full
+story — `core_listcommand.md` already had the pattern that fixes it
+(`ChatType.PRIVATE` never calls `context_for` at all), this is that same
+fix applied here.
 - `message.reply(...)` — a reply to the triggering message, matching
   `msg_to_reply=msg`. `parse_mode` is left to the bot's default
   (`DefaultBotProperties(parse_mode=ParseMode.HTML)`, `qa/conftest.py:78-86`),
@@ -71,7 +95,7 @@ established in `qa/features/util_isalive.feature`).
 | Reply vs send | same | `message.reply(...)`, i.e. a reply to the triggering message, like v1's `msg_to_reply=msg`. |
 | parse_mode HTML | same | via the bot's default properties rather than an explicit per-call argument; net effect identical. |
 | Language selection (group chat) | same | `ctx.lang` comes from the group's configured `language` via `context_for`, same source v1 threads through as its `language` parameter in the group branch. |
-| Language selection (private chat, hardcoded `'eng'`) | not ported | v2 has no private-chat dispatch branch at all yet (`handlers/__init__.py` only routes group-shaped updates through `CommandName` filters); porting v1's PV command menu (`COOKIEBOT.py:75-110`) is a separate, larger unit of work outside this feature's file ownership. Flagged for the owner of `handlers/__init__.py` / private-chat routing. |
+| Language selection (private chat, hardcoded `'eng'`) | same | `privacy_private` replies `locales.get("privacy", "en")` directly, matching v1's hardcoded value without needing a group lookup — ported via `.specs/features/private_dispatch/`. Fixed a live bug along the way: before this, a DM `/privacy` fell through to `context_for`, which queried `group_configs` with a private chat's id (never a real group). `/start`'s full PV menu (`COOKIEBOT.py:75-110`) remains a separate, larger, named follow-up — this port is only `/privacy`'s own DM branch. |
 | `send_chat_action('typing')` | changed (intentional, drop) | cosmetic-only; no other ported handler in this codebase sends one; not observable in the QA scenario. |
 | Persistence | same | none. |
 | Cooldown/quota | same | none. |

@@ -7,14 +7,13 @@ Contract: docs/contracts/core_listcommand.md.
 
 from __future__ import annotations
 
-import time
 from collections.abc import Callable, Coroutine
 from typing import Any
 
 from aiogram import Bot, Dispatcher
 from pytest_bdd import given, parsers, scenarios, then, when
 
-from qa.conftest import USER_ID, Context, feed, make_message_update
+from qa.conftest import Context, feed, make_message_update, make_private_message_update
 from qa.mock_telegram import MockTelegram
 
 scenarios("core_listcommand.feature")
@@ -31,26 +30,6 @@ scenarios("core_listcommand.feature")
 # cb_core/locale_data/en/Cookiebot_functions.txt, ported byte-identical from
 # Bot/Static/locales/eng/Cookiebot_functions.txt.
 _HELP_MARKER = "Cookiebot Features!"
-
-
-def _make_private_update(text: str, update_id: int, *, user_id: int = USER_ID) -> dict[str, Any]:
-    """A DM update. `qa.conftest.make_message_update` always builds a supergroup
-    chat, so this is its private-chat counterpart, built the same way but not
-    added there (this feature's file ownership does not include qa/conftest.py).
-    """
-    return {
-        "update_id": update_id,
-        "message": {
-            "message_id": update_id,
-            "date": int(time.time()),
-            "chat": {"id": user_id, "type": "private", "first_name": "Tester"},
-            "from": {"id": user_id, "is_bot": False, "first_name": "Tester", "username": "tester"},
-            "text": text,
-            "entities": [{"offset": 0, "length": len(text.split(" ")[0]), "type": "bot_command"}]
-            if text.startswith("/")
-            else [],
-        },
-    }
 
 
 @given("that the bot is online and operational")
@@ -87,7 +66,7 @@ def user_types_in_private(
     bot: Bot,
     text: str,
 ) -> None:
-    feed(run, dispatcher, bot, _make_private_update(text, ctx.update_id))
+    feed(run, dispatcher, bot, make_private_message_update(text, ctx.update_id))
 
 
 @then("they should see a list of commands available to them")
