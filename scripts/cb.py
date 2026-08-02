@@ -269,6 +269,18 @@ def import_mongo(extra: list[str]) -> int:
     return run("uv", "run", "python", "-m", "cb_worker.importer", *extra)
 
 
+@task("bucket-export", "copy v1's private GCS bucket into v2 object storage (cutover day)")
+def bucket_export(extra: list[str]) -> int:
+    """Idempotent and resumable, same contract as `import-mongo`: a blob whose
+    content hash already landed at the destination is skipped, never
+    re-copied, so this is safe to run while v1 is still serving and again at
+    cutover to catch the delta. Pass `--dry-run` to see the counts without
+    writing, `--verify` to check a prior run's manifest against the
+    destination. See `docs/site/content/docs/cutover-bucket-export.mdx`.
+    """
+    return run("uv", "run", "python", "-m", "cb_worker.bucket_export", *extra)
+
+
 @task("migrate-check", "upgrade, downgrade to base, upgrade again")
 def migrate_check(_: list[str]) -> int:
     return chain(
