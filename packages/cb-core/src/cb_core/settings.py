@@ -87,6 +87,13 @@ class Settings(BaseSettings):
     # task -> {provider, model, max_tokens, effort, thinking, temperature, timeout, system}
     llm_tasks: dict[str, dict[str, object]] = Field(default_factory=dict)
 
+    # util_youtube — v1 used google-api-python-client (Bot/SocialContent.py:20);
+    # v2 calls the same REST endpoint directly over the httpx client already in
+    # use everywhere else, rather than adding a second HTTP client library for
+    # one feature (AGENTS.md §5).
+    youtube_api_key: str = ""
+    youtube_timeout_seconds: float = 5.0
+
     # telemetry
     otlp_endpoint: str = "http://localhost:4317"
     traces_enabled: bool = True

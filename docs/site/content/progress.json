@@ -1,19 +1,19 @@
 {
   "generated_at": "2026-08-02",
-  "commit": "9f5e1c9",
-  "test_summary": "2166 passed, 45 skipped, 143 deselected, 1 warning in 19.71s",
+  "commit": "ef73494",
+  "test_summary": "2228 passed, 45 skipped, 143 deselected, 1 warning in 19.88s",
   "totals": {
     "features": 53,
-    "done": 30,
+    "done": 31,
     "partial": 6,
-    "planned": 16,
+    "planned": 15,
     "blocked": 1,
     "spec_scenarios": 63,
-    "ported": 118,
+    "ported": 120,
     "spec_files": 31,
-    "spec_files_covered": 20,
+    "spec_files_covered": 21,
     "new_specs": 17,
-    "green": 198,
+    "green": 200,
     "failing": 0
   },
   "milestones": [
@@ -32,7 +32,7 @@
     {
       "id": "M2",
       "title": "Fun and utility commands",
-      "done": 8,
+      "done": 9,
       "total": 15
     },
     {
@@ -357,8 +357,8 @@
       "contract": "docs/contracts/core_privacy.md",
       "scenarios": {
         "spec": 1,
-        "ported": 3,
-        "green": 7,
+        "ported": 4,
+        "green": 8,
         "failing": 0
       },
       "url": "/docs/features/core_privacy"
@@ -867,19 +867,19 @@
       "id": "util_youtube",
       "title": "YouTube search",
       "area": "util",
-      "layer": "gateway",
+      "layer": "worker",
       "milestone": "M2",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/youtube"
       ],
       "v1_source": "SocialContent.py:172-189",
-      "notes": "",
-      "contract": null,
+      "notes": "search + reply moved to cb-worker; v1's googleapiclient call had no timeout at all",
+      "contract": "docs/contracts/util_youtube.md",
       "scenarios": {
         "spec": 1,
-        "ported": 0,
-        "green": 0,
+        "ported": 1,
+        "green": 1,
         "failing": 0
       },
       "url": "/docs/features/util_youtube"
@@ -1567,8 +1567,8 @@
     {
       "stem": "core_privacy",
       "spec": 1,
-      "ported": 3,
-      "green": 7,
+      "ported": 4,
+      "green": 8,
       "failing": 0,
       "state": "green"
     },
@@ -1767,10 +1767,10 @@
     {
       "stem": "util_youtube",
       "spec": 1,
-      "ported": 0,
-      "green": 0,
+      "ported": 1,
+      "green": 1,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     }
   ],
   "defects": [

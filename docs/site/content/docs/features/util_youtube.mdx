@@ -3,25 +3,39 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "YouTube search"
-description: "util · M2"
-status: planned
+description: "search + reply moved to cb-worker; v1's googleapiclient call had no timeout at all"
+status: done
 milestone: M2
 area: util
-layer: gateway
+layer: worker
 triggers: ["/youtube"]
 v1_source: "SocialContent.py:172-189"
+contract: "docs/contracts/util_youtube.md"
 ---
 <FeatureHeader id="util_youtube" />
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+`/youtube <search terms>` searches YouTube and replies with a link to one
+of the top 10 matching videos, picked at random, along with its
+description. Typing `/youtube` with nothing after it just explains how to
+use the command instead of searching.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+The search text, the "no results" reply and the "type something" reply are
+all byte-identical to v1's own strings. A group with utility features
+turned off gets the same "utility functions are off" message instead of a
+search, same as every other utility command.
+
+One thing changed on purpose: v1 called the YouTube API directly from the
+same step that answers Telegram, with no timeout at all — a slow or hung
+response could stall that indefinitely. v2 hands the search to a background
+worker with a real time limit, so the reply now arrives a moment later
+rather than instantly, but a broken search can never hold up anything else.
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/features/util_youtube.feature` — run with `python scripts/cb.py test`.
+By hand in the sandbox: send `/youtube baked potato` in a group and confirm
+a video link with a description shows up.

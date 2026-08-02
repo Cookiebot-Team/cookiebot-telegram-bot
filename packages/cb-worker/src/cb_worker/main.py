@@ -28,6 +28,7 @@ from cb_core.settings import Settings, get_settings
 from cb_core.telemetry import context_from_carrier, setup_tracing, span
 from cb_worker.jobs.calladms import notify_admins_of_call
 from cb_worker.jobs.everyone import everyone_fanout
+from cb_worker.jobs.youtube import search_youtube
 
 settings = get_settings()
 settings.service_name = "cb-worker"
@@ -195,6 +196,7 @@ class WorkerSettings:
     functions: ClassVar[list] = [
         everyone_fanout,  # first non-cron job: util_everyone's DM fan-out (design R5.1)
         notify_admins_of_call,  # util_calladms's DM fan-out (.specs/features/util_calladms)
+        search_youtube,  # util_youtube's search + reply (.specs/features/util_youtube)
         maintain_partitions,
         rollup_yesterday,
         rollup_llm_costs,
