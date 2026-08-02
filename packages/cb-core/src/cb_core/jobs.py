@@ -20,4 +20,9 @@ EVERYONE_FANOUT = "everyone_fanout"
 #: the group. Second consumer of the same wiring.
 CALLADMS_NOTIFY_ADMINS = "notify_admins_of_call"
 
-__all__ = ["CALLADMS_NOTIFY_ADMINS", "EVERYONE_FANOUT"]
+#: `util_youtube`'s search + reply (`cb_worker/jobs/youtube.py`), enqueued from
+#: `cb_gateway/handlers/youtube.py` — an external API call, AGENTS.md §2.4's
+#: "nothing slow on the reply path" applied to the third consumer of this wiring.
+YOUTUBE_SEARCH = "youtube_search"
+
+__all__ = ["CALLADMS_NOTIFY_ADMINS", "EVERYONE_FANOUT", "YOUTUBE_SEARCH"]

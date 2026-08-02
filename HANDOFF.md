@@ -279,8 +279,8 @@ directly.
 **This section was stale for a while — trust `python scripts/cb.py status`, not
 prose.** `fun_random`, `util_embedder`, `fun_dice`, `fun_ship`, `fun_firecracker`,
 `fun_complaint`, `util_everyone`, `util_calladms` (both the group ping and the
-DM fan-out) and `fun_battle`'s two-people shape have all landed since it was
-written.
+DM fan-out), `fun_battle`'s two-people shape, private-chat dispatch and
+`util_youtube` have all landed since it was written.
 
 The next batch, in dependency order, now that the member registry exists:
 
@@ -291,7 +291,8 @@ The next batch, in dependency order, now that the member registry exists:
 | 3 | `fun_death` — **blocked, confirmed** | v1's image pool (`bloblist_death`, `Miscellaneous.py:17`) is a live listing of a private GCS bucket, never checked into `../COOKIEBOT-Telegram-Group-Bot`. Investigated this session: no `Death/` directory anywhere in the v1 checkout, no credential to the bucket anywhere in this repo or environment. `Status.BLOCKED` in `scripts/spec.py`; full evidence and the prerequisite (someone exports the bucket's `Death/` prefix) in `.specs/features/fun_death/spec.md`. `design.md`/`tasks.md` are written ahead of time so the port is mechanical once the export lands. |
 | 3a | `fun_battle` — **partial, two-people shape done** | same bucket, different prefix (`Fight/English`/`Fight/Portuguese`) blocks its other two shapes — see gap §1.7. The shape that doesn't need the bucket (explicit tags or `"random"`) shipped this session, and dropped v1's `telegram.me` HTML scrape + a real temp-file race along the way (`docs/contracts/fun_battle.md`). |
 | 3b | `fun_meme` | same shape of blocker suspected (a GCS-backed template pool), **confirmed partially different**: its `Bot/Static/Meme/` directory *does* exist in the v1 checkout (unlike `Death/`/`Fight/`), but at 112 MB — too large to vendor as package data the way `fun_complaint`'s 3.4 MB was. That sizing is `fun_meme`'s own design decision when it's picked up, not solved here. |
-| 4 | `core_musicdetection`, `util_youtube` | first media-processing ports; both belong in cb-worker |
+| 4 | `util_youtube` — **done** | search + reply moved to `cb-worker` (external API call, AGENTS.md §2.4); v1's `googleapiclient` call had no timeout at all, v2 bounds it. `docs/contracts/util_youtube.md` |
+| 5 | `core_musicdetection` | first real media-processing port (audio fingerprinting); belongs in cb-worker |
 
 Close the remaining gaps in §1 before or alongside these — the captcha timeout
 one is user-visible, and the mechanism it needs (the worker holding a bot) now
