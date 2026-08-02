@@ -13,6 +13,17 @@ to had no parent row, and every one of those writes was rejected:
 The bot answered, the menu opened, the button worked, and the value silently
 failed to save. A deployment that had never imported v1 data could not
 configure a group at all.
+
+`ensure` is called from the telemetry middleware, which knows the chat an
+update arrived in — and that is not always the group being written to. The
+config menu is the case that proves it: `/config` is sent in the group, but the
+menu, the button and the reply that carries the new value all happen in the
+admin's DM, and the group is named by the prompt text. A DM has no group id
+(`middlewares._ids` returns 0 for one, deliberately), so nothing in that flow
+ensures anything and the write at the end still fails. `ensure_now` is for the
+write path: it is what a caller uses when the database has just told it the row
+is missing, and unlike `ensure` it raises rather than degrading, because at that
+point there is nothing left to degrade to.
 """
 
 from __future__ import annotations
@@ -57,10 +68,41 @@ async def ensure(
     if group_id in _ensured:
         return
     try:
-        await db.execute(_UPSERT, group_id, title, chat_type, skin, tenant_id, name="group_ensure")
+        await _upsert(group_id, title=title, chat_type=chat_type, skin=skin, tenant_id=tenant_id)
     except Exception as exc:  # noqa: BLE001 - never let this stop an update
         log.warning("group.ensure_failed", group_id=group_id, error=str(exc))
-        return
+
+
+async def ensure_now(
+    group_id: int,
+    *,
+    title: str | None = None,
+    chat_type: str | None = None,
+    skin: str | None = None,
+    tenant_id: str | None = None,
+) -> None:
+    """Create the row, ignoring the memo, and raise if that fails.
+
+    The memo says "this process has already created that row", which stops being
+    true the moment something deletes it — a restore, a cleanup, an operator
+    fixing something by hand. After that, every write against the group is
+    rejected for the rest of the process's life and `ensure` never retries,
+    because as far as it is concerned the work is done. A caller that has just
+    caught a foreign-key violation knows better than the memo does.
+    """
+    forget(group_id)
+    await _upsert(group_id, title=title, chat_type=chat_type, skin=skin, tenant_id=tenant_id)
+
+
+async def _upsert(
+    group_id: int,
+    *,
+    title: str | None,
+    chat_type: str | None,
+    skin: str | None,
+    tenant_id: str | None,
+) -> None:
+    await db.execute(_UPSERT, group_id, title, chat_type, skin, tenant_id, name="group_ensure")
     _ensured.add(group_id)
 
 

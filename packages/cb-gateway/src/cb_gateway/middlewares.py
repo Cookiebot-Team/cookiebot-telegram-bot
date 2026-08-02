@@ -179,8 +179,20 @@ class TelemetryMiddleware(BaseMiddleware):
         #
         # Idempotent and memoised per process, so this is a set lookup after
         # the first update from a given chat.
+        #
+        # This covers the chat an update arrived *in*, which is not always the
+        # group it writes to — the config menu runs in the admin's DM and names
+        # its group in the prompt text. `cb_core.group_config.set_config`
+        # ensures the row for that case; this one is what gives the row a title
+        # (a DM knows no group's title) and what covers the other seven tables
+        # whose writes only ever happen in-chat.
         if group_id:
-            chat = getattr(update.event, "chat", None)
+            # A CallbackQuery has no `chat` of its own — its chat is the one the
+            # message it was attached to lives in. Without the fallback, a group
+            # whose first interaction is a button press gets a row with no title.
+            chat = getattr(update.event, "chat", None) or getattr(
+                getattr(update.event, "message", None), "chat", None
+            )
             await groups.ensure(
                 group_id,
                 title=getattr(chat, "title", None),

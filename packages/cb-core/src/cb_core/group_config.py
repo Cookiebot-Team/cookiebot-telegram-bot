@@ -26,7 +26,9 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
-from cb_core import cache, db, metrics, tenancy
+import asyncpg
+
+from cb_core import cache, db, groups, metrics, tenancy
 from cb_core.logging import get_logger
 from cb_core.settings import get_settings
 
@@ -247,6 +249,13 @@ async def set_config(group_id: int, **fields: object) -> GroupConfig:
     caller input; values are bound parameters. Replaces v1's "send /reload in the
     chat if the old config persists" (`Configurations.py:209`) with real
     invalidation.
+
+    The parent `groups` row is this function's problem, not its caller's.
+    `group_configs.group_id` is a foreign key, and the middleware that creates
+    the row only sees the chat an update arrived in — which is not the group
+    being configured when the admin is working in a DM, the only place the
+    config menu ever runs. Ensuring here covers every caller, in-chat or not,
+    because every one of them is about to depend on the row.
     """
     unknown = set(fields) - _WRITABLE_COLUMNS
     if unknown:
@@ -268,7 +277,18 @@ async def set_config(group_id: int, **fields: object) -> GroupConfig:
         f"VALUES ($1, {insert_placeholders}, ${len(columns) + 2}) "
         f"ON CONFLICT (group_id) DO UPDATE SET {update_assignments}, updated_at = EXCLUDED.updated_at"
     )
-    await db.execute(stmt, group_id, *values, now, name="group_config_upsert")
+    await groups.ensure(group_id)
+    try:
+        await db.execute(stmt, group_id, *values, now, name="group_config_upsert")
+    except asyncpg.ForeignKeyViolationError:
+        # The row was there once — this process memoised it — and is not there
+        # now. `ensure` would return immediately on that memo and the retry
+        # would fail identically, so go around it. If the second attempt fails
+        # too, the caller hears about it: a setting that did not save must not
+        # be reported as saved.
+        log.warning("group_config.parent_row_missing", group_id=group_id)
+        await groups.ensure_now(group_id)
+        await db.execute(stmt, group_id, *values, now, name="group_config_upsert")
     await invalidate(group_id)
     return await get_config(group_id)
 

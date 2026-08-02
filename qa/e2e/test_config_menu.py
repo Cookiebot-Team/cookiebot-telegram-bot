@@ -40,6 +40,8 @@ to the English literal would have been the bug.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from qa.e2e.client import (
@@ -233,3 +235,114 @@ def test_pressing_a_config_button_in_the_dm_answers_the_callback(
         description=f"answer the config callback {button!r}",
         on_timeout=lambda: describe_recent_calls(sandbox.state()),
     )
+
+
+# The prompt `press_config_button` sends, reproduced here the same way the two
+# text tables above are: `config_menu.py:_MAGIC_MARKER`, which is also what
+# `_is_config_reply` matches on, so a change to it is a visible diff here.
+_MAGIC_MARKER = "REPLY THIS MESSAGE with the new variable value"
+#: `config_menu.py:_WRITE_FAILED_TEXT` — what the admin saw for every language
+#: change in UAT, and what this test exists to keep off the screen.
+_WRITE_FAILED_TEXT = "ERROR: could not save the setting\nTry again in a moment"
+
+
+def test_a_setting_saves_for_a_group_with_no_parent_row(
+    sandbox: SandboxClient, group_id: int, pg_conn: Any, lang: str
+) -> None:
+    """The whole menu lives in the admin's DM, and the group it configures is
+    named by the prompt text, not by the chat the reply arrives in.
+
+    `TelemetryMiddleware` calls `cb_core.groups.ensure` for the chat an update
+    came from and skips private chats (`_ids` returns 0 for them, deliberately —
+    a DM has no group). So every update in this flow ensures nothing, and the
+    write at the end lands on eight tables' worth of foreign key to a `groups`
+    row nobody created. In UAT that surfaced as "ERROR: could not save the
+    setting" on every attempt, with `config_menu.write_failed` in the logs and
+    no metric anywhere.
+
+    The parent row is deleted after the menu opens because that is the state
+    UAT was actually in — a group the bot is in, configured from a DM, with no
+    row. A group the bot has never had an in-chat update from is the same
+    state, reached a different way; so is one whose row went with a restore.
+    The write is what depends on the row, so the write is what has to
+    guarantee it.
+    """
+    admin = sandbox.create_user("Priya", "priya")["id"]
+    sandbox.join(group_id, admin)
+    sandbox.patch_member(group_id, admin, role="administrator")
+    dm_id = int(sandbox.open_dm(admin)["id"])
+
+    before_dm_messages = len(sandbox.state()["messages"].get(str(dm_id), []))
+    sandbox.send_message(group_id, admin, text=_CONFIG_COMMAND[lang])
+    menu = wait_for(
+        lambda: next(
+            (
+                message
+                for message in messages_in(sandbox.state(), dm_id, before_dm_messages)
+                if message["reply_markup"] is not None
+            ),
+            None,
+        ),
+        timeout=15.0,
+        description="deliver a config menu with buttons into the DM",
+        on_timeout=lambda: describe_recent_calls(sandbox.state()),
+    )
+
+    # The state UAT was in. ON DELETE CASCADE takes group_configs with it, so
+    # the assertion at the end cannot pass on a row that was already there.
+    pg_conn.execute("DELETE FROM groups WHERE group_id = %s", (group_id,))
+
+    # First button, first field: Language — the column that was failing.
+    button = menu["reply_markup"]["inline_keyboard"][0][0]["callback_data"]
+    before_prompt = len(sandbox.state()["messages"].get(str(dm_id), []))
+    sandbox.press_callback(dm_id, admin, menu["message_id"], button)
+    prompt = wait_for(
+        lambda: next(
+            (
+                message
+                for message in messages_in(sandbox.state(), dm_id, before_prompt)
+                if _MAGIC_MARKER in (message["text"] or "")
+            ),
+            None,
+        ),
+        timeout=15.0,
+        description="send the field prompt into the DM",
+        on_timeout=lambda: describe_recent_calls(sandbox.state()),
+    )
+    assert f"Chat = {group_id}" in prompt["text"], (
+        "the prompt is where the target group id comes from; without it the reply "
+        "handler has nothing to write against"
+    )
+
+    target = "pt" if lang != "pt" else "eng"
+    since = len(sandbox.state()["api_calls"])
+    sandbox.send_message(dm_id, admin, text=target, reply_to_message_id=int(prompt["message_id"]))
+
+    wait_for(
+        lambda: (
+            row[0]
+            if (
+                row := pg_conn.execute(
+                    "SELECT language FROM group_configs WHERE group_id = %s", (group_id,)
+                ).fetchone()
+            )
+            and row[0] == target
+            else None
+        ),
+        timeout=20.0,
+        description=f"persist language={target!r} for a group with no parent row",
+        on_timeout=lambda: describe_recent_calls(sandbox.state()),
+    )
+
+    parent = pg_conn.execute(
+        "SELECT group_id FROM groups WHERE group_id = %s", (group_id,)
+    ).fetchone()
+    assert parent is not None, (
+        "the write path has to create the row it depends on, not assume some "
+        "earlier in-chat update did"
+    )
+    assert not [
+        c
+        for c in calls_to(sandbox.state(), "sendMessage", since)
+        if _WRITE_FAILED_TEXT in c["payload"].get("text", "")
+    ], "the admin was told the setting could not be saved"
