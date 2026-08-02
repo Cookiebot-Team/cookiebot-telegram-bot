@@ -40,12 +40,20 @@ def pg(run: Callable[[Coroutine[Any, Any, Any]], Any]) -> Iterator[ModuleType]:
         traces_enabled=False,
         # Not the 10s production default. The first statement carrying an array
         # parameter on a fresh connection makes asyncpg run its recursive
-        # `typeinfo_tree` introspection, which aggregates over pg_attribute once
-        # per composite type — and a Citus catalog has one composite type per
-        # shard table. On a native x86 host that is under a second; on an
-        # emulated amd64 container (Apple Silicon, the only arch citusdata
-        # publishes) it is ~10s, which fails the run in teardown rather than in
-        # anything the test is about.
+        # `typeinfo_tree` introspection, and this margin exists because that used
+        # to take ~20s here.
+        #
+        # The cause was never the emulated container this comment used to blame:
+        # Citus hides shards by injecting `relation_is_a_known_shard(oid)` into
+        # every `pg_class` scan, the introspection query scans `pg_class` 485
+        # times, and that call ran 1.37 million times. `cb_core/db.py` now opens
+        # connections with `citus.override_table_visibility=off` and `jit=off`,
+        # which took the same query from 23.5s to 19ms — in production, where it
+        # was timing out mid-command, and here.
+        #
+        # The margin stays anyway: an integration suite that fails in teardown
+        # because a first-connection cost drifted is a bad way to learn about it,
+        # and `test_pool_session_settings.py` asserts the real bound.
         pg_command_timeout=float(os.environ.get("CB_TEST_PG_COMMAND_TIMEOUT", "60")),
     )
     try:
