@@ -1,0 +1,4 @@
+{
+  "handler_error": "⚠️ Algo salió mal al ejecutar eso.\n<blockquote>%(reason)s</blockquote>\nReferencia: <code>%(trace)s</code>",
+  "config_write_failed": "ERROR: no se pudo guardar la configuración\n<blockquote>%(reason)s</blockquote>\nReferencia: <code>%(trace)s</code>"
+}

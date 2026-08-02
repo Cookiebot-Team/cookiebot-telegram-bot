@@ -28,6 +28,7 @@ point than its literal wording describes.
 
 from __future__ import annotations
 
+import html
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -148,6 +149,13 @@ def user_sends_command(
         # The mock records the raw request payload, not the response Telegram
         # would hand back, so the prompt's own message id is fabricated — the
         # handler only ever compares `reply_to_message.text`, never its id.
+        #
+        # The text is unescaped for the same reason: what goes out is
+        # `WELCOME_PROMPT_HTML` (`<user>` escaped, or Telegram rejects the whole
+        # send), and what Telegram puts in `reply_to_message.text` is the
+        # rendered form. The mock parses no entities, so this does that step by
+        # hand — otherwise the fabricated prompt carries `&lt;user&gt;`, which is
+        # not what a real reply would quote back.
         sent = telegram.calls_to("sendMessage")[-1]
         welcome_ctx.new_welcome_prompt = {
             "message_id": update_id,
@@ -159,7 +167,7 @@ def user_sends_command(
                 "first_name": "Cookiebot",
                 "username": "CookieMWbot",
             },
-            "text": sent.get("text", ""),
+            "text": html.unescape(sent.get("text", "")),
         }
 
 
@@ -341,10 +349,19 @@ def non_admin_replies(
 def bot_displays_message(telegram: MockTelegram, text: str) -> None:
     sent = telegram.calls_to("sendMessage")
     assert sent, "expected a sendMessage call, got none"
+    # The scenario says what the admin *reads*; this assertion sees what went on
+    # the wire, and for this prompt the two differ. It contains a literal
+    # `<user>` — the placeholder it is telling the admin to type — and the bot
+    # sends `parse_mode=HTML`, which rejects `<user>` as an unsupported start
+    # tag and failed the whole command in UAT (`welcome.py:WELCOME_PROMPT_HTML`).
+    # So it goes out escaped and Telegram renders it back. Unescaping here
+    # compares the two things that are meant to be equal. This mock does no
+    # entity parsing of its own, which is exactly why it never caught that.
+    on_the_wire = html.unescape(sent[-1].get("text", ""))
     # v1's real prompt (Configurations.py:267) contains a literal "\n\n" that
     # Gherkin's single-line string cannot represent; the spec text collapses
     # it to a single space.
-    assert sent[-1].get("text", "").replace("\n\n", " ") == text, sent[-1]
+    assert on_the_wire.replace("\n\n", " ") == text, sent[-1]
 
 
 @then(parsers.parse('the bot should send a message on the group saying "{text}"'))

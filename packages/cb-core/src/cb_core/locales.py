@@ -82,7 +82,22 @@ def _read(lang: str, filename: str) -> str:
 
 
 def _load_catalog(lang: str) -> Mapping[str, str]:
-    return MappingProxyType(json.loads(_read(lang, "lib.json")))
+    """`lib.json` as v1 ships it, with `cb.json` layered on top.
+
+    Two files, because `lib.json` is a byte-for-byte copy of v1's and
+    `packages/cb-core/tests/test_locales.py` asserts exactly that — the whole
+    point of copying it rather than retyping it. A v2-only string added to it
+    breaks that guarantee (and did: `handler_error` landed there in f90e4a2 and
+    took the byte-identity test with it, which is how it also went unnoticed
+    that the string used `{trace}` where this module substitutes `%(trace)s`).
+
+    `cb.json` is where a string this bot invented belongs. It overlays rather
+    than merges under, so a v2 string can also deliberately override a v1 one
+    without editing the copy.
+    """
+    catalog = dict(json.loads(_read(lang, "lib.json")))
+    catalog.update(json.loads(_read(lang, "cb.json")))
+    return MappingProxyType(catalog)
 
 
 def _load_lines(text_body: str) -> tuple[str, ...]:

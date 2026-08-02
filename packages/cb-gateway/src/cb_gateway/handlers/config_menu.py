@@ -43,6 +43,7 @@ Design differences from v1, each recorded in `docs/contracts/util_config.md`:
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 from typing import Literal
 
@@ -56,13 +57,14 @@ from aiogram.types import (
     ReactionTypeEmoji,
 )
 
-from cb_core import group_config
+from cb_core import errors, group_config, locales
 from cb_core.group_config import GroupConfig
 from cb_core.logging import get_logger
 from cb_core.settings import get_settings
+from cb_core.telemetry import current_trace_id
 from cb_gateway.context import context_for
 from cb_gateway.filters import CommandName
-from cb_gateway.telemetry import mark_outcome
+from cb_gateway.telemetry import error_reason_for_chat, mark_outcome
 
 log = get_logger("cb.config_menu")
 
@@ -461,6 +463,27 @@ async def press_config_button(callback: CallbackQuery, bot: Bot) -> None:
     await callback.answer()
 
 
+async def _write_failed_text(group_id: int, exc: BaseException) -> str:
+    """The failure message, in the group's language, with the reason and the id.
+
+    The language lookup is the same read that may have just failed, so it is
+    best-effort and falls back to English: a write failure reported in the wrong
+    language still reports the failure, while an exception raised in here would
+    replace it with silence.
+    """
+    lang = "en"
+    # Never let the message *about* a failure fail: this is the same read that
+    # may have just broken.
+    with contextlib.suppress(Exception):
+        lang = locales.resolve_language((await group_config.get_config(group_id)).language)
+    return locales.get(
+        "config_write_failed",
+        lang,
+        reason=error_reason_for_chat(exc),
+        trace=current_trace_id() or "-",
+    )
+
+
 @router.message(_is_config_reply)
 async def apply_config_reply(message: Message) -> None:
     """The admin's reply to a prompt. v1: `configurar_set`, `Configurations.py:169-211`."""
@@ -485,13 +508,21 @@ async def apply_config_reply(message: Message) -> None:
         # (`Configurations.py:169-211` has no error handling), so the admin walked
         # away believing the setting had changed.
         log.warning(
-            "config_menu.write_failed", group_id=group_id, column=field.column, error=str(exc)
+            "config_menu.write_failed",
+            group_id=group_id,
+            column=field.column,
+            error=errors.render(exc),
+            error_chain=errors.chain(exc),
         )
         # Not "silent" (a message is sent) and not the middleware's own "error"
         # (nothing propagates past here) — "refused" is the closest of the three
         # buckets: the write the admin asked for did not land, and they were told.
         mark_outcome("refused")
-        await message.answer(_WRITE_FAILED_TEXT)
+        # Nothing propagates past here, so `TelemetryMiddleware`'s `_tell_user`
+        # never runs for this failure and the admin would otherwise get the one
+        # thing a support request cannot use: "try again" with no reference and
+        # no reason. The trace id is the same one the Errors dashboard indexes.
+        await message.answer(await _write_failed_text(group_id, exc))
         return
 
     try:

@@ -21,6 +21,7 @@ round trip that is usually the actual latency — and `cb_telegram_api_duration_
 
 from __future__ import annotations
 
+import html
 import time
 from typing import Literal
 
@@ -35,7 +36,7 @@ from aiogram.methods.base import Response, TelegramType
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind
 
-from cb_core import metrics
+from cb_core import errors, metrics
 from cb_core.telemetry import span
 
 # The only three shapes worth telling apart on a root span: a full answer, a
@@ -46,6 +47,32 @@ from cb_core.telemetry import span
 Outcome = Literal["answered", "refused", "silent"]
 
 OUTCOME_ATTR = "cb.outcome"
+
+
+#: English, in every group, on purpose — see `error_reason_for_chat`.
+_NO_REASON = "the bot could not finish the command"
+
+
+def error_reason_for_chat(exc: BaseException | None) -> str:
+    """The one line about a failure that belongs in a chat message.
+
+    `errors.reason` gives the innermost failure — the thing that actually broke,
+    which is the only link a user can act on.
+
+    English regardless of the group's language, and deliberately so: the string
+    it renders is an exception message from Telegram, Postgres or a Python
+    library, and those are English whatever the group speaks. Localising the
+    sentence around an English payload makes a half-translated message, and
+    machine-translating the payload itself would corrupt the identifiers and
+    error codes that make it useful. The words the *bot* chooses stay
+    translated; the words the failure chose stay as the failure wrote them.
+
+    Escaped for HTML because this bot sends `parse_mode=HTML` and an exception
+    message is full of the characters that breaks: Telegram's own parse errors
+    quote the offending markup back at you, Postgres quotes identifiers. Without
+    this, the message explaining a failure to send a message fails to send.
+    """
+    return html.escape(errors.reason(exc) or _NO_REASON, quote=False)
 
 
 def mark_outcome(outcome: Outcome) -> None:
@@ -90,7 +117,16 @@ class BotAPIRequestTracing(BaseRequestMiddleware):
                 # `start_as_current_span`'s default recording, same as
                 # `cb_core.llm.router.complete`'s span relies on for its own
                 # re-raised exceptions.
+                #
+                # The method name is added to the span rather than wrapped into
+                # the exception: `errors.fail_as` here would put a `CbError`
+                # between the handler and a `TelegramBadRequest` the handlers
+                # catch by type (`config_menu`, `welcome`, `calladms` all do),
+                # and an except clause that silently stops matching is a worse
+                # failure than the one being described.
                 outcome = "error"
+                current = trace.get_current_span()
+                current.set_attribute("cb.error.operation", f"telegram.{name}")
                 raise
             finally:
                 metrics.telegram_api_duration.labels(method=name, outcome=outcome).observe(
@@ -98,4 +134,10 @@ class BotAPIRequestTracing(BaseRequestMiddleware):
                 )
 
 
-__all__ = ["OUTCOME_ATTR", "BotAPIRequestTracing", "Outcome", "mark_outcome"]
+__all__ = [
+    "OUTCOME_ATTR",
+    "BotAPIRequestTracing",
+    "Outcome",
+    "error_reason_for_chat",
+    "mark_outcome",
+]

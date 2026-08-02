@@ -28,7 +28,7 @@ from typing import Any
 
 import asyncpg
 
-from cb_core import cache, db, groups, metrics, tenancy
+from cb_core import cache, db, errors, groups, metrics, tenancy
 from cb_core.logging import get_logger
 from cb_core.settings import get_settings
 
@@ -277,6 +277,13 @@ async def set_config(group_id: int, **fields: object) -> GroupConfig:
         f"VALUES ($1, {insert_placeholders}, ${len(columns) + 2}) "
         f"ON CONFLICT (group_id) DO UPDATE SET {update_assignments}, updated_at = EXCLUDED.updated_at"
     )
+    with errors.fail_as("group_config.set_config", group_id=group_id, columns=",".join(columns)):
+        await _upsert_config(stmt, group_id, values, now)
+    await invalidate(group_id)
+    return await get_config(group_id)
+
+
+async def _upsert_config(stmt: str, group_id: int, values: list[object], now: datetime) -> None:
     await groups.ensure(group_id)
     try:
         await db.execute(stmt, group_id, *values, now, name="group_config_upsert")
@@ -289,8 +296,6 @@ async def set_config(group_id: int, **fields: object) -> GroupConfig:
         log.warning("group_config.parent_row_missing", group_id=group_id)
         await groups.ensure_now(group_id)
         await db.execute(stmt, group_id, *values, now, name="group_config_upsert")
-    await invalidate(group_id)
-    return await get_config(group_id)
 
 
 async def invalidate(group_id: int) -> None:

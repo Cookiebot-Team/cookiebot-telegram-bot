@@ -1,0 +1,4 @@
+{
+  "handler_error": "⚠️ Something went wrong handling that.\n<blockquote>%(reason)s</blockquote>\nReference: <code>%(trace)s</code>",
+  "config_write_failed": "ERROR: could not save the setting\n<blockquote>%(reason)s</blockquote>\nReference: <code>%(trace)s</code>"
+}

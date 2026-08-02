@@ -43,6 +43,7 @@ colocated with `groups`. v1's REST layer did PUT-then-POST-on-404
 from __future__ import annotations
 
 import contextlib
+import html
 from typing import cast
 
 from aiogram import Bot, F, Router
@@ -67,6 +68,23 @@ WELCOME_PROMPT = (
     "displayed when someone joins the group.\n\n"
     "You can include <user> to be replaced with the user name"
 )
+#: What actually goes on the wire. This bot sends `parse_mode=HTML`, and
+#: `<user>` is not a tag Telegram knows, so sending the prompt unescaped fails
+#: the whole command with:
+#:
+#:     Bad Request: can't parse entities: Unsupported start tag "user" at byte
+#:     offset 127
+#:
+#: — which is exactly what `/newwelcome` did in UAT, every time, for every
+#: caller. v1 sent with no parse_mode at all (`Configurations.py:267`), so the
+#: string never had to survive an entity parser.
+#:
+#: Escaped rather than reworded, and escaped *here* rather than in the constant,
+#: because `WELCOME_PROMPT` is also what `_is_welcome_reply` matches an incoming
+#: reply's `reply_to_message.text` against — and Telegram hands that back
+#: already rendered, i.e. with `<user>` in it. The constant has to stay the text
+#: as the user sees it; only the wire form is escaped.
+WELCOME_PROMPT_HTML = html.escape(WELCOME_PROMPT, quote=False)
 # Also hardcoded English-only in v1 (Configurations.py:255) — same quirk.
 NOT_ADMIN_TEXT = "You are not a group admin!"
 WELCOME_UPDATED_TEXT = "Welcome message updated! ✅"
@@ -252,7 +270,7 @@ async def newwelcome(message: Message) -> None:
     the "QA vs. v1 conflict" section of docs/contracts/core_welcome.md for why
     this diverges from the copied QA scenario's wording.
     """
-    await message.reply(WELCOME_PROMPT)
+    await message.reply(WELCOME_PROMPT_HTML)
 
 
 @router.message(_is_welcome_reply)

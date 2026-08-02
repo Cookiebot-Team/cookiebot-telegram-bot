@@ -14,13 +14,13 @@ from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject, Update
 from opentelemetry.trace import SpanKind
 
-from cb_core import cache, groups, locales, metrics
+from cb_core import cache, errors, groups, locales, metrics
 from cb_core.dedupe import RecentIds, idempotency_key
 from cb_core.events import recorder
 from cb_core.logging import get_logger
 from cb_core.telemetry import current_trace_id, record_error, span
 from cb_core.textmatch import parse_command
-from cb_gateway.telemetry import OUTCOME_ATTR
+from cb_gateway.telemetry import OUTCOME_ATTR, error_reason_for_chat
 
 log = get_logger("cb.gateway.mw")
 
@@ -77,18 +77,27 @@ def _ids(update: Update) -> tuple[int, int | None]:
     return (0, None)
 
 
-async def _tell_user(update: Update, group_id: int) -> None:
-    """Answer a failed update with its trace id.
+async def _tell_user(update: Update, group_id: int, exc: BaseException | None = None) -> None:
+    """Answer a failed update with what went wrong and its trace id.
 
     Before this the user got nothing at all — the handler raised, the gateway
     still returned 200 so Telegram would not redeliver, and the bot simply went
     quiet. "It ignored me" and "it broke" look identical from the chat, and
     neither gives anyone a way to find the failure in the logs.
 
-    The trace id is the join key: every log line carries it (cb_core.logging),
-    every span carries it, and the Loki datasource links it through to Tempo.
-    Pasting it into the Errors dashboard's log panel narrows hours of traffic to
-    one interaction.
+    Two things go in the message. The **reason** is `errors.reason(exc)`: the
+    innermost failure, which is the only link in the chain a person in a chat
+    can act on ("Bad Request: can't parse entities…" tells an admin their
+    welcome text is the problem; "CbError: welcome.prompt(...)" does not). The
+    **trace id** is the join key for everyone else: every log line carries it
+    (cb_core.logging), every span carries it, and the Loki datasource links it
+    through to Tempo, so pasting it into the Errors dashboard narrows hours of
+    traffic to one interaction.
+
+    The reason is HTML-escaped. It is an exception message — Postgres puts
+    quoted identifiers in it, Telegram puts the offending markup in it — and it
+    is rendered inside a `<blockquote>`, so an unescaped `<` would fail to send
+    the very message that explains a failure to send a message.
 
     Everything here is best-effort. This runs inside the `except` of the failing
     handler and must not replace the original exception with one of its own —
@@ -113,7 +122,14 @@ async def _tell_user(update: Update, group_id: int) -> None:
             pass
 
     try:
-        await reply(locales.get("handler_error", lang, trace=trace))
+        await reply(
+            locales.get(
+                "handler_error",
+                lang,
+                trace=trace,
+                reason=error_reason_for_chat(exc),
+            )
+        )
     except Exception as exc:  # noqa: BLE001 - the chat may be gone, or the bot muted
         log.warning("handler.error_reply_failed", error=str(exc))
 
@@ -229,11 +245,27 @@ class TelemetryMiddleware(BaseMiddleware):
                 outcome = "error"
                 sp.set_attribute(OUTCOME_ATTR, "error")
                 record_error(sp, exc)
+                # The exception *type* is the metric's label, and after
+                # `errors.fail_as` the outermost type is always `CbError` —
+                # which would collapse every failure in the bot into one series.
+                # The innermost is what differs between a Telegram rejection and
+                # a foreign-key violation, so that is what gets counted.
+                innermost = errors.root(exc) or exc
                 metrics.handler_errors_total.labels(
-                    handler=command or utype, exc_type=type(exc).__name__
+                    handler=command or utype, exc_type=type(innermost).__name__
                 ).inc()
-                log.exception("handler.failed", command=command, skin=skin)
-                await _tell_user(update, group_id)
+                # `log.exception` carries the traceback; `error_chain` carries
+                # what the traceback cannot — which group, which column, which
+                # job — as data a Loki query can filter on rather than prose to
+                # read. Both, because they answer different questions.
+                log.exception(
+                    "handler.failed",
+                    command=command,
+                    skin=skin,
+                    error=errors.render(exc),
+                    error_chain=errors.chain(exc),
+                )
+                await _tell_user(update, group_id, exc)
                 raise
             finally:
                 elapsed = time.perf_counter() - start
