@@ -3,25 +3,47 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Today's birthdays"
-description: "generated birth_month/birth_day columns replace v1's unindexable $expr scan"
-status: planned
+description: "manual command only - the daily every-group broadcast is an unverified, unresolved parity gap, see docs/contracts/util_birthday.md"
+status: partial
 milestone: M2
 area: util
-layer: gateway
-triggers: ["/birthday", "/aniversario"]
+layer: worker
+triggers: ["/birthday", "/aniversario", "/cumpleanos"]
 v1_source: "Birthdays.py:14-61"
+contract: "docs/contracts/util_birthday.md"
 ---
 <FeatureHeader id="util_birthday" />
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+`/birthday` (also `/aniversario`, `/cumpleanos`) posts a photo collage of
+everyone in the group celebrating a birthday today, with a random
+celebratory caption, and pins it. You can also tag people directly
+(`/birthday @friend`) to add them to the collage regardless of whether the
+bot knows their birthday.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+Typing `/birthday` on its own does **not** show today's birthdays — it asks
+you to type usernames instead. This looks backwards, but it is exactly what
+v1 does, confirmed by reading its code: only `/birthday` with something
+after it reaches the real lookup. A tagged name and a real registered
+birthday can both appear in the same collage even if they're the same
+person — v1 never checked for that either.
+
+**Known gap, not yet resolved**: v1 also appears to post an unattended
+birthday collage to every group automatically, once a day, from something
+outside its own source code (no cron job or scheduler for this exists
+anywhere in the reference checkout). This port only builds the manual,
+on-demand command — the thing you can actually verify by reading the code.
+Whether groups currently receive an automatic daily post is unconfirmed;
+if they do, that is real work still to do before this feature can be
+called complete, not an optional extra.
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/features/util_birthday.feature` — run with `python scripts/cb.py test`.
+By hand in the sandbox: have someone with a known birthday talk in the
+group, then run `/birthday @them` and confirm a collage with their photo
+(or a placeholder, if none is available) shows up, gets pinned, and a 🎂
+message follows.

@@ -1,19 +1,19 @@
 {
   "generated_at": "2026-08-02",
-  "commit": "ef73494",
-  "test_summary": "2228 passed, 45 skipped, 143 deselected, 1 warning in 19.88s",
+  "commit": "cd10b7a",
+  "test_summary": "2286 passed, 45 skipped, 143 deselected, 1 warning in 20.56s",
   "totals": {
     "features": 53,
-    "done": 31,
-    "partial": 6,
-    "planned": 15,
+    "done": 32,
+    "partial": 7,
+    "planned": 13,
     "blocked": 1,
     "spec_scenarios": 63,
-    "ported": 120,
+    "ported": 125,
     "spec_files": 31,
-    "spec_files_covered": 21,
+    "spec_files_covered": 23,
     "new_specs": 17,
-    "green": 200,
+    "green": 205,
     "failing": 0
   },
   "milestones": [
@@ -32,7 +32,7 @@
     {
       "id": "M2",
       "title": "Fun and utility commands",
-      "done": 9,
+      "done": 10,
       "total": 15
     },
     {
@@ -759,20 +759,21 @@
       "id": "util_birthday",
       "title": "Today's birthdays",
       "area": "util",
-      "layer": "gateway",
+      "layer": "worker",
       "milestone": "M2",
-      "status": "planned",
+      "status": "partial",
       "triggers": [
         "/birthday",
-        "/aniversario"
+        "/aniversario",
+        "/cumpleanos"
       ],
       "v1_source": "Birthdays.py:14-61",
-      "notes": "generated birth_month/birth_day columns replace v1's unindexable $expr scan",
-      "contract": null,
+      "notes": "manual command only - the daily every-group broadcast is an unverified, unresolved parity gap, see docs/contracts/util_birthday.md",
+      "contract": "docs/contracts/util_birthday.md",
       "scenarios": {
         "spec": 1,
-        "ported": 0,
-        "green": 0,
+        "ported": 3,
+        "green": 3,
         "failing": 0
       },
       "url": "/docs/features/util_birthday"
@@ -783,18 +784,18 @@
       "area": "util",
       "layer": "gateway",
       "milestone": "M2",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/nextbirthday",
         "/proximosaniversarios"
       ],
       "v1_source": "Birthdays.py:104-117",
-      "notes": "",
-      "contract": null,
+      "notes": "not group-scoped, matching v1 exactly - see docs/contracts/util_nextbirthday.md",
+      "contract": "docs/contracts/util_nextbirthday.md",
       "scenarios": {
         "spec": 1,
-        "ported": 0,
-        "green": 0,
+        "ported": 2,
+        "green": 2,
         "failing": 0
       },
       "url": "/docs/features/util_nextbirthday"
@@ -1679,10 +1680,10 @@
     {
       "stem": "util_birthday",
       "spec": 1,
-      "ported": 0,
-      "green": 0,
+      "ported": 3,
+      "green": 3,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "util_calladms",
@@ -1743,10 +1744,10 @@
     {
       "stem": "util_nextbirthday",
       "spec": 1,
-      "ported": 0,
-      "green": 0,
+      "ported": 2,
+      "green": 2,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "util_postforwarder",

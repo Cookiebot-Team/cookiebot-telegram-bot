@@ -25,6 +25,12 @@ dependencies = [
     "google-cloud-storage>=3.13",
     # Per-prefix progress bars and the final copied/skipped/failed summary table.
     "rich>=13.7",
+    # util_birthday's collage compositing (cb_worker/collage.py). v1 used
+    # OpenCV for this one grid-of-photos-plus-one-alpha-overlay job; nothing
+    # else in this codebase does pixel compositing, so Pillow — C-backed,
+    # much smaller surface than OpenCV — is the new dependency, not a
+    # duplicate of one already present (AGENTS.md §5).
+    "Pillow>=11.0",
 ]
 
 [tool.setuptools.packages.find]

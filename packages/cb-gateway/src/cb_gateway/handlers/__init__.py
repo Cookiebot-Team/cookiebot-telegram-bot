@@ -15,6 +15,7 @@ from aiogram import Router
 
 from cb_gateway.handlers import (
     battle,
+    birthday,
     calladms,
     complaint,
     config_menu,
@@ -29,6 +30,7 @@ from cb_gateway.handlers import (
     listcommand,
     mediarestrict,
     members,
+    nextbirthday,
     privacy,
     rules,
     setlang,
@@ -64,6 +66,8 @@ def build_router() -> Router:
     root.include_router(everyone.router)
     root.include_router(battle.router)
     root.include_router(youtube.router)
+    root.include_router(birthday.router)
+    root.include_router(nextbirthday.router)
 
     # ---- join chain: order matters, see the module docstring ----
     # 1. Bookkeeping first. `group_members.joined_at` is recorded even for a

@@ -43,7 +43,7 @@ Legend: **QA** = spec exists · **BOT** = python handler · **API** = backend en
 
 | QA feature | Trigger (spec) | Trigger (code) | Bot handler | Backend | Status |
 |---|---|---|---|---|---|
-| `util_birthday` | `/birthday` | `/aniversário`,`/birthday`,`/cumpleaños` | `Birthdays.py:14-61` | `GET /users?birthdate=` | ⚠ `$expr` month/day query = full scan, unindexed |
+| `util_birthday` | `/birthday` | `/aniversário`,`/birthday`,`/cumpleaños` | `Birthdays.py:14-61` | `GET /users?birthdate=` | ❌ **QA's bare `/birthday` expects a montage; v1's own first check (`len(msg['text'].split()) == 1`) replies a "type usernames" prompt instead and never looks up who has a birthday — only `/birthday <anything else>` reaches the real lookup** — ported per v1, see `docs/contracts/util_birthday.md`. Also: unattended daily broadcast to every group (`manual_chat_id=None` shape) has no caller anywhere in this checkout — **unverified whether it runs in production**, not built, not resolved. `$expr` month/day scan fixed via `GENERATED` columns + index (v2). |
 | `util_calladms` | `/adm` | `/adm`,`@admin`,`/report` | `UserRegisters.py:168-176`,`:178-203` | — | ✅ |
 | `util_config` | `/config` | `/configurar`,`/configure` | `Configurations.py:139-167`,`:213-240` | `GET/PUT /configs/{id}` | ❌ **trigger mismatch** (`/config` vs `/configurar`) |
 | `util_deletereposts` | `/deletereposts` | `/deleteposts`,`/apagarposts` | `Publisher.py:316-327` | local `Publisher.db` | ❌ **trigger mismatch** |

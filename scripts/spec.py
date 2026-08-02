@@ -145,11 +145,13 @@ FEATURES: tuple[Feature, ...] = (
             "/trex is spec'd in QA but missing from v1 - net-new"),
 
     # -------------------------------------------------------------------- util
-    Feature("util_birthday", "util", "Today's birthdays", "M2", Status.PLANNED,
-            Layer.GATEWAY, "Birthdays.py:14-61", ("/birthday", "/aniversario"),
-            "generated birth_month/birth_day columns replace v1's unindexable $expr scan"),
-    Feature("util_nextbirthday", "util", "Upcoming birthdays", "M2", Status.PLANNED,
-            Layer.GATEWAY, "Birthdays.py:104-117", ("/nextbirthday", "/proximosaniversarios")),
+    Feature("util_birthday", "util", "Today's birthdays", "M2", Status.PARTIAL,
+            Layer.WORKER, "Birthdays.py:14-61", ("/birthday", "/aniversario", "/cumpleanos"),
+            "manual command only - the daily every-group broadcast is an unverified, unresolved "
+            "parity gap, see docs/contracts/util_birthday.md"),
+    Feature("util_nextbirthday", "util", "Upcoming birthdays", "M2", Status.DONE,
+            Layer.GATEWAY, "Birthdays.py:104-117", ("/nextbirthday", "/proximosaniversarios"),
+            "not group-scoped, matching v1 exactly - see docs/contracts/util_nextbirthday.md"),
     Feature("util_everyone", "util", "Ping every member", "M2", Status.DONE,
             Layer.WORKER, "UserRegisters.py:97-146", ("/everyone", "@everyone"),
             "batched roster read replaces v1's per-user backend call; fan-out moved to cb-worker"),

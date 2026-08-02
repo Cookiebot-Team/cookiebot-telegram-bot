@@ -5,15 +5,23 @@ narrowed — see "Recommended scope" below
 **v1 source:** `Bot/Birthdays.py:14-61` (`birthday`), dispatched
 `Bot/COOKIEBOT.py:242-243`.
 
-## Status: two things settled with evidence, one scope question open — no design.md/code yet
+## Status: decisions approved, building
 
-Per instruction: settle the collection-mechanism question with evidence
-before designing (done, below), and do not invent a collection flow. What
-that investigation also turned up — the actual posting mechanism is far
-bigger than "check today's date, post a message" — is a second, genuine
-scope question, same shape as `fun_battle`'s "the brief undersold this."
-Recommending a narrower slice below; not building the wider one without
-confirmation.
+1. **Collection mechanism**: read whatever the importer carried over, no new
+   DM collection UI. Approved — see §1.
+2. **Scope**: the manual shape only (`/birthday`, `/nextbirthday`, matching
+   both QA scenarios). Approved — see §2.
+3. **Collage compositing**: Pillow; the 900s follow-up via
+   `enqueue(..., _defer_by=900)`, not `threading.Timer`; photos via
+   `cb_core.members.roster` + `bot.get_user_profile_photos`, no scrape.
+   Approved — see `design.md`.
+
+**One thing explicitly not resolved, by instruction — recorded as an open
+parity gap, not a closed decision**: v1's `birthday()` also serves a second,
+unattended, every-group shape (§2's "Cron"), driven by something outside
+this checkout. This port does not build it — but its absence in this
+checkout is not evidence of its absence in production. See "The unverified
+daily broadcast — an open parity gap" below and `docs/contracts/util_birthday.md`.
 
 ## 1. The collection-mechanism question — settled
 
@@ -127,7 +135,30 @@ substantial:
    the same day repeatedly, unattended); a human-invoked `/birthday` has no
    real "did I already do this today" question QA asks about.
 
-## Recommended scope for this port
+## The unverified daily broadcast — an open parity gap
+
+**This is not a closed decision.** If v1 really does post a daily birthday
+montage to every live group via whatever scheduler drives the `manual_chat_id
+= None` call shape, then shipping the manual command only is a **silent
+regression** for every group currently receiving those posts — the feature
+would read "done" on the progress board and be visibly missing from the
+chat. This checkout has no evidence the scheduler exists (no cron entry, no
+systemd timer, no `while True` loop anywhere in `../COOKIEBOT-Telegram-Group-Bot`
+that calls `birthday()` unattended), but **absence of the caller in this
+repo is not proof of absence in the running v1 deployment** — it could live
+in infrastructure config, a separate script, or a host-level cron entry
+none of the three reference repos would ever show.
+
+This port builds the manual shape because that is what can be verified and
+is what QA actually specifies — not because the daily broadcast has been
+confirmed unnecessary. **Someone with access to the live v1 deployment needs
+to confirm, before cutover, whether groups currently receive an unattended
+daily birthday post.** If they do, that is a real, separate feature to
+build before cutover, not an optional enhancement. Recorded here,
+in `docs/contracts/util_birthday.md`, and in `HANDOFF.md` — not marked
+resolved.
+
+## Scope for this port (approved)
 
 **Build**: the **manual** shape only — `/birthday`, `/aniversario`,
 `/cumpleanos` and `/nextbirthday`, `/proximosaniversarios` as on-demand
@@ -173,19 +204,50 @@ builds.
 | `/birthday` with no argument | `msg['text'].split()) == 1` ⇒ `bday.title` ("You need to type the usernames of today's birthday people!") and return — **no collage, no lookup at all** in this specific case (`:16-18`) — a real, easy-to-miss v1 quirk: a bare `/birthday` doesn't show *today's* birthdays, it asks the caller to name them |
 | `/birthday <names>` or with existing known birthdays | Collage of: known members whose `birth_month`/`birth_day` match today **and** are in the group's roster, **plus** any `@name` tokens typed in the command (no birthdate needed for a manually-tagged name) |
 | Collage caption | `make_birthday_caption` — a random `bday.cta` line (`%(names)s` joined with `" e "`) + `bday.closing` (`"\n\n<i>Happy birthday!</i>\n%(date)s"`) |
-| `/nextbirthday` | Plain text, days 1-4 ahead, `bday.next` header ("UPCOMING BIRTHDAYS (all groups):\n\n" — hardcoded, even for a single-group manual query — preserved, a cosmetic label mismatch, not a behaviour bug) then one line per day: `@username` or `firstName lastName`, or `"- \n"` if nobody that day |
+| `/nextbirthday` | Plain text, days 1-4 ahead, `bday.next` header (localised per-language via `i18n.get`, e.g. `en` "UPCOMING BIRTHDAYS (all groups):\n\n" — but the "(all groups)" wording itself is stale even for this port's single-group manual query, in every language — preserved, a cosmetic label mismatch, not a behaviour bug) then one line per day: `@username` or `firstName lastName`, or `"- \n"` if nobody that day |
 | Persistence | None new — reads `users.birthdate`/`birth_month`/`birth_day` (already-migrated data) |
 | External calls | Bot API: `get_chat_administrators`-independent — `get_user_profile_photos` per collage member, `pinChatMessage`, `sendPhoto`, `sendMessage`. No GCS, no `telegram.me` (redesigned away, `fun_battle` precedent) |
-| Known defects | D-BD-1 (dead DM collection, addressed above — not a defect to fix in code, a data-source decision), D-BD-2 (in-process `threading.Timer`, fix via `_defer_by`) |
+| Known defects | D-BD-1 (dead DM collection — a data-source decision, not a code fix, addressed in §1), D-BD-2 (in-process `threading.Timer`, fix via `_defer_by`), D-BD-3 below |
 
-## QA
+## D-BD-3 — a real crash in v1's own collage sizing, found while reading `make_birthday_collage`
 
-`../Cookiebot-QA/features/util_birthday.feature` and
-`.../util_nextbirthday.feature` — one scenario each, both match the manual
-shape exactly, no conflict with v1 to record.
+`Birthdays.py:60-79` never resizes a fetched photo before pasting it. The
+canvas size and every placement offset are computed from **each image's own
+natural `shape`** (`collage_images[i].shape[0]`/`[1]`), while the overall
+canvas is sized from only the **first** image's shape
+(`collage_size = (height * collage_images[0].shape[0], width *
+collage_images[0].shape[1])`). Two people's profile photos are essentially
+never pixel-identical in size — a second photo larger than the first
+produces a numpy assignment (`collage[y_start:y_end, x_start:x_end] =
+collage_images[i]`) whose shapes don't match, which raises. This is not an
+edge case; it is the common case whenever two real (non-placeholder) photos
+of different resolutions appear in the same collage. **Fix, not preserve**
+— a crash is not a behaviour a user could be relying on, and AGENTS.md's
+Phase 2 rule is explicit that a silent-failure/crash bug gets fixed. Every
+photo (and the placeholder) gets resized to one fixed cell size before
+compositing.
 
-## Open decision — needs confirmation before `design.md`
+## QA — one conflict found
 
-Recommended scope (manual-only, Pillow for compositing, `_defer_by` for the
-follow-up) above — confirm before I write `design.md`/`tasks.md` and start
-pulling in a new image-processing dependency.
+`../Cookiebot-QA/features/util_nextbirthday.feature` matches v1 exactly, no
+conflict.
+
+`../Cookiebot-QA/features/util_birthday.feature`'s one scenario is a bare
+`/birthday` with no argument, expecting "a montage of users that has their
+birthday on that day." **v1 does not do that.** `birthday()`'s very first
+check (`:16-18`) is `if manual_chat_id and len(msg['text'].split()) == 1:
+reply bday.title; return` — a bare `/birthday` (exactly one token, the
+command itself) always hits this branch and replies with the "you need to
+type the usernames of today's birthday people!" prompt, **never** looking
+up who actually has a birthday. Only `/birthday <anything else>` (any
+second token at all, `@`-prefixed or not) reaches the real lookup.
+
+Per AGENTS.md's tie-break (v1 code wins for observable behaviour, QA wins
+for intent, conflicts recorded rather than silently resolved): the copied
+`.feature` file keeps QA's wording unchanged, but the step bound to "the bot
+should reply with a montage..." asserts what v1 **actually** does for a bare
+`/birthday` — the prompt, not a montage. A net-new scenario
+(`/birthday @someone`) covers the real montage-of-today's-birthdays path QA's
+wording seems to have intended. Recorded here and in
+`docs/site/content/docs/feature-map.mdx`, same pattern already used for
+`fun_ship`'s lone-`@user1` conflict and `fun_battle`'s "tags another user."
