@@ -124,16 +124,24 @@ def _restrict_minutes(media_restrict_seconds: int) -> int:
 async def _record_join(group_id: int, user_id: int) -> None:
     """Single-shard insert, filtered on `group_id` (AGENTS.md §4).
 
-    `ON CONFLICT DO NOTHING`: a rejoin does not reset the clock here — no
-    handler in this codebase manages `left_at` / rejoin lifecycle yet, so
-    overwriting `joined_at` on every join risks fighting a future owner of
-    that column rather than fixing anything real today.
+    This is the **only** writer of `joined_at`: since migration `0004` the column
+    is nullable with no default, because `cb_core.members` also creates rows —
+    for members whose arrival nobody witnessed — and those must not claim a join
+    time (see that module's `_UPSERT_MEMBERSHIP` comment).
+
+    So the conflict clause fills a gap rather than doing nothing: a member who
+    spoke before the registry knew them already has a row with a NULL
+    `joined_at`, and this is the event that can finally answer it. `COALESCE`
+    keeps a join time that is already recorded — a rejoin still does not reset
+    the clock, which is what the previous `DO NOTHING` was protecting.
     """
     await db.execute(
         """
-        INSERT INTO group_members (group_id, user_id)
-        VALUES ($1, $2)
-        ON CONFLICT (group_id, user_id) DO NOTHING
+        INSERT INTO group_members (group_id, user_id, joined_at)
+        VALUES ($1, $2, now())
+        ON CONFLICT (group_id, user_id) DO UPDATE
+           SET joined_at = COALESCE(group_members.joined_at, EXCLUDED.joined_at)
+         WHERE group_members.joined_at IS NULL
         """,
         group_id,
         user_id,
