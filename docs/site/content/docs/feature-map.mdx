@@ -29,7 +29,7 @@ Legend: **QA** = spec exists · **BOT** = python handler · **API** = backend en
 
 | QA feature | Trigger (spec) | Trigger (code) | Bot handler | Backend | Status |
 |---|---|---|---|---|---|
-| `fun_battle` | `/battle` | `/batalha`,`/battle`,`/batalla` | `SocialContent.py:294-379` | — | ⚠ scrapes `telegram.me` HTML for avatars (`:279-292`) |
+| `fun_battle` | `/battle` | `/batalha`,`/battle`,`/batalla` | `SocialContent.py:294-379` | — | ❌ **QA's "tags another user" (singular) is v1's one-tag path (person vs. a random "fighter" image), not a two-person battle — that path is blocked on the same private GCS bucket `fun_death` is (`Fight/` prefix, never checked into the v1 repo); only the two-tags/`"random"` shape ships** — see `docs/contracts/fun_battle.md`. The `telegram.me` HTML scrape (`:279-292`) this row used to flag is fixed, not preserved: v2 resolves photos through `cb_core.members.roster` + the Bot API's `getUserProfilePhotos` instead. |
 | `fun_complaint` | `/complaint` | `/milton`,`/reclamacao`,`/complaint`,`/queja` | `Miscellaneous.py:240-248`,`:250-259` | — | ❌ **3 QA/v1 conflicts: QA says message+picture, v1 sends one photo whose caption is the message; QA says "after some minutes", v1 waits 10-20s; QA omits both message deletions, which are in-scope v1 behaviour** — ported per v1, see `docs/contracts/fun_complaint.md` |
 | `fun_death` | `/death` | `/morte`,`/muerte`,`/death` | `Miscellaneous.py:335-357` | — | ✅ |
 | `fun_dice` | `roll 6` / `roll 20` | `/dado`,`/dice`,`/d<N>` | `Miscellaneous.py:160-183` | — | ❌ **spec/code trigger mismatch** |

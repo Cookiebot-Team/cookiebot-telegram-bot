@@ -195,12 +195,25 @@ report. The random pool needs a backfill job that downloads from Telegram.
    `docs/contracts/util_calladms.md`); the captcha's 30s unban (gap 1, above)
    is the one remaining named follow-up.
 6. **`randomdatabase` backfill** — see the import section above.
-7. **`fun_death` is infrastructure-blocked, not just unstarted.** v1's image
-   pool (`bloblist_death`) is a live listing of a private GCS bucket that was
-   never checked into the v1 repo and this environment has no credential
-   for. `Status.BLOCKED` in `scripts/spec.py`; `.specs/features/fun_death/`
-   has the full evidence, the prerequisite (export the bucket's `Death/`
-   prefix), and a design/tasks pair ready to execute the moment it lands.
+7. **`fun_death` is infrastructure-blocked, not just unstarted — and
+   `fun_battle` shares the same blocker for two of its three shapes.** v1's
+   image pools (`bloblist_death`, and `fun_battle`'s
+   `bloblist_fighters_eng`/`bloblist_fighters_pt`) are live listings of the
+   same private GCS bucket (`cookiebot-bucket`, different prefixes: `Death/`
+   vs. `Fight/English`/`Fight/Portuguese`), never checked into the v1 repo,
+   and this environment has no credential for it. `fun_death` is
+   `Status.BLOCKED` in `scripts/spec.py` — `.specs/features/fun_death/` has
+   the full evidence, the prerequisite (export the bucket's `Death/`
+   prefix), and a design/tasks pair ready to execute once it lands.
+   `fun_battle` is `Status.PARTIAL` instead of blocked outright: its
+   two-people shape (explicit tags or `"random"`) needs no bucket at all and
+   ships in this slice, with v1's `telegram.me`-scraping mechanism replaced
+   by `cb_core.members.roster` + the Bot API's `getUserProfilePhotos` (design
+   accepted in `.specs/features/fun_battle/spec.md` — no HTTP scrape, no
+   OpenCV, no local temp files, which also fixed a real cross-request race
+   that existed in v1). Its other two shapes reply v1's own
+   `battle_no_picture` string until the `Fight/` prefix is exported — same
+   prerequisite as `fun_death`'s, tracked together, not as a separate gap.
    `fun_meme` is suspected to have the same shape of blocker but has not
    been checked yet — do not assume, verify the same way before starting it.
 
@@ -242,8 +255,9 @@ directly.
 
 **This section was stale for a while — trust `python scripts/cb.py status`, not
 prose.** `fun_random`, `util_embedder`, `fun_dice`, `fun_ship`, `fun_firecracker`,
-`fun_complaint`, `util_everyone` and `util_calladms` (both the group ping and,
-now, the DM fan-out) have all landed since it was written.
+`fun_complaint`, `util_everyone`, `util_calladms` (both the group ping and the
+DM fan-out) and `fun_battle`'s two-people shape have all landed since it was
+written.
 
 The next batch, in dependency order, now that the member registry exists:
 
@@ -252,7 +266,8 @@ The next batch, in dependency order, now that the member registry exists:
 | 1 | `util_everyone` | **done** — the registry it needed was built; batched roster read (`members.roster`, replacing v1's N+1), fan-out moved to `cb-worker` behind the new gateway→worker enqueue. Contract: `docs/contracts/util_everyone.md` |
 | 2 | `util_birthday`, `util_nextbirthday` | same registry, plus `users.birth_month`/`birth_day` generated columns. The registry does **not** collect birthdates yet: v1 reads them from `getChat` in a DM (`UserRegisters.py:72-80`), which needs the private-chat dispatch listed as gap §1.2 |
 | 3 | `fun_death` — **blocked, confirmed** | v1's image pool (`bloblist_death`, `Miscellaneous.py:17`) is a live listing of a private GCS bucket, never checked into `../COOKIEBOT-Telegram-Group-Bot`. Investigated this session: no `Death/` directory anywhere in the v1 checkout, no credential to the bucket anywhere in this repo or environment. `Status.BLOCKED` in `scripts/spec.py`; full evidence and the prerequisite (someone exports the bucket's `Death/` prefix) in `.specs/features/fun_death/spec.md`. `design.md`/`tasks.md` are written ahead of time so the port is mechanical once the export lands. |
-| 3b | `fun_meme` | same shape of blocker suspected (a GCS-backed template pool) but **not yet investigated this session** — check before assuming it needs the same treatment as `fun_death` |
+| 3a | `fun_battle` — **partial, two-people shape done** | same bucket, different prefix (`Fight/English`/`Fight/Portuguese`) blocks its other two shapes — see gap §1.7. The shape that doesn't need the bucket (explicit tags or `"random"`) shipped this session, and dropped v1's `telegram.me` HTML scrape + a real temp-file race along the way (`docs/contracts/fun_battle.md`). |
+| 3b | `fun_meme` | same shape of blocker suspected (a GCS-backed template pool), **confirmed partially different**: its `Bot/Static/Meme/` directory *does* exist in the v1 checkout (unlike `Death/`/`Fight/`), but at 112 MB — too large to vendor as package data the way `fun_complaint`'s 3.4 MB was. That sizing is `fun_meme`'s own design decision when it's picked up, not solved here. |
 | 4 | `core_musicdetection`, `util_youtube` | first media-processing ports; both belong in cb-worker |
 
 Close the remaining gaps in §1 before or alongside these — the captcha timeout

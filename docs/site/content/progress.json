@@ -1,19 +1,19 @@
 {
   "generated_at": "2026-08-02",
-  "commit": "391960e",
-  "test_summary": "2127 passed, 44 skipped, 143 deselected, 1 warning in 16.74s",
+  "commit": "9f5e1c9",
+  "test_summary": "2166 passed, 45 skipped, 143 deselected, 1 warning in 19.71s",
   "totals": {
     "features": 53,
     "done": 30,
-    "partial": 5,
-    "planned": 17,
+    "partial": 6,
+    "planned": 16,
     "blocked": 1,
     "spec_scenarios": 63,
-    "ported": 111,
+    "ported": 118,
     "spec_files": 31,
-    "spec_files_covered": 19,
+    "spec_files_covered": 20,
     "new_specs": 17,
-    "green": 192,
+    "green": 198,
     "failing": 0
   },
   "milestones": [
@@ -640,21 +640,21 @@
       "id": "fun_battle",
       "title": "Battle poll",
       "area": "fun",
-      "layer": "worker",
+      "layer": "gateway",
       "milestone": "M2",
-      "status": "planned",
+      "status": "partial",
       "triggers": [
         "/battle",
         "/batalha",
         "/batalla"
       ],
       "v1_source": "SocialContent.py:294-379",
-      "notes": "v1 scrapes telegram.me HTML for avatars; replace with getUserProfilePhotos",
-      "contract": null,
+      "notes": "two-people shape ships (roster + getUserProfilePhotos, no scrape); one-tag/self shapes blocked on the Fight/ GCS export, same as fun_death",
+      "contract": "docs/contracts/fun_battle.md",
       "scenarios": {
         "spec": 1,
-        "ported": 0,
-        "green": 0,
+        "ported": 7,
+        "green": 6,
         "failing": 0
       },
       "url": "/docs/features/fun_battle"
@@ -1607,10 +1607,10 @@
     {
       "stem": "fun_battle",
       "spec": 1,
-      "ported": 0,
-      "green": 0,
+      "ported": 7,
+      "green": 6,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "fun_complaint",
