@@ -35,14 +35,27 @@ log = get_logger(__name__)
 
 # Membership is monotonic within a process: once a group's row exists it is
 # never removed while the bot is in the chat, so one INSERT per group per
-# process is enough and the common path costs a set lookup.
+# process is enough and the common path costs a set lookup. Only a caller that
+# knew the chat gets memoised — see `_upsert`.
 _ensured: set[int] = set()
 
+# `chat_type` and `skin` are refreshed from the *parameters*, not from EXCLUDED:
+# EXCLUDED already carries the COALESCEd placeholder, so a caller that passed
+# nothing would overwrite a known value with 'supergroup'/'cookiebot'. Reading
+# $3/$4 directly keeps "the caller said nothing" distinguishable from "the
+# caller said supergroup", which is what lets a row created by a write path
+# that knew neither be corrected by the first update that does.
+#
+# tenant_id is deliberately not refreshed: a renamed or re-skinned group must
+# not silently change tenant, and neither must joined_at be clobbered — it is
+# the only record of when the bot arrived.
 _UPSERT = """
 INSERT INTO groups (group_id, title, chat_type, skin, tenant_id)
 VALUES ($1, $2, COALESCE($3, 'supergroup'), COALESCE($4, 'cookiebot'), COALESCE($5, 'cookiebot'))
 ON CONFLICT (group_id) DO UPDATE
-   SET title = COALESCE(EXCLUDED.title, groups.title)
+   SET title = COALESCE(EXCLUDED.title, groups.title),
+       chat_type = COALESCE($3, groups.chat_type),
+       skin = COALESCE($4, groups.skin)
 """
 
 
@@ -103,7 +116,15 @@ async def _upsert(
     tenant_id: str | None,
 ) -> None:
     await db.execute(_UPSERT, group_id, title, chat_type, skin, tenant_id, name="group_ensure")
-    _ensured.add(group_id)
+    if skin is not None:
+        # Only a caller that knew which chat this is gets to end the matter. A
+        # write path that ensures a row it has never seen a message from
+        # (`group_config.set_config`, driven from a DM) leaves it unmemoised, so
+        # the first in-chat update still runs the upsert and corrects the
+        # placeholder title, chat_type and skin it had to invent. That costs one
+        # extra statement per config write, which is rare, and it is the
+        # difference between a row that is right and a row that looks right.
+        _ensured.add(group_id)
 
 
 def forget(group_id: int) -> None:
