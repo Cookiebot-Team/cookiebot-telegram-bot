@@ -1,0 +1,153 @@
+---
+title: "Scenario coverage audit"
+description: "Where scripts/status.py's spec-vs-reality check can't see, and what's actually there"
+---
+
+`scripts/status.py` compares `scripts/spec.py` against three things it can measure: the
+QA repo's Gherkin (`../Cookiebot-QA/features/`), v2's ported Gherkin (`qa/features/`),
+and an actual pytest run. Until this pass it only asked one question — *does `done`
+have a passing scenario?* — which catches overstatement but has a blind spot the size
+of everything the spec doesn't mention at all. This page is that blind spot, mapped.
+
+`scripts/status.py --check` (job 2 of the same pass) now catches most of what's
+below automatically — the "undocumented partial/blocked" and "unbound `.feature`
+file" findings are checks now, not just prose. What it still can't see without a
+manual pass is anything with **no row in `scripts/spec.py` at all**: §3 and the
+`--strict-inventory` flag exist because a check can't flag a feature it was never
+told about.
+
+---
+
+## 1. Critical — undocumented `partial`/`blocked` state
+
+Five features carry `partial` or `blocked` with no `.specs/features/<id>/spec.md`
+and no `docs/contracts/<id>.md` explaining why. Two of the seven partial/blocked
+features in the spec *do* have one — `fun_battle` (`.specs/features/fun_battle/spec.md`,
+`docs/contracts/fun_battle.md`) and `fun_death` (`.specs/features/fun_death/spec.md`)
+— which is what makes the other five conspicuous rather than normal: a `partial`
+with a document is a recorded decision, a `partial` without one just looks
+unfinished and unexplained.
+
+| id | status | notes field | acceptance coverage |
+|---|---|---|---|
+| `core_botskins` | partial | "one process serves every skin; per-event asset packs pending" | QA repo has 3 scenarios, **0 ported to v2** |
+| `x_conversational_ai` | partial | "LLM router + cost metering done; handler and quota not written" | **none anywhere** — no QA spec, no v2 scenario |
+| `x_speech_to_text` | partial | "transcribe task routed to the openai provider; handler not written" | **none anywhere** — no QA spec, no v2 scenario |
+| `platform_tenancy` | partial | "tenants table + registry landed; handler packs not wired" | n/a (platform layer, not scenario-shaped) |
+| `platform_migration_etl` | partial | "configs/rules/... import, idempotent; randomdatabase needs a Telegram-download backfill" | n/a (platform layer, not scenario-shaped) |
+
+`x_conversational_ai` and `x_speech_to_text` are the sharpest version of this: real
+code shipped (LLM router, transcribe routing) with literally nothing — not a QA
+spec, not a v2 scenario, not a written reason — telling a reader what "partial"
+means for either of them. `scripts/status.py --check` now reports all five by
+name; **action is a one- or two-sentence `spec.md` per feature**, not a code
+change.
+
+## 2. Correction to the audit brief
+
+The brief that scoped this pass listed `core_botskins` alongside
+`x_conversational_ai`/`x_speech_to_text` as a `partial` feature with **"no
+`.feature` file at all."** That's not accurate: `../Cookiebot-QA/features/core_botskins.feature`
+exists and has 3 real scenarios (Bombot/BrasilFurFest, Pawsy/Pawstral,
+Tarinbot/SCFurs). What's actually true is narrower and, if anything, a clearer
+miss: **someone already wrote the acceptance criteria and they were never
+ported** — the same "unported QA spec" bucket as `fun_meme` or `util_youtube`
+(§4), except `core_botskins` is the one member of that bucket that's also
+`partial` rather than `planned`. It still belongs in §1 above (undocumented
+partial), just not for the reason originally stated.
+
+Separately: the brief counted **"six `x_*` features with neither a QA-repo spec
+nor a v2 scenario,"** naming five (`x_giveaways`, `x_reverse_search`,
+`x_distortion`, `x_owner_commands`, `x_custom_commands`) plus "the two above"
+(`x_conversational_ai`, `x_speech_to_text`). Five plus two is **seven**, not six:
+
+| id | status | v1 source | QA spec? | v2 scenario? |
+|---|---|---|---|---|
+| `x_giveaways` | planned | `Giveaways.py:25-173` | no | no |
+| `x_conversational_ai` | partial | `NaturalLanguage.py:65-77` | no | no |
+| `x_speech_to_text` | partial | `Audio.py:22-32` | no | no |
+| `x_reverse_search` | planned | `SocialContent.py:113-142` | no | no |
+| `x_distortion` | planned | `Distortioner.py:114-156` | no | no |
+| `x_owner_commands` | planned | `COOKIEBOT.py:83-105` | no | no |
+| `x_custom_commands` | planned | `Miscellaneous.py:145-158` | no | no |
+
+(`x_webhub_login` and `x_analytics_api` are the other two `x_*` rows in the same
+"shipped in v1, never specified in QA" block of `scripts/spec.py`, but both are
+HTTP-only — a Telegram-driven Gherkin scenario doesn't apply to either the same
+way, so they're not counted here.) Each of these seven needs its Gherkin scenario
+written **as part of its port**, per AGENTS.md §6 and feature-map.mdx §4 — this
+table is that backlog made concrete.
+
+## 3. Eight v1 features with zero row in `scripts/spec.py`
+
+feature-map.mdx §4 documents 20+ v1 features implemented but not spec'd in QA.
+Twelve of those already have an `x_*` row in `scripts/spec.py` (§2's seven, plus
+`x_webhub_login`, `x_analytics_api`, `Destroy/distort` = `x_distortion`,
+`Custom commands` = `x_custom_commands`, the four `Owner:` rows collapsed into
+`x_owner_commands`). **Eight do not exist in `scripts/spec.py` at all** — no
+status, no milestone, nothing `scripts/status.py` can ever measure them against,
+strict-inventory or not, until a row exists:
+
+| feature | v1 source | triggers (v1 code, `COOKIEBOT.py` dispatch) |
+|---|---|---|
+| Age guess | `Miscellaneous.py:185-202` `age()` | `/idade`, `/age`, `/edad` |
+| Gender guess | `Miscellaneous.py:204-224` `gender()` | `/genero`, `/gênero`, `/gender` |
+| Unearth | `Miscellaneous.py:325-333` `unearth()` | `/desenterrar`, `/unearth` |
+| Fortune cookie | `Miscellaneous.py:359-375` `fortune_cookie()` | `/sorte`, `/fortunecookie`, `/suerte` |
+| Image search | `SocialContent.py:144-170` `qualquer_coisa()` (Google Custom Search) | `/qualquercoisa`, `/anything`, `/cualquiercosa` |
+| Drawing idea | `Miscellaneous.py:137-143` `drawing_idea()` | `/ideiadesenho`, `/drawingidea`, `/ideadibujo` |
+| Analysis | `Miscellaneous.py:71-81` `analyze()` | `/analise`, `/analisis`, `/analysis` |
+| Sticker DB auto-reply | `SocialContent.py:208-222` `add_to_sticker_database()` / `reply_sticker()` | none — passive: any sticker in an `sfw` group feeds the DB; any doc/sticker sent in reply to the bot triggers a reply |
+
+All eight are confirmed by grepping `COOKIEBOT.py`'s dispatch `elif` chain
+(lines ~185-260) directly, not just transcribed from feature-map.mdx — the
+trigger lists above are slightly more complete than that table's (e.g. it
+omits `/edad`, `/gênero`, `/suerte`, `/ideadibujo`, `/cualquiercosa`,
+`/analisis`).
+
+A ninth row in the same feature-map section, **Reload caches**
+(`/reload`,`/recarregar` — `COOKIEBOT.py:197-201`), is correctly excluded: it
+calls `get_admins(ignorecache=True)` / `get_config(ignorecache=True)` to force
+every one of v1's five unlocked per-process caches to refetch — the exact
+failure `platform_group_config`'s pub/sub invalidation
+(`cb_core/group_config.py`, "the fix for v1's 'type /reload five times'")
+replaces. There is no v2 behaviour to spec; the command has no successor.
+
+Exact `Feature(...)` rows for the eight, matching `scripts/spec.py`'s
+construction style, are staged at
+`.specs/features/_pending/missing-spec-rows.md` — **not applied**, since
+`scripts/spec.py` is being edited concurrently elsewhere. `scripts/status.py
+--strict-inventory` checks for these same eight ids today and fails until
+that file is merged; it's opt-in (default off) for exactly that reason.
+
+## 4. Verified clean (no finding)
+
+- **22 v2 `.feature` files vs. 31 in `../Cookiebot-QA/features/`** — confirmed
+  by direct count.
+- **Every unported QA spec belongs to a non-`done` feature** — confirmed for
+  all 11: `core_botskins` (partial), `core_musicdetection`, `fun_meme`,
+  `fun_partneredcons`, `util_birthday`, `util_deletereposts`,
+  `util_nextbirthday`, `util_postforwarder`, `util_postgetter`, `util_youtube`
+  (all planned), `fun_death` (blocked). None is `done` with an unported spec.
+- **No `done` feature has fewer v2 scenarios than the QA repo defines for
+  it** — checked every stem where both `spec_scenarios` and a `done` status
+  are present; nothing is short.
+- **No orphaned `.feature` file** — all 22 files under `qa/features/` are
+  bound by exactly one `qa/test_*.py` via `scenarios(...)`. This was true at
+  audit time; `scripts/status.py --check` now asserts it on every run instead
+  of needing a manual recheck.
+
+## 5. Informational — stem/id naming drift
+
+`qa/features/core_llm_provider.feature` and `qa/features/core_media_storage.feature`
+are real, bound (`qa/test_llm_provider.py`, `qa/test_media_storage.py`), passing
+scenario files — but their stems don't match any `Feature.id` in
+`scripts/spec.py` (the corresponding rows are `platform_llm` and
+`platform_storage`). Both are `area="platform"`, which exempts them from the
+"done but no scenario" check regardless, so nothing is silently wrong today —
+but it means their `FeatureFacts` never attach to `platform_llm`/`platform_storage`,
+and a future check keyed on `feature.id` (the new "looks complete" check
+included) will never see their passing scenarios as evidence for those two
+rows specifically. Not urgent; worth a rename (either the `.feature` files to
+`platform_llm.feature`/`platform_storage.feature`, or documenting the
+deliberate split) next time either file is touched.

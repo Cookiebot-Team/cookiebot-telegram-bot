@@ -13,6 +13,7 @@
     "e2e",
     "deploy",
     "multi-tenant",
-    "feature-map"
+    "feature-map",
+    "scenario-coverage"
   ]
 }
