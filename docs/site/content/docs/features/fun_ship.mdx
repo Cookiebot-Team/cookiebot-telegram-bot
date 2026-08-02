@@ -3,25 +3,48 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Ship two members"
-description: "fun · M2"
-status: planned
+description: "landed the member registry (cb_core/members.py) it needs; QA's single-tagged-user scenario describes behaviour v1 never had - see docs/contracts/fun_ship.md"
+status: done
 milestone: M2
 area: fun
 layer: gateway
-triggers: ["/ship", "/shippar"]
+triggers: ["/ship", "/shippar", "/shipp"]
 v1_source: "UserRegisters.py:216-250"
+contract: "docs/contracts/fun_ship.md"
 ---
 <FeatureHeader id="fun_ship" />
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+`/shipp` picks two members of the group at random and declares them a couple:
+a relationship dynamic drawn from the group's language pool, a number of
+children between zero and three, and a divorce probability. Naming two people
+yourself — `/shipp alice bob` — ships those two instead, whoever they are.
+
+The bot can only ship people it has heard from. It learns who is in a group by
+watching messages, the same way v1 did, so a group it has just joined ships
+nobody until two people talk.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+Three spellings all work and always must: `/shippar` and `/ship` (v1's) and
+`/shipp` (the QA spec's). The reply is a reply, not a fresh message, and it
+carries a ❤️ reaction on the original — including when there are too few
+members and the answer is "I haven't seen enough members to ship yet!".
+
+Two quirks are deliberate, not oversights. A **single** tagged user is ignored:
+v1 only reads arguments when two are given, so `/shipp @user1` ships two random
+members and discards the tag. And an `@` you type is not stripped, because the
+message template adds its own — `/shipp @alice @bob` renders `@@alice`, as it
+always has.
+
+Turning fun functions off in `/config` makes the bot answer with the
+"fun functions are off" text rather than staying silent.
+
+The full behaviour contract lives in [`docs/contracts/fun_ship.md`](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/blob/main/docs/contracts/fun_ship.md).
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/features/fun_ship.feature` — eight scenarios, run with
+`python scripts/cb.py test`. By hand in the sandbox: have two accounts send any
+message in the group first (that is what registers them), then `/shipp`.

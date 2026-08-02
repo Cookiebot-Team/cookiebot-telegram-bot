@@ -142,6 +142,21 @@ Other deliberate choices:
   spending the money" has an answer. v1 called OpenAI from three places with no
   accounting at all.
 
+### Gateway → worker enqueue
+
+`cb-gateway` hands work to `cb-worker` through `cb_gateway.queue.enqueue(job,
+*args, **kwargs) -> bool` — one lazily created `arq` pool on the same
+Redis/Valkey DSN already used for the group-config pub/sub and the cooldown
+store. It never raises into a handler: a broker failure is logged and counted,
+and the reply already sent to Telegram stands. Job names are shared constants
+in `cb_core/jobs.py`, imported by both services, so a rename cannot
+desynchronise them. `cb-worker` in turn holds one `aiogram.Bot` on
+`ctx["bot"]`, built by `cb_core.bot.build_bot` — the same constructor and
+endpoint resolution the gateway uses, self-hosted API base URL included, so a
+job cannot silently drift onto `api.telegram.org`. Full description, plus the
+tests that pin the never-raises and endpoint-parity guarantees:
+`docs/contracts/util_everyone.md`, the port that built both pieces.
+
 ### Identifiers — UUIDv7
 
 Surrogate keys are UUIDv7 generated in the application (`cb_core.ids.uuid7`,
@@ -190,6 +205,50 @@ Two findings worth keeping:
 - `captcha` is bounded by a CSPRNG syscall, so it was removed from `HOT_MODULES` instead of kept for appearances. That is the gate working as intended.
 
 `mypyc` remains the fallback if pure-mode friction grows.
+
+### Mojo, measured against Cython
+
+The hot path was also ported to **Mojo 0.26.2** and benchmarked head to head, because "compiled Python-ish language, 100× faster" is the claim that would justify replacing the Cython layer. It does not survive contact with the way these modules are called.
+
+The port lives in `packages/cb-core/bench/mojo/` — `TokenBucket`, `SlidingWindow`, `QuotaLedger`, `RecentIds` and `parse_command` plus its alias table, exposed to CPython through `PythonModuleBuilder`. It is an experiment, not a build target: nothing in `setup.py`, CI or the runtime touches it. `verify.py` asserts it agrees with the pure-Python modules on every case, accents and `@bot` targeting and LRU eviction order included, and it does.
+
+Same measurement method as the Cython gate — best-of-7 mean ns/op, all variants in one process. CPython 3.12, arm64:
+
+| case | pure Python | Cython | Mojo (called from Python) | Mojo (called from Mojo) |
+|---|---|---|---|---|
+| `cooldowns` | 84.7 | **43.8** | 103.5 | **3.3** |
+| `textmatch` | 315.2 | **146.5** | 253.3 | **28.5** |
+| `dedupe` | 104.5 | **70.8** | 127.7 | **13.7** |
+
+Mojo's *computation* is 5–13× faster than Cython's. Mojo *as called by our code* is slower than Cython on all three, and would fail the 1.5× gate outright (0.82× / 1.24× / 0.82× against pure Python).
+
+The whole difference is the boundary. One method call, a float in and a bool out, no work inside:
+
+| call | ns |
+|---|---|
+| empty Python loop | 15.1 |
+| pure-Python method | 21.0 |
+| Cython `@cython.cclass` + `@cython.ccall` | **13.8** |
+| Mojo `def_method` binding | **73.3** |
+
+A cdef method call is *cheaper than a Python function call* — that is most of where Cython's 1.5–2× comes from on code this granular. Mojo pays ~60 ns extra per crossing, which is more than the entire body of `TokenBucket.allow`.
+
+So Mojo only wins if the boundary moves. Batching a whole `getUpdates` poll (100 updates) through one call:
+
+| shape | ns/update |
+|---|---|
+| Cython, one call per update | 47.5 |
+| Mojo, list in → list of 100 bools out | 190.2 |
+| Mojo, list in → one int out | **16.1** |
+| Mojo, no Python collection at all | 17.4 |
+
+Reading a Python list from Mojo costs ~2 ns/item. *Building* one costs ~174 ns/item — `list.append` from Mojo is the single most expensive thing in any of these measurements. Batch-in/scalar-out is 3.0× faster than per-call Cython; batch-in/list-out is 4× slower than doing nothing special.
+
+**Verdict: keep Cython.** Mojo would be dropped by the same gate that already dropped `captcha`. It becomes interesting only if the gateway is restructured so one crossing covers an entire poll batch *and* returns something small — a duplicate count, a list of indices. `parse_command` can never qualify: its output is inherently per-message.
+
+Two findings worth carrying regardless of language:
+- Mojo's `String.lower()` is full Unicode case folding and costs **445 ns/op**, ~100× everything else in the parser. An ASCII fast path plus an allocation-free case-insensitive compare took the native parse from 824 to 28.5 ns/op. Any port doing string work will hit this.
+- The `.so` built by Mojo imports and runs under Python 3.14, so the interpreter version is not the blocker here. The call overhead is.
 
 ---
 

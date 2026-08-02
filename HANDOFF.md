@@ -1,8 +1,66 @@
-# Handoff — M1 core moderation is ported
+# Handoff — M1 core moderation is ported, M2 fun is underway
 
 Written for whoever picks this up next (human or agent). Read
 [`AGENTS.md`](AGENTS.md) before writing code; this file says where we stopped and
 what to do first.
+
+---
+
+## 0. Latest session (read this before §1, which describes the one before it)
+
+Verified green on this machine, last run:
+
+```
+ruff check + format --check   clean (201 files)
+mypy                          clean (73 source files)
+pytest -m "not integration"   1002 passed, 44 skipped
+pytest -m integration         134 passed  (real Citus, via podman)
+migrate-check                 upgrade → downgrade → upgrade, all green
+bench                         cooldowns 1.85x compiled — gate clear
+scripts/cb.py check           exit 0
+```
+
+**`fun_ship` is ported, and with it the member registry every remaining fun/util
+feature was blocked on.** Nothing in v2 recorded who is in a group: v1 did it on
+every message (`check_new_name`, `UserRegisters.py:64-88`) and v2 only had
+`core_mediarestrict`'s join hook, which fires for people who join *after* the bot
+— a small minority. New:
+
+| Piece | Where |
+|---|---|
+| Registry repository | `cb_core/members.py` — `record`, `mark_left`, `random_usernames`, `count` |
+| Its writer | `cb_gateway/handlers/members.py`, registered **first** in `build_router` (bookkeeping, always `SkipHandler`) |
+| `/shippar` `/ship` `/shipp` | `cb_gateway/handlers/ship.py` |
+| Contract | `docs/contracts/fun_ship.md` |
+
+Three things worth knowing before you build on it:
+
+1. **`group_members.joined_at` is now nullable (migration `0004`), and the join
+   handler is its only writer.** "We have heard from this member" is not "we
+   watched them join". Had the registry stamped `now()`, every long-standing
+   member would have been media-restricted on their first message after a
+   deploy — `core_mediarestrict` restricts anyone whose `joined_at` is inside the
+   window, and its fail-open path for NULL is what makes that safe. The registry
+   writes `first_seen_at` instead; `mediarestrict._record_join` fills `joined_at`
+   in when the join really is witnessed.
+2. **QA and v1 disagree about `/shipp @user1`.** The spec says the tagged user is
+   shipped with a random second; v1 discards a lone argument entirely
+   (`len(split()) >= 3`). Ported per v1, recorded in the contract, the feature
+   file header and the FEATURE-MAP row.
+3. `users` is a **reference table**, so every write replicates to every node.
+   `cb_core.members` keeps a process-local identity cache to keep that off the
+   per-message path; call `members.reset_cache()` in anything that writes those
+   rows behind its back (the importer, tests).
+
+**Mojo was evaluated against the Cython hot path and rejected**, with the numbers
+in `docs/site/content/docs/architecture.mdx` §2 and the reproducible experiment
+in `packages/cb-core/bench/mojo/` (`./setup_env.sh && ./run.sh`; not a build
+target, not in CI). Short version: Mojo's compute is 5-13x faster than Cython's,
+its per-call boundary is ~60 ns more expensive than a `cdef` method's, and these
+modules do ~15 ns of work per call — so it loses on all three and would fail the
+same 1.5x gate that already dropped `captcha`. It only wins if a whole
+`getUpdates` batch crosses in one call *and* returns something small: building a
+Python list from Mojo costs ~174 ns per item.
 
 ---
 
@@ -114,9 +172,14 @@ report. The random pool needs a backfill job that downloads from Telegram.
 
 ### Known gaps, deliberately left
 
-1. **Captcha timeout does not kick.** `cb-worker`'s `expire_captchas` deletes
-   expired rows; v1 also banned, messaged and scheduled a 30s unban. A newcomer
-   who simply never answers is not removed. Needs the worker to hold a bot.
+1. **Captcha timeout does not kick — unblocked, still open.** `cb-worker`'s
+   `expire_captchas` deletes expired rows; v1 also banned, messaged and
+   scheduled a 30s unban. A newcomer who simply never answers is not removed.
+   It needed the worker to hold a bot — `util_everyone` (gap 5, below) built
+   that (`cb_core/bot.py` + `ctx["bot"]` in `cb_worker/main.py`,
+   `docs/contracts/util_everyone.md`), so the mechanism now exists, but
+   `expire_captchas` itself has not been changed to use it. Still a named
+   follow-up.
 2. **No private-chat dispatch.** v1 answers `/privacy` and `/commands` in a DM
    (hardcoded English); v2 has no private-chat routing layer at all yet.
 3. **`/config`'s language button does not push `setMyCommands`.**
@@ -124,10 +187,13 @@ report. The random pool needs a backfill job that downloads from Telegram.
    call it yet.
 4. **`can_add_web_page_previews`** has no reactive equivalent in the media
    restriction port — see its contract.
-5. **No gateway -> worker enqueue wiring.** Two features want it: `util_calladms`
-   (v1 DMs every admin; only the group ping is built) and the captcha's 30s
-   unban, which is an in-process task and so is lost if the gateway restarts
-   inside the window. `cb-worker` currently only runs cron jobs.
+5. **No gateway -> worker enqueue wiring — closed.** `util_everyone` built it:
+   `cb_gateway/queue.py` (`enqueue`/`close`, one `arq` pool on the existing
+   Redis DSN, never raises into a handler) and `cb_core/jobs.py` for the
+   shared job-name constants. `util_calladms`'s DM-every-admin half is now
+   unblocked but not yet ported (see `docs/contracts/util_calladms.md`'s "What
+   the job needs" section); the captcha's 30s unban (gap 1, above) is the
+   other named follow-up.
 6. **`randomdatabase` backfill** — see the import section above.
 
 ## 2. Resume in three commands
@@ -166,18 +232,23 @@ directly.
 
 ## 4. What to port next
 
-M1's core moderation set is done. The obvious next batch, in dependency order:
+**This section was stale for a while — trust `python scripts/cb.py status`, not
+prose.** `fun_random`, `util_embedder`, `fun_dice`, `fun_ship`, `fun_firecracker`,
+`fun_complaint`, `util_everyone` and the group half of `util_calladms` have all
+landed since it was written.
+
+The next batch, in dependency order, now that the member registry exists:
 
 | # | Feature | Why here |
 |---|---|---|
-| 1 | `fun_random`, `util_embedder` | already `partial` — `MediaService.random()` and `find_embeddable_links()` are done and tested, only the handlers are missing |
-| 2 | `util_calladms`, `util_everyone` | admin resolution and fan-out already exist; fan-out belongs in cb-worker, never on the reply path |
-| 3 | `fun_dice`, `fun_ship`, `fun_death`, `fun_meme` | the `functions_fun` gate and the locale pools are both in place |
-| 4 | `util_birthday`, `util_nextbirthday` | `users.birth_month`/`birth_day` generated columns and their index already exist |
-| 5 | `core_musicdetection`, `util_youtube` | first media-processing ports; both belong in cb-worker |
+| 1 | `util_everyone` | **done** — the registry it needed was built; batched roster read (`members.roster`, replacing v1's N+1), fan-out moved to `cb-worker` behind the new gateway→worker enqueue. Contract: `docs/contracts/util_everyone.md` |
+| 2 | `util_birthday`, `util_nextbirthday` | same registry, plus `users.birth_month`/`birth_day` generated columns. The registry does **not** collect birthdates yet: v1 reads them from `getChat` in a DM (`UserRegisters.py:72-80`), which needs the private-chat dispatch listed as gap §1.2 |
+| 3 | `fun_death`, `fun_meme` | both need media assets v1 kept in a GCS bucket (`bloblist_death`, meme templates). Decide where those live before starting — `cb_core.storage` can hold them, but nobody has copied them out of v1 |
+| 4 | `core_musicdetection`, `util_youtube` | first media-processing ports; both belong in cb-worker |
 
-Close the four gaps in §1 before or alongside these — the captcha timeout one is
-user-visible.
+Close the remaining gaps in §1 before or alongside these — the captcha timeout
+one is user-visible, and the mechanism it needs (the worker holding a bot) now
+exists.
 
 ## 5. Compatibility traps already identified
 
