@@ -62,6 +62,15 @@ class MockTelegram:
         # method -> Telegram error description. Lets a scenario say "cas.chat is
         # down" or "the bot lost its admin rights" without patching our own code.
         self.failures: dict[str, str] = {}
+        # chat_id -> getChatMemberCount result. util_everyone's `known = min(len
+        # (usernames), get_chat_member_count(...))` (design R4.6) needs a real
+        # int back, not the mock's generic `{}` fallback (which aiogram cannot
+        # parse as a `getChatMemberCount` response and raises). Defaults large so
+        # a scenario that never calls `set_member_count` is never clamped by it.
+        self.member_counts: dict[int, int] = {}
+
+    def set_member_count(self, chat_id: int, count: int) -> None:
+        self.member_counts[chat_id] = count
 
     def set_admins(
         self, chat_id: int, admins: list[tuple[int, str]], *, is_anonymous: bool = False
@@ -127,7 +136,7 @@ class MockTelegram:
 
     def _result(
         self, method: str, payload: dict[str, Any]
-    ) -> dict[str, Any] | list[dict[str, Any]] | bool:
+    ) -> dict[str, Any] | list[dict[str, Any]] | bool | int:
         if method == "getMe":
             return {
                 "id": 424242,
@@ -147,6 +156,8 @@ class MockTelegram:
                 "status": "member",
                 "user": {"id": user_id, "is_bot": False, "first_name": "Member"},
             }
+        if method == "getChatMemberCount":
+            return self.member_counts.get(int(payload.get("chat_id", 0)), 1_000_000)
         if method == "getChat":
             return {
                 "id": int(payload.get("chat_id", -100)),
@@ -159,6 +170,7 @@ class MockTelegram:
             "sendAnimation",
             "sendSticker",
             "sendVideo",
+            "sendVoice",
             "sendDocument",
             "sendMediaGroup",
             "editMessageText",
@@ -182,6 +194,7 @@ class MockTelegram:
             "deleteWebhook",
             "answerCallbackQuery",
             "setMyCommands",
+            "sendChatAction",
             "deleteMessage",
             "restrictChatMember",
             "banChatMember",

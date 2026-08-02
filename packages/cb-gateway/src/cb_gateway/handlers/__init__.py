@@ -15,18 +15,23 @@ from aiogram import Router
 
 from cb_gateway.handlers import (
     calladms,
+    complaint,
     config_menu,
     dice,
     doomlist,
     embedder,
+    everyone,
+    firecracker,
     fun_random,
     groupguardian,
     isalive,
     listcommand,
     mediarestrict,
+    members,
     privacy,
     rules,
     setlang,
+    ship,
     stickerspam,
     welcome,
 )
@@ -36,6 +41,13 @@ def build_router() -> Router:
     """Root router. M1 core moderation is live; M2 fun/util, M3 publisher+AI."""
     root = Router(name="root")
 
+    # ---- registry bookkeeping: must see every message, answers none ----
+    # v1 registered the sender before dispatch (COOKIEBOT.py:118), so a command
+    # in the same message could already read its own author out of the register.
+    # Always raises SkipHandler; registering it anywhere but first would mean a
+    # command handler consumed the update before the sender was recorded.
+    root.include_router(members.router)
+
     # ---- commands: disjoint triggers, order irrelevant ----
     root.include_router(isalive.router)
     root.include_router(privacy.router)
@@ -43,7 +55,11 @@ def build_router() -> Router:
     root.include_router(config_menu.router)
     root.include_router(rules.router)
     root.include_router(calladms.router)
+    root.include_router(complaint.router)
     root.include_router(dice.router)
+    root.include_router(ship.router)
+    root.include_router(firecracker.router)
+    root.include_router(everyone.router)
 
     # ---- join chain: order matters, see the module docstring ----
     # 1. Bookkeeping first. `group_members.joined_at` is recorded even for a
