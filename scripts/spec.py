@@ -127,9 +127,10 @@ FEATURES: tuple[Feature, ...] = (
     Feature("fun_meme", "fun", "Meme generator", "M2", Status.PLANNED,
             Layer.WORKER, "SocialContent.py:224-277", ("/meme",),
             "image compositing is a worker job, not a reply-path call"),
-    Feature("fun_battle", "fun", "Battle poll", "M2", Status.PLANNED,
-            Layer.WORKER, "SocialContent.py:294-379", ("/battle", "/batalha", "/batalla"),
-            "v1 scrapes telegram.me HTML for avatars; replace with getUserProfilePhotos"),
+    Feature("fun_battle", "fun", "Battle poll", "M2", Status.PARTIAL,
+            Layer.GATEWAY, "SocialContent.py:294-379", ("/battle", "/batalha", "/batalla"),
+            "two-people shape ships (roster + getUserProfilePhotos, no scrape); "
+            "one-tag/self shapes blocked on the Fight/ GCS export, same as fun_death"),
     Feature("fun_random", "fun", "Random media from the group", "M2", Status.DONE,
             Layer.GATEWAY, "SocialContent.py:198-206", ("/random", "/aleatorio"),
             "MediaService.random() done and tested; handler not written"),

@@ -14,6 +14,7 @@ the rest never run. Hence explicit, commented order rather than alphabetical.
 from aiogram import Router
 
 from cb_gateway.handlers import (
+    battle,
     calladms,
     complaint,
     config_menu,
@@ -60,6 +61,7 @@ def build_router() -> Router:
     root.include_router(ship.router)
     root.include_router(firecracker.router)
     root.include_router(everyone.router)
+    root.include_router(battle.router)
 
     # ---- join chain: order matters, see the module docstring ----
     # 1. Bookkeeping first. `group_members.joined_at` is recorded even for a

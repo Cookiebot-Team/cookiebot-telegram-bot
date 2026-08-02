@@ -10,6 +10,7 @@ talking to a mock; only `CB_TELEGRAM_API_BASE` changes.
 
 from __future__ import annotations
 
+import json
 import time
 from typing import Any
 
@@ -68,9 +69,19 @@ class MockTelegram:
         # parse as a `getChatMemberCount` response and raises). Defaults large so
         # a scenario that never calls `set_member_count` is never clamped by it.
         self.member_counts: dict[int, int] = {}
+        # user_id -> list of file_ids, most-recent-photo-first, largest-size-last
+        # per entry -- fun_battle's `get_user_profile_photos(user_id, limit=1)
+        # .photos[0][-1].file_id` (docs/contracts/fun_battle.md) needs a real
+        # file_id back, not the mock's generic `{}` fallback. Absent from this
+        # dict means "no profile photo" (an empty `photos` list), matching
+        # Telegram's own response for a user with none set or a private one.
+        self.profile_photos: dict[int, list[str]] = {}
 
     def set_member_count(self, chat_id: int, count: int) -> None:
         self.member_counts[chat_id] = count
+
+    def set_profile_photo(self, user_id: int, file_id: str) -> None:
+        self.profile_photos[user_id] = [file_id]
 
     def set_admins(
         self, chat_id: int, admins: list[tuple[int, str]], *, is_anonymous: bool = False
@@ -164,6 +175,36 @@ class MockTelegram:
                 "type": "supergroup",
                 "title": "QA Group",
             }
+        if method == "getUserProfilePhotos":
+            file_ids = self.profile_photos.get(int(payload.get("user_id", 0)), [])
+            # One size variant per photo is enough: fun_battle only ever reads
+            # `photos[0][-1]` (the largest of the most recent), so the mock does
+            # not need to model Telegram's real multi-size list.
+            photos = [
+                [{"file_id": file_id, "file_unique_id": file_id, "width": 512, "height": 512}]
+                for file_id in file_ids
+            ]
+            return {"total_count": len(photos), "photos": photos}
+        if method == "sendMediaGroup":
+            # `SendMediaGroup.__returning__` is `list[Message]`, unlike every
+            # other send* method here -- a single dict fails aiogram's response
+            # validation instead of a plain wrong-shape assertion downstream.
+            media_count = len(json.loads(payload.get("media", "[]")))
+            self._message_id += 1
+            return [
+                {
+                    "message_id": self._message_id + offset,
+                    "date": int(time.time()),
+                    "chat": {"id": int(payload.get("chat_id", -100)), "type": "supergroup"},
+                    "from": {
+                        "id": 424242,
+                        "is_bot": True,
+                        "first_name": "Cookiebot",
+                        "username": "CookieMWbot",
+                    },
+                }
+                for offset in range(max(media_count, 1))
+            ]
         if method in {
             "sendMessage",
             "sendPhoto",
@@ -172,7 +213,7 @@ class MockTelegram:
             "sendVideo",
             "sendVoice",
             "sendDocument",
-            "sendMediaGroup",
+            "sendPoll",
             "editMessageText",
             "editMessageReplyMarkup",
         }:
