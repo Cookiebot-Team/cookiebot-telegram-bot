@@ -218,6 +218,12 @@ citus:
   resources:
     requests: { cpu: 250m, memory: 1Gi }
     limits: { memory: 3Gi }
+  # Query, IO, lock, per-table and Citus-topology metrics, collected by CNPG's
+  # own exporter on the connection it already holds — no sidecar and no second
+  # monitoring stack. `pg_stat_statements` must be loaded for the query half;
+  # `parameters.shared_preload_libraries` already includes it via the image.
+  metrics:
+    enabled: true
   backup:
     enabled: false
     destinationPath: ""

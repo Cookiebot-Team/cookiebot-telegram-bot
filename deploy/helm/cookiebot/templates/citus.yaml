@@ -101,6 +101,14 @@ spec:
 
   monitoring:
     enablePodMonitor: false # scraped by annotation, not by PodMonitor
+    {{- if .Values.citus.metrics.enabled }}
+    # Query, IO, lock and per-table statistics on top of CNPG's own `cnpg_*`
+    # series. See the header of templates/citus-metrics.yaml for what each query
+    # answers and why its cardinality is bounded the way it is.
+    customQueriesConfigMap:
+      - name: {{ include "cookiebot.fullname" . }}-citus-queries
+        key: queries.yaml
+    {{- end }}
 
   {{- if .Values.citus.backup.enabled }}
   backup:
