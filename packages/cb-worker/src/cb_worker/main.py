@@ -20,11 +20,13 @@ from arq.connections import RedisSettings
 from opentelemetry.trace import SpanKind
 from whenever import Instant
 
-from cb_core import cache, db, metrics, storage
+from cb_core import cache, db, metrics, storage, tenancy
+from cb_core.bot import build_bot
 from cb_core.logging import configure_logging, get_logger
 from cb_core.migrations import ensure_schema
-from cb_core.settings import get_settings
+from cb_core.settings import Settings, get_settings
 from cb_core.telemetry import context_from_carrier, setup_tracing, span
+from cb_worker.jobs.everyone import everyone_fanout
 
 settings = get_settings()
 settings.service_name = "cb-worker"
@@ -146,6 +148,19 @@ async def expire_captchas(ctx: dict[str, Any]) -> None:
 # ------------------------------------------------------------------------- lifecycle
 
 
+def _primary_token(settings: Settings) -> str:
+    """Which of `CB_BOT_TOKENS` the worker's one bot authenticates as.
+
+    Fan-out jobs are not yet per-tenant-routed (that is `util_everyone`'s R5,
+    not this), so one bot per worker process is enough: the default tenant's
+    token if configured, else whichever token is there — so a single-brand
+    deployment (one entry in `CB_BOT_TOKENS`) needs no extra configuration.
+    """
+    if tenancy.DEFAULT_TENANT in settings.bot_tokens:
+        return settings.bot_tokens[tenancy.DEFAULT_TENANT]
+    return next(iter(settings.bot_tokens.values()), "")
+
+
 async def startup(ctx: dict[str, Any]) -> None:
     await ensure_schema(settings)
     await db.init_pool(settings)
@@ -154,10 +169,20 @@ async def startup(ctx: dict[str, Any]) -> None:
     from cb_core.cooldowns import COMPILED
 
     metrics.start_metrics_server(settings.metrics_port, "cb-worker", "0.1.0", COMPILED)
+
+    # Built here, not by `cb_gateway`: the worker must never import a gateway
+    # module (design R3.2), and it must resolve the exact same endpoint the
+    # gateway does — including a self-hosted `telegram-bot-api` base URL — or it
+    # would silently fall back to api.telegram.org for its DMs/kicks.
+    ctx["bot"] = build_bot(_primary_token(settings), settings)
+
     log.info("worker.started", cython=COMPILED, storage=storage.store().scheme)
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
+    bot = ctx.get("bot")
+    if bot is not None:
+        await bot.session.close()
     await storage.close_storage()
     await cache.close_cache()
     await db.close_pool()
@@ -167,6 +192,7 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 class WorkerSettings:
     redis_settings = RedisSettings.from_dsn(settings.redis_dsn)
     functions: ClassVar[list] = [
+        everyone_fanout,  # first non-cron job: util_everyone's DM fan-out (design R5.1)
         maintain_partitions,
         rollup_yesterday,
         rollup_llm_costs,
