@@ -43,6 +43,13 @@ dev = [
 line-length = 100
 target-version = "py313"
 src = ["packages/cb-core/src", "packages/cb-api/src", "packages/cb-gateway/src", "packages/cb-worker/src"]
+# The Mojo-vs-Cython experiment (docs/site/content/docs/architecture.mdx §2) is not
+# workspace code: its scripts run inside a throwaway sandbox built by
+# `bench/mojo/setup_env.sh`, importing modules (`py.*`, `cy.*`) that only exist
+# once that script has copied and compiled them. Nothing imports it, nothing
+# ships it, and linting it here only produces findings about a directory that is
+# deliberately standalone.
+extend-exclude = ["packages/cb-core/bench/mojo"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "ASYNC", "RUF", "BLE", "SLF", "ANN"]
