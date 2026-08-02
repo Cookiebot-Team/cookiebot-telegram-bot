@@ -23,6 +23,15 @@ ported byte-for-byte from `Bot/Static/locales/{eng,pt,es}/Cookiebot_functions.tx
 See `docs/contracts/core_listcommand.md` for the full Phase 2/6 contract,
 including what "per-tenant filtering" means on top of v1's unconditional
 dispatch.
+
+The private-chat branch is its own `F.chat.type == ChatType.PRIVATE`-filtered
+handler rather than a branch inside the group one — relocated, not
+rebehaviored, to the shared pattern `.specs/features/private_dispatch/`
+establishes (`cb_gateway/private_context.py`'s module docstring has the full
+reasoning). This file was already the one place in the codebase that got the
+private-chat case right on its own — avoiding `context_for` for a DM instead
+of trying to make it safe for one — so there is nothing to fix here, only to
+line up with the now-shared shape.
 """
 
 from __future__ import annotations
@@ -30,7 +39,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, cast
 
-from aiogram import Bot, Router
+from aiogram import Bot, F, Router
 from aiogram.enums import ChatType
 from aiogram.types import Message
 
@@ -107,7 +116,18 @@ async def _commands_available(skin: str) -> bool:
     return command_available_for_tenant(row, tenant)
 
 
-@router.message(CommandName("commands"))
+@router.message(F.chat.type == ChatType.PRIVATE, CommandName("commands"))
+async def list_commands_private(message: Message, skin: str = tenancy.DEFAULT_TENANT) -> None:
+    """v1's private-chat branch (`COOKIEBOT.py:85-86`) — hardcoded `'eng'`,
+    never consults a group config, because there is no group to look one up
+    for. No `context_for` call, on purpose (module docstring)."""
+    if not await _commands_available(skin):
+        mark_outcome("silent")
+        return
+    await message.reply(locales.text("Cookiebot_functions", "en"))
+
+
+@router.message(F.chat.type != ChatType.PRIVATE, CommandName("commands"))
 async def list_commands(
     message: Message, bot: Bot | None = None, skin: str = tenancy.DEFAULT_TENANT
 ) -> None:
@@ -122,12 +142,6 @@ async def list_commands(
         # globally — deliberate silence, not a lookup failure (that path fails
         # open and answers, see `_commands_available`'s docstring).
         mark_outcome("silent")
-        return
-
-    if message.chat.type == ChatType.PRIVATE:
-        # v1's private-chat branch hardcodes 'eng' and never consults a group
-        # config (COOKIEBOT.py:85-86) — there is no group to look one up for.
-        await message.reply(locales.text("Cookiebot_functions", "en"))
         return
 
     ctx = await context_for(cast(Bot, bot or message.bot), message)

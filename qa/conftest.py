@@ -431,6 +431,35 @@ def make_message_update(
     return {"update_id": update_id, "message": message}
 
 
+def make_private_message_update(
+    text: str | None, update_id: int, *, user_id: int = USER_ID
+) -> dict[str, Any]:
+    """A DM update — `make_message_update`'s private-chat counterpart.
+
+    A private chat's own `chat` is the sender themselves (Telegram's
+    convention: chat id == user id, no title, `type: "private"`), which is
+    also why this takes no `chat_id` distinct from `user_id`. Promoted from
+    `qa/test_core_listcommand.py`'s local `_make_private_update`
+    (`.specs/features/private_dispatch/`) once a second suite
+    (`qa/test_core_privacy.py`) needed the same shape — this file is exactly
+    where a second consumer of a chat-update builder belongs.
+    """
+    message: dict[str, Any] = {
+        "message_id": update_id,
+        "date": int(time.time()),
+        "chat": {"id": user_id, "type": "private", "first_name": "Tester"},
+        "from": _user(user_id),
+    }
+    if text is not None:
+        message["text"] = text
+        message["entities"] = (
+            [{"offset": 0, "length": len(text.split(" ")[0]), "type": "bot_command"}]
+            if text.startswith("/")
+            else []
+        )
+    return {"update_id": update_id, "message": message}
+
+
 def make_join_update(
     update_id: int,
     *,

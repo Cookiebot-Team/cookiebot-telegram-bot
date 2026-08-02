@@ -180,8 +180,31 @@ report. The random pool needs a backfill job that downloads from Telegram.
    `docs/contracts/util_everyone.md`), so the mechanism now exists, but
    `expire_captchas` itself has not been changed to use it. Still a named
    follow-up.
-2. **No private-chat dispatch.** v1 answers `/privacy` and `/commands` in a DM
-   (hardcoded English); v2 has no private-chat routing layer at all yet.
+2. **No private-chat dispatch — closed.** `.specs/features/private_dispatch/`
+   built it: `cb_gateway/private_context.py` (`PrivateContext`/
+   `private_context_for` — deliberately no `group_id` field, so a handler
+   cannot pass it to `group_config`/`admins` and get a plausible-looking
+   wrong answer for a chat that was never a group) and the
+   `F.chat.type == ChatType.PRIVATE` handler pattern, mirroring the
+   `F.chat.type != ChatType.PRIVATE` pattern already used everywhere else.
+   `/commands`' DM branch was already ad hoc and correct
+   (`core_listcommand.md`) — relocated to the shared pattern, not
+   rebehaviored. `/privacy`'s DM branch had a **live bug**: no chat-type
+   filter at all, so a DM `/privacy` fell through to `context_for` and
+   queried `group_configs` (distributed on `group_id`) with a private
+   chat's own id — fixed. Two remaining named follow-ups, not built:
+   `/start`'s DM welcome screen (`pv_default_message`/`set_private_commands`,
+   a separate, larger unit of work — different DM language convention,
+   per-sender rather than hardcoded), and v1's owner-only ops commands
+   (`/stop`, `/restart`, `/leave`, `/blacklist`, `/broadcast`, `/grupos`),
+   which `.specs/features/private_dispatch/spec.md` recommends **not**
+   porting at all — `os._exit`/`os.execl` process control and a single
+   hardcoded owner id don't fit a stateless, horizontally-replicated,
+   multi-tenant service. `util_birthday`/`util_nextbirthday`'s DM birthdate
+   collection is next, and needs the private-chat equivalent of
+   `cb_gateway/handlers/members.py` (a bookkeeping hook that runs for every
+   DM) — deliberately not built here either, since there was no real first
+   consumer yet to build it against.
 3. **`/config`'s language button does not push `setMyCommands`.**
    `setlang.set_group_commands` exists and is tested; `config_menu.py` does not
    call it yet.
@@ -264,7 +287,7 @@ The next batch, in dependency order, now that the member registry exists:
 | # | Feature | Why here |
 |---|---|---|
 | 1 | `util_everyone` | **done** — the registry it needed was built; batched roster read (`members.roster`, replacing v1's N+1), fan-out moved to `cb-worker` behind the new gateway→worker enqueue. Contract: `docs/contracts/util_everyone.md` |
-| 2 | `util_birthday`, `util_nextbirthday` | same registry, plus `users.birth_month`/`birth_day` generated columns. The registry does **not** collect birthdates yet: v1 reads them from `getChat` in a DM (`UserRegisters.py:72-80`), which needs the private-chat dispatch listed as gap §1.2 |
+| 2 | `util_birthday`, `util_nextbirthday` | same registry, plus `users.birth_month`/`birth_day` generated columns. The private-chat dispatch mechanism gap §1.2 needed is now built (`.specs/features/private_dispatch/`); the registry still does **not** collect birthdates — that needs its own bookkeeping hook (the private-chat equivalent of `cb_gateway/handlers/members.py`), deliberately not built as part of the dispatch layer since birthday is its real first consumer. v1's own trigger for this, `check_new_name`'s `chat_type == 'private'` branch (`UserRegisters.py:73-80`), turned out to be **dead code** — its only call site (`COOKIEBOT.py:332`) is unreachable for a private chat, which returns early at `:108` before ever reaching it. Worth confirming with the coordinator before building around it — see the `util_birthday` report. |
 | 3 | `fun_death` — **blocked, confirmed** | v1's image pool (`bloblist_death`, `Miscellaneous.py:17`) is a live listing of a private GCS bucket, never checked into `../COOKIEBOT-Telegram-Group-Bot`. Investigated this session: no `Death/` directory anywhere in the v1 checkout, no credential to the bucket anywhere in this repo or environment. `Status.BLOCKED` in `scripts/spec.py`; full evidence and the prerequisite (someone exports the bucket's `Death/` prefix) in `.specs/features/fun_death/spec.md`. `design.md`/`tasks.md` are written ahead of time so the port is mechanical once the export lands. |
 | 3a | `fun_battle` — **partial, two-people shape done** | same bucket, different prefix (`Fight/English`/`Fight/Portuguese`) blocks its other two shapes — see gap §1.7. The shape that doesn't need the bucket (explicit tags or `"random"`) shipped this session, and dropped v1's `telegram.me` HTML scrape + a real temp-file race along the way (`docs/contracts/fun_battle.md`). |
 | 3b | `fun_meme` | same shape of blocker suspected (a GCS-backed template pool), **confirmed partially different**: its `Bot/Static/Meme/` directory *does* exist in the v1 checkout (unlike `Death/`/`Fight/`), but at 112 MB — too large to vendor as package data the way `fun_complaint`'s 3.4 MB was. That sizing is `fun_meme`'s own design decision when it's picked up, not solved here. |

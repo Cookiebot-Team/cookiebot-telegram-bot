@@ -124,16 +124,20 @@ mocking of our own code in acceptance tests." It is instead a DB-backed test in
   the `command_catalog` row (`_fetch_catalog_row`, a plain reference-table PK
   read), then applies `command_available_for_tenant`. A catalog read failure
   fails open (`True`) rather than hiding the reply.
-- Private chat (`message.chat.type == ChatType.PRIVATE`): replies with
-  `locales.text("Cookiebot_functions", "en")` directly — no `context_for` call,
-  matching v1's hardcoded `'eng'` and the fact that there is no group to look a
-  config up for. Unlike `docs/contracts/core_privacy.md` (which left private
-  chat unported because the router at the time had no reason to be exercised
-  there), this port does implement and test the private-chat scenario: nothing
-  in `handlers/__init__.py`'s routing restricts a router to group chats, and
-  skipping `context_for` entirely for a DM avoids the only real risk (asking
-  Telegram for a private chat's "administrators", which `cb_core.admins` already
-  degrades gracefully from, but which is simpler to just never call).
+- Private chat: `list_commands_private`, its own
+  `router.message(F.chat.type == ChatType.PRIVATE, CommandName("commands"))`
+  handler (originally an inline `if message.chat.type == ChatType.PRIVATE`
+  branch inside the one handler below; relocated, not rebehaviored, when
+  `.specs/features/private_dispatch/` generalised the pattern this file
+  invented first). Replies with `locales.text("Cookiebot_functions", "en")`
+  directly — no `context_for` call, matching v1's hardcoded `'eng'` and the
+  fact that there is no group to look a config up for. This was already the
+  one place in the codebase that got the private-chat case right on its own
+  (unlike `docs/contracts/core_privacy.md`, which had a live bug until the
+  same slice fixed it) — skipping `context_for` entirely for a DM avoids the
+  only real risk (asking Telegram for a private chat's "administrators",
+  which `cb_core.admins` already degrades gracefully from, but which is
+  simpler to just never call).
 - Group chat: `ctx = await context_for(bot, message)`; reply text is
   `locales.text("Cookiebot_functions", ctx.lang)`.
 - `message.reply(...)` — a reply to the triggering message, matching

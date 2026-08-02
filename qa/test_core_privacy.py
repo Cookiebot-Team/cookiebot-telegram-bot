@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, Any
 
 from pytest_bdd import given, parsers, scenarios, then, when
 
-from qa.conftest import feed, make_message_update
+from cb_core import locales
+from qa.conftest import feed, make_message_update, make_private_message_update
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
@@ -55,3 +56,21 @@ def bot_replies_with_privacy_text(telegram: MockTelegram) -> None:
 @then("the user receives no response")
 def no_response(telegram: MockTelegram) -> None:
     assert not telegram.calls_to("sendMessage"), telegram.calls
+
+
+@when(parsers.parse('a user sends the command "{text}" in a private chat with the bot'))
+def user_sends_in_private(
+    ctx: Context,
+    run: Callable[[Coroutine[Any, Any, Any]], Any],
+    dispatcher: Dispatcher,
+    bot: Bot,
+    text: str,
+) -> None:
+    feed(run, dispatcher, bot, make_private_message_update(text, ctx.update_id))
+
+
+@then("the bot should reply with the English privacy politics regardless of the sender's language")
+def bot_replies_with_english_privacy_text(telegram: MockTelegram) -> None:
+    sent = telegram.calls_to("sendMessage")
+    assert sent, "expected a sendMessage call, got none"
+    assert sent[-1].get("text", "") == locales.get("privacy", "en")
