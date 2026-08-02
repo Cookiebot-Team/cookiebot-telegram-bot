@@ -121,8 +121,9 @@ FEATURES: tuple[Feature, ...] = (
             Layer.GATEWAY, "UserRegisters.py:216-250", ("/ship", "/shippar", "/shipp"),
             "landed the member registry (cb_core/members.py) it needs; QA's single-tagged-user "
             "scenario describes behaviour v1 never had - see docs/contracts/fun_ship.md"),
-    Feature("fun_death", "fun", "Random cause of death", "M2", Status.PLANNED,
-            Layer.GATEWAY, "Miscellaneous.py:335-357", ("/death", "/morte", "/muerte")),
+    Feature("fun_death", "fun", "Random cause of death", "M2", Status.BLOCKED,
+            Layer.GATEWAY, "Miscellaneous.py:335-357", ("/death", "/morte", "/muerte"),
+            "image pool only ever lived in v1's private GCS bucket, never checked in - see .specs/features/fun_death/spec.md"),
     Feature("fun_meme", "fun", "Meme generator", "M2", Status.PLANNED,
             Layer.WORKER, "SocialContent.py:224-277", ("/meme",),
             "image compositing is a worker job, not a reply-path call"),

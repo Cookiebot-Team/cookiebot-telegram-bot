@@ -195,6 +195,14 @@ report. The random pool needs a backfill job that downloads from Telegram.
    `docs/contracts/util_calladms.md`); the captcha's 30s unban (gap 1, above)
    is the one remaining named follow-up.
 6. **`randomdatabase` backfill** — see the import section above.
+7. **`fun_death` is infrastructure-blocked, not just unstarted.** v1's image
+   pool (`bloblist_death`) is a live listing of a private GCS bucket that was
+   never checked into the v1 repo and this environment has no credential
+   for. `Status.BLOCKED` in `scripts/spec.py`; `.specs/features/fun_death/`
+   has the full evidence, the prerequisite (export the bucket's `Death/`
+   prefix), and a design/tasks pair ready to execute the moment it lands.
+   `fun_meme` is suspected to have the same shape of blocker but has not
+   been checked yet — do not assume, verify the same way before starting it.
 
 ## 2. Resume in three commands
 
@@ -243,7 +251,8 @@ The next batch, in dependency order, now that the member registry exists:
 |---|---|---|
 | 1 | `util_everyone` | **done** — the registry it needed was built; batched roster read (`members.roster`, replacing v1's N+1), fan-out moved to `cb-worker` behind the new gateway→worker enqueue. Contract: `docs/contracts/util_everyone.md` |
 | 2 | `util_birthday`, `util_nextbirthday` | same registry, plus `users.birth_month`/`birth_day` generated columns. The registry does **not** collect birthdates yet: v1 reads them from `getChat` in a DM (`UserRegisters.py:72-80`), which needs the private-chat dispatch listed as gap §1.2 |
-| 3 | `fun_death`, `fun_meme` | both need media assets v1 kept in a GCS bucket (`bloblist_death`, meme templates). Decide where those live before starting — `cb_core.storage` can hold them, but nobody has copied them out of v1 |
+| 3 | `fun_death` — **blocked, confirmed** | v1's image pool (`bloblist_death`, `Miscellaneous.py:17`) is a live listing of a private GCS bucket, never checked into `../COOKIEBOT-Telegram-Group-Bot`. Investigated this session: no `Death/` directory anywhere in the v1 checkout, no credential to the bucket anywhere in this repo or environment. `Status.BLOCKED` in `scripts/spec.py`; full evidence and the prerequisite (someone exports the bucket's `Death/` prefix) in `.specs/features/fun_death/spec.md`. `design.md`/`tasks.md` are written ahead of time so the port is mechanical once the export lands. |
+| 3b | `fun_meme` | same shape of blocker suspected (a GCS-backed template pool) but **not yet investigated this session** — check before assuming it needs the same treatment as `fun_death` |
 | 4 | `core_musicdetection`, `util_youtube` | first media-processing ports; both belong in cb-worker |
 
 Close the remaining gaps in §1 before or alongside these — the captcha timeout

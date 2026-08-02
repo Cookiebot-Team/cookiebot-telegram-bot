@@ -3,8 +3,8 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Random cause of death"
-description: "fun · M2"
-status: planned
+description: "image pool only ever lived in v1's private GCS bucket, never checked in - see .specs/features/fun_death/spec.md"
+status: blocked
 milestone: M2
 area: fun
 layer: gateway
@@ -15,13 +15,36 @@ v1_source: "Miscellaneous.py:335-357"
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+In v1, `/death` (also `/morte`, `/muerte`) posts a random image or gif —
+someone's tag or a random "cause of death" — captioned with a randomised
+"is dead!"-style line and a silly reason pulled from an 81-line pool. It
+can target the caller, a tagged name, or whoever they replied to.
 
-## Behaviour that must not change
+## Why this one is blocked, not just unstarted
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+v1's image pool is not a file checked into its repository — it is a live
+listing of a private Google Cloud Storage bucket
+(`bloblist_death = list(storage_bucket.list_blobs(prefix="Death"))`,
+`Miscellaneous.py:17`), fetched fresh at process start and read with
+15-minute signed URLs. Nothing in `../COOKIEBOT-Telegram-Group-Bot`'s
+checked-in static tree carries those files, and nothing in this repository
+or environment has a credential for that bucket. `fun_complaint` and
+`fun_meme`'s templates are the counter-example: those *are* checked into
+v1's static tree, which is why they could be vendored byte-identical the way
+`cb_core/asset_data/complaint/` already is.
+
+The everything-else of this feature — the target resolution, the caption
+assembly, the gate, the locale strings (the `death.txt` reason pool and the
+`death` catalog block are both already ported byte-identical) — is fully
+specified and ready to build. The full behaviour contract and evidence for
+the blocker live in
+[`.specs/features/fun_death/spec.md`](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/blob/main/.specs/features/fun_death/spec.md);
+a design and task breakdown are written ahead of time in the same directory
+so the port is mechanical the moment someone exports the bucket's `Death/`
+prefix.
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+Nothing to verify yet — there is no code. Once unblocked:
+`qa/features/fun_death.feature`, copied verbatim from
+`../Cookiebot-QA/features/fun_death.feature`.

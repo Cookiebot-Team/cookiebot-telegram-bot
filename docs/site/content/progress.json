@@ -1,13 +1,13 @@
 {
   "generated_at": "2026-08-02",
-  "commit": "92d00db",
-  "test_summary": "2127 passed, 44 skipped, 143 deselected, 1 warning in 17.62s",
+  "commit": "391960e",
+  "test_summary": "2127 passed, 44 skipped, 143 deselected, 1 warning in 16.74s",
   "totals": {
     "features": 53,
     "done": 30,
     "partial": 5,
-    "planned": 18,
-    "blocked": 0,
+    "planned": 17,
+    "blocked": 1,
     "spec_scenarios": 63,
     "ported": 111,
     "spec_files": 31,
@@ -598,14 +598,14 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M2",
-      "status": "planned",
+      "status": "blocked",
       "triggers": [
         "/death",
         "/morte",
         "/muerte"
       ],
       "v1_source": "Miscellaneous.py:335-357",
-      "notes": "",
+      "notes": "image pool only ever lived in v1's private GCS bucket, never checked in - see .specs/features/fun_death/spec.md",
       "contract": null,
       "scenarios": {
         "spec": 2,
