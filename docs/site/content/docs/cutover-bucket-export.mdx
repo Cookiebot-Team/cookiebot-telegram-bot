@@ -1,0 +1,199 @@
+---
+title: "Cutover bucket export"
+description: "Copying v1's private GCS bucket into v2 object storage, safely and repeatably, on cutover day"
+---
+
+## What it does
+
+`cb_worker.bucket_export` copies every bot-owned static asset out of v1's
+private GCS bucket (`cookiebot-bucket`) and into v2's object storage. It is
+built to run twice: once ahead of time while v1 is still serving, and again on
+cutover day itself to pick up whatever changed since. That is why it is a
+tool, not a one-shot script — see `packages/cb-worker/src/cb_worker/importer/`
+for the same shape applied to the Mongo → Citus move; this is that pattern
+applied to a bucket instead of a database.
+
+It is idempotent, resumable and auditable:
+
+- **Idempotent** — a blob whose content already has an object at the
+  destination is skipped, never re-uploaded. Run it twice in a row and the
+  second run copies nothing.
+- **Resumable** — every blob touched gets one line appended to a manifest file
+  as the run goes, flushed immediately. A process killed partway through loses
+  nothing already recorded, and a restarted run skips straight past what a
+  prior run already landed.
+- **Auditable** — the manifest is the record for the day it matters: source
+  path, content hash, byte size, destination key, and outcome for every blob,
+  across every run that touched it.
+
+## The read-only guarantee
+
+**The source bucket is never written to, enforced three separate ways — not
+just by convention:**
+
+1. **OAuth scope.** The GCS client used to read the source bucket is built
+   from credentials scoped to exactly
+   `https://www.googleapis.com/auth/devstorage.read_only`. That is narrower
+   than `google.cloud.storage.Client`'s own default (which offers read-only,
+   read-write *and* full control, and lets the credential decide). With this
+   scope, a write call — delete, upload, patch — is rejected by Google's API
+   layer with 403 before it ever reaches the bucket's IAM policy.
+2. **A narrow wrapper.** The object this tool actually calls,
+   `GcsReadOnlySource`, exposes exactly two methods: `list_prefix` and
+   `download`. There is no delete, no upload, no patch on it, and the
+   underlying `google.cloud.storage.Bucket`/`Client` handles are private —
+   nothing returns them to a caller, so there is no way to reach a
+   write-capable method through this object even if the scope above were
+   somehow bypassed.
+3. **A test that enforces it mechanically.**
+   `packages/cb-worker/tests/test_bucket_export.py::TestReadOnlyEnforcement`
+   asserts the wrapper's public method set is exactly `{list_prefix,
+   download, close}`, that no method name looks write-capable, and that the
+   client is built with exactly the read-only scope. If a future change adds a
+   write path back, this test fails the build, not just review.
+
+## The prefix inventory
+
+Not a list handed down from anywhere — every prefix below was found by
+grepping the v1 checkout (`../COOKIEBOT-Telegram-Group-Bot`) for every
+`list_blobs(prefix=...)` call and every other bucket read. v1 actually has
+**two** GCS buckets (`Bot/universal_funcs.py:27-28`):
+
+```python
+storage_bucket = storage_client.get_bucket("cookiebot-bucket")             # private — this tool reads it
+storage_bucket_public = storage_client.get_bucket("cookiebot-bucket-public")  # public — excluded, see below
+```
+
+Everything this tool reads comes from `cookiebot-bucket`:
+
+| Prefix | v1 source | Feeds |
+|---|---|---|
+| `IdeiaDesenho` | `Bot/Miscellaneous.py:16` | `/drawingidea` |
+| `Death` | `Bot/Miscellaneous.py:17` | `/death` |
+| `Countdown/BFF` | `Bot/Miscellaneous.py:18` | countdown command |
+| `Countdown/Patas` | `Bot/Miscellaneous.py:19` | countdown command |
+| `Countdown/FurSMeet` | `Bot/Miscellaneous.py:20` | countdown command |
+| `Countdown/Furcamp` | `Bot/Miscellaneous.py:21` | countdown command |
+| `Countdown/Pawstral` | `Bot/Miscellaneous.py:22` | countdown command |
+| `Custom/` | `Bot/Miscellaneous.py:23,147` | `custom_command` — one subfolder per custom command, discovered dynamically by listing the prefix, never a hardcoded name list |
+| `Fight/English` | `Bot/SocialContent.py:24` | `/battle` |
+| `Fight/Portuguese` | `Bot/SocialContent.py:25` | `/battle` |
+
+**`IdeiaDesenho` was not on the prefix list this tool was originally briefed
+with** — it turned up from the grep and is included because v1's own code
+reads it exactly as unconditionally as `Death` or `Fight/English`. Everything
+else on the original list — `Death/`, `Fight/English`, `Fight/Portuguese`, and
+all five `Countdown/*` prefixes — checked out exactly as given.
+
+**Deliberately excluded: `chatpfp/` in `cookiebot-bucket-public`**
+(`Bot/Configurations.py:8,30`). That is a different bucket, and v1 writes to
+it itself (`blob.upload_from_filename(...)`, caching a chat's Telegram profile
+photo the first time it is needed) — it is a runtime cache, not
+source-of-truth static content, and it fails the "the source is read-only"
+premise this whole tool is built around. There is nothing in it worth a
+byte-for-byte copy; v2's own chat-photo caching, whenever it exists,
+repopulates it straight from Telegram the same way v1's does.
+
+This gap is also why `fun_death` and `fun_battle` are currently `BLOCKED` in
+their own specs (`.specs/features/fun_death/`, `.specs/features/fun_battle/`)
+— their image pools only ever lived in this bucket. This tool removes the
+actual infrastructure blocker (the bytes only being reachable through v1's
+soon-to-be-decommissioned GCS project); it does not itself decide whether
+those two features end up reading from v2 object storage directly or from a
+curated subset vendored into `packages/cb-core/src/cb_core/asset_data/` — that
+is a decision for their own design docs.
+
+## Running it on the day
+
+### 1. Configure
+
+Environment variables, not a settings file — this is a one-shot migration
+tool with its own destination, independent of whatever object store the
+running app is pointed at:
+
+```bash
+export CB_BUCKET_EXPORT_SOURCE_BUCKET=cookiebot-bucket
+export CB_BUCKET_EXPORT_DEST_URI=s3://cookiebot-legacy-assets
+export CB_BUCKET_EXPORT_DEST_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+export CB_BUCKET_EXPORT_DEST_REGION=auto
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/a-read-only-service-account-key.json
+```
+
+The service account behind `GOOGLE_APPLICATION_CREDENTIALS` needs at least
+`storage.objectViewer` on `cookiebot-bucket` — nothing more, and the read-only
+scope above means nothing more would help even if granted. The destination
+credentials (R2's S3-compatible access key/secret) are read the same way any
+`s3://` destination reads them elsewhere in this codebase — `AWS_ACCESS_KEY_ID`
+/ `AWS_SECRET_ACCESS_KEY` in the environment.
+
+If any of the source/destination configuration is missing, the tool fails
+immediately with a one-line, actionable message and exit code `2` — never a
+stack trace. Same for missing Google credentials.
+
+### 2. Dry run
+
+```bash
+python scripts/cb.py bucket-export --dry-run
+```
+
+Lists, downloads and hashes every prefix — exactly what a real run would do —
+and prints the summary table without writing anything to the destination or
+the manifest. Use this first, always: it is the same code path a real run
+takes, right up to the write.
+
+### 3. Run it for real
+
+```bash
+python scripts/cb.py bucket-export
+```
+
+Copies everything not already present at the destination, appending one line
+to the manifest (`bucket_export_manifest.jsonl` by default, override with
+`--manifest PATH` or `CB_BUCKET_EXPORT_MANIFEST`) as it goes. Prints a `rich`
+progress bar per prefix while it runs, then the same summary table dry-run
+showed — prefix, found, copied, skipped, failed, bytes — with a totals row.
+
+Run this once ahead of the cutover window to get the bulk of the data moved
+while v1 is still serving traffic, then run it again, unchanged, right at
+cutover to catch the delta. The second run is safe by construction: unchanged
+blobs are skipped without even being re-downloaded (the manifest from the
+first run is read back and trusted when the source's reported size still
+matches), and nothing is ever duplicated at the destination.
+
+### 4. Verify
+
+```bash
+python scripts/cb.py bucket-export --verify
+```
+
+Touches no v1 source at all — re-reads the manifest and, for every blob it
+claims to have landed, re-downloads the destination object and confirms both
+its size and its content hash still match what the manifest recorded. Prints
+either "all N verified objects match" or a table of exactly what did not:
+missing, wrong size, or a hash mismatch. This is the pass to run right before
+declaring the cutover done.
+
+## When a blob fails
+
+A failed blob (unreadable source object, transient GCS error) never aborts
+the run — it is counted in the `failed` column and recorded in the manifest
+with `outcome: "failed"` and a `detail` field naming what went wrong. One bad
+object never costs the rest of the run.
+
+To retry just what failed:
+
+1. Read the manifest (`jq 'select(.outcome == "failed")' bucket_export_manifest.jsonl`,
+   or just `grep '"failed"'` — it is plain JSON Lines, one object per line,
+   readable without tooling) to see which prefixes had failures.
+2. Re-run scoped to those prefixes: `python scripts/cb.py bucket-export
+   --prefixes Death,Fight/English`. Blobs that already succeeded are skipped
+   via the resumability check; only what previously failed (or is new since
+   the last run) is attempted again.
+3. If a specific object keeps failing, that is a real signal — a corrupted or
+   inaccessible object in v1's bucket — worth investigating with `gsutil` or
+   the GCS console directly rather than retrying indefinitely.
+
+A summary with `failed > 0` exits the process with code `1` (as opposed to `0`
+for a clean run, or `2` for a configuration error caught before anything ran),
+so a script driving the cutover sequence can tell "ran, found problems" apart
+from "could not even start."

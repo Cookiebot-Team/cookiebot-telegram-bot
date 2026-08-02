@@ -15,6 +15,16 @@ dependencies = [
     # is what reads a `mongodump` directory, so one dependency covers both the
     # live-server and the backup-file source.
     "pymongo>=4.10",
+    # Cutover bucket export (cb_worker/bucket_export). The *destination* side goes
+    # through cb_core.storage (obstore) like everything else — this is only for
+    # the *source* read, v1's own GCS bucket, which obstore has no scope-
+    # restriction knob for. google-auth is what mints the read-only-scoped OAuth
+    # token (see bucket_export/source.py); google-cloud-storage is what carries it
+    # on every request. Same "direct SDK for a foreign source" precedent as
+    # pymongo above, not a second way to write our own storage.
+    "google-cloud-storage>=3.13",
+    # Per-prefix progress bars and the final copied/skipped/failed summary table.
+    "rich>=13.7",
 ]
 
 [tool.setuptools.packages.find]
