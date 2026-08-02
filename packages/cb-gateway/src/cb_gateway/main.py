@@ -26,6 +26,7 @@ from cb_core.logging import configure_logging, get_logger
 from cb_core.migrations import ensure_schema
 from cb_core.settings import get_settings
 from cb_core.telemetry import setup_tracing
+from cb_gateway import queue
 from cb_gateway.bots import registry
 from cb_gateway.handlers import build_router
 from cb_gateway.ingest import build_ingest
@@ -80,6 +81,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await registry.close()
         await close_llm()
         await storage.close_storage()
+        await queue.close()
         await cache.close_cache()
         await db.close_pool()
         log.info("gateway.stopped")
