@@ -3,25 +3,54 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Ping every member"
-description: "v1 does one backend call per user; batch it"
-status: planned
+description: "batched roster read replaces v1's per-user backend call; fan-out moved to cb-worker"
+status: done
 milestone: M2
 area: util
 layer: worker
 triggers: ["/everyone", "@everyone"]
 v1_source: "UserRegisters.py:97-146"
+contract: "docs/contracts/util_everyone.md"
 ---
 <FeatureHeader id="util_everyone" />
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+An admin types `/everyone` (or `@everyone`) and the bot pings every member it
+has ever seen in that group: one or more `@mention` messages in the chat —
+split into multiple messages if the list is too long for one — followed by a
+private message to each member with a link back to the call. The first
+message starts with a count of how many known members are being pinged.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+Two triggers work and always must: `/everyone` and bare `@everyone`, exactly
+as v1 shipped them. The group ping text is byte-identical to v1's, including
+the always-English "Number of known users:" header on the first message only,
+and the same 4096-character chunking boundary. Only a group admin can run it —
+an anonymous "group" sender (posting as the channel) counts as an admin, same
+as everywhere else in the bot.
+
+Two things are deliberately **not** the same as v1, and both are recorded in
+[the contract](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/blob/main/docs/contracts/util_everyone.md):
+if the bot cannot confirm who the group's admins are, v1 let anyone ping
+everyone — v2 refuses instead. And v1 quietly forwarded the triggering
+message to the bot's owner every tenth private message it sent; v2 does not
+do this at all, to anyone, under any circumstance.
+
+QA's spec spells the trigger `/ping everyone`, a phrase v1 never shipped. It
+is not an alias of `/everyone` — it is a different two-word command QA
+invented — so it is recorded as a trigger mismatch rather than wired up as one
+(`docs/site/content/docs/feature-map.mdx`).
+
+The private messages themselves are sent by `cb-worker`, not by the reply that
+answers the group — a big group can have hundreds of members, and nothing
+that slow belongs on the path that has to answer Telegram fast.
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/features/util_everyone.feature` — three scenarios, run with
+`python scripts/cb.py test`. By hand in the sandbox: have a couple of accounts
+talk in the group first (that registers them, same as `/shipp`), then run
+`/everyone` as an admin and watch both the group message and the follow-up
+DMs arrive.

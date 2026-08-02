@@ -4,24 +4,62 @@
 # `docs-sync --check` fails CI when it drifts.
 title: "Complaint bit"
 description: "fun · M2"
-status: planned
+status: done
 milestone: M2
 area: fun
 layer: gateway
-triggers: ["/complaint", "/milton", "/queja"]
+triggers: ["/complaint", "/milton", "/reclamacao", "/reclamação", "/queja"]
 v1_source: "Miscellaneous.py:240-259"
+contract: "docs/contracts/fun_complaint.md"
 ---
 <FeatureHeader id="fun_complaint" />
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+Any of five spellings — `/milton`, `/reclamacao`, `/reclamação`, `/complaint`,
+`/queja` — sends a photo of Milton from HR, captioned with an invitation to
+reply with your own complaint. Reply to that photo with anything and the bot
+puts you on hold: it deletes the photo, sends a random hold-music voice note
+stamped with a fake protocol number ("Protocol: 42-123456/2026"), and then,
+10 to 20 seconds later, deletes the hold note and answers with a random canned
+line. Two entry points, one stateless reply chain — nothing is written to a
+database and nothing is remembered between the two steps beyond the reply
+itself.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+All five triggers work with or without extra text or `@botname` after them.
+The photo is `milton_pt.jpg` only when the group's language is exactly `pt`;
+every other language, Spanish included, gets the English photo — there is no
+Spanish photo and the check is an equality test, not a locale lookup. The
+Spanish caption is also the English one under the hood, because `es/lib.json`
+has no `complaint` key and falls back to `eng` — both are known v1 gaps,
+preserved rather than fixed.
+
+The reply match is a **substring** check, not an exact match: any photo whose
+caption contains `Milton do RH.` or `Milton from HR.` re-arms the hold, even
+an old one from months ago, even one sent by a different bot. That is v1's
+real behaviour and stays that way. Those two strings are the tail of the
+`complaint` locale entries (`cb_core/locale_data/{en,pt}/lib.json`, key
+`complaint`) — **editing either locale string breaks the reply chain**: a
+photo sent under the old wording would no longer trigger the hold, and every
+Milton photo already sitting in a group's history would stop working
+retroactively.
+
+The hold lasts 10-20 seconds, matching v1's `randint(10, 20)` exactly, even
+though it no longer blocks the bot from handling anything else while it
+waits. There is no cooldown and no admin check on either entry point. If fun
+functions are turned off in `/config`, the bot says so instead of ignoring
+the command, on both entry points.
+
+The full behaviour contract, including the five preserved v1 defects, lives in
+[`docs/contracts/fun_complaint.md`](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/blob/main/docs/contracts/fun_complaint.md).
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/features/fun_complaint.feature` — four scenarios (the complaint prompt,
+the hold-and-answer reply, the fun-off gate, and a reply to an unrelated photo
+doing nothing), run with `python scripts/cb.py test`. By hand in the sandbox:
+send `/complaint` in a group, then reply to the Milton photo with anything and
+watch the photo get deleted, a voice note with a protocol number arrive, and —
+10 to 20 seconds later — the voice note get deleted and a canned answer land.

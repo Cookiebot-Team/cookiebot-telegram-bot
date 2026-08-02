@@ -4,24 +4,46 @@
 # `docs-sync --check` fails CI when it drifts.
 title: "Firecracker sequence"
 description: "fun · M2"
-status: planned
+status: done
 milestone: M2
 area: fun
 layer: gateway
 triggers: ["/firecracker", "/rojao", "/fogos"]
 v1_source: "Miscellaneous.py:226-238"
+contract: "docs/contracts/fun_firecracker.md"
 ---
 <FeatureHeader id="fun_firecracker" />
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+Any of five spellings — `/rojao`, `/rojão`, `/acende`, `/fogos`,
+`/firecracker` — sets off a firecracker in the chat. The bot reacts 🎉, replies
+with a fuse ("fiiiiiiii.... "), pauses briefly, then fires a burst of `pra `
+messages of random length before ending with a bang
+("💥POOOOOOOWW💥"). The number of burst messages varies from run to run — it
+is not a fixed animation, it is a small random walk, exactly as it always was.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+All five triggers work with or without extra text after them and with or
+without `@botname` tacked on. The three output strings — the fuse, the `pra `
+repeats, and the bang — are never translated: v1 never localised them, and
+localising them now would change what every existing group sees for a command
+they already know. There is no cooldown and no admin check. If fun functions
+are turned off in `/config`, the bot says so with the "fun functions are off"
+reply instead of ignoring the command.
+
+The burst itself is a flood risk by design (up to ~21 messages per
+invocation) — that risk is preserved, not throttled, because adding pacing
+would change timing users already know. What changed is only how it's run:
+the sequence never blocks the bot from handling other chats' messages while
+it plays out.
+
+The full behaviour contract lives in [`docs/contracts/fun_firecracker.md`](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/blob/main/docs/contracts/fun_firecracker.md).
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/features/fun_firecracker.feature` — two scenarios (the firecracker
+sequence, and the fun-off gate), run with `python scripts/cb.py test`. By hand
+in the sandbox: send `/firecracker` in a group and watch the reaction, fuse,
+burst and bang play out.

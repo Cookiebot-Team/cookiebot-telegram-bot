@@ -1,19 +1,19 @@
 {
-  "generated_at": "2026-08-01",
-  "commit": "c8d7544",
-  "test_summary": "924 passed, 36 skipped, 122 deselected, 1 warning in 75.20s (0:01:15)",
+  "generated_at": "2026-08-02",
+  "commit": "39b01ac",
+  "test_summary": "2119 passed, 44 skipped, 143 deselected, 1 warning in 27.06s",
   "totals": {
     "features": 53,
-    "done": 25,
+    "done": 29,
     "partial": 6,
-    "planned": 22,
+    "planned": 18,
     "blocked": 0,
     "spec_scenarios": 63,
-    "ported": 95,
+    "ported": 111,
     "spec_files": 31,
-    "spec_files_covered": 15,
+    "spec_files_covered": 19,
     "new_specs": 17,
-    "green": 175,
+    "green": 192,
     "failing": 0
   },
   "milestones": [
@@ -32,7 +32,7 @@
     {
       "id": "M2",
       "title": "Fun and utility commands",
-      "done": 3,
+      "done": 7,
       "total": 15
     },
     {
@@ -575,18 +575,19 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M2",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/ship",
-        "/shippar"
+        "/shippar",
+        "/shipp"
       ],
       "v1_source": "UserRegisters.py:216-250",
-      "notes": "",
-      "contract": null,
+      "notes": "landed the member registry (cb_core/members.py) it needs; QA's single-tagged-user scenario describes behaviour v1 never had - see docs/contracts/fun_ship.md",
+      "contract": "docs/contracts/fun_ship.md",
       "scenarios": {
         "spec": 3,
-        "ported": 0,
-        "green": 0,
+        "ported": 7,
+        "green": 8,
         "failing": 0
       },
       "url": "/docs/features/fun_ship"
@@ -686,7 +687,7 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M2",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/firecracker",
         "/rojao",
@@ -694,11 +695,11 @@
       ],
       "v1_source": "Miscellaneous.py:226-238",
       "notes": "",
-      "contract": null,
+      "contract": "docs/contracts/fun_firecracker.md",
       "scenarios": {
         "spec": 1,
-        "ported": 0,
-        "green": 0,
+        "ported": 2,
+        "green": 2,
         "failing": 0
       },
       "url": "/docs/features/fun_firecracker"
@@ -709,19 +710,21 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M2",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/complaint",
         "/milton",
+        "/reclamacao",
+        "/reclama\u00e7\u00e3o",
         "/queja"
       ],
       "v1_source": "Miscellaneous.py:240-259",
       "notes": "",
-      "contract": null,
+      "contract": "docs/contracts/fun_complaint.md",
       "scenarios": {
         "spec": 2,
-        "ported": 0,
-        "green": 0,
+        "ported": 4,
+        "green": 4,
         "failing": 0
       },
       "url": "/docs/features/fun_complaint"
@@ -802,18 +805,18 @@
       "area": "util",
       "layer": "worker",
       "milestone": "M2",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/everyone",
         "@everyone"
       ],
       "v1_source": "UserRegisters.py:97-146",
-      "notes": "v1 does one backend call per user; batch it",
-      "contract": null,
+      "notes": "batched roster read replaces v1's per-user backend call; fan-out moved to cb-worker",
+      "contract": "docs/contracts/util_everyone.md",
       "scenarios": {
         "spec": 2,
-        "ported": 0,
-        "green": 0,
+        "ported": 3,
+        "green": 3,
         "failing": 0
       },
       "url": "/docs/features/util_everyone"
@@ -1612,10 +1615,10 @@
     {
       "stem": "fun_complaint",
       "spec": 2,
-      "ported": 0,
-      "green": 0,
+      "ported": 4,
+      "green": 4,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "fun_death",
@@ -1636,10 +1639,10 @@
     {
       "stem": "fun_firecracker",
       "spec": 1,
-      "ported": 0,
-      "green": 0,
+      "ported": 2,
+      "green": 2,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "fun_meme",
@@ -1668,10 +1671,10 @@
     {
       "stem": "fun_ship",
       "spec": 3,
-      "ported": 0,
-      "green": 0,
+      "ported": 7,
+      "green": 8,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "util_birthday",
@@ -1724,10 +1727,10 @@
     {
       "stem": "util_everyone",
       "spec": 2,
-      "ported": 0,
-      "green": 0,
+      "ported": 3,
+      "green": 3,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "util_isalive",
