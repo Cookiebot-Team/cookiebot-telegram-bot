@@ -15,4 +15,9 @@ from __future__ import annotations
 #: of the gateway->worker enqueue wiring (`cb_gateway/queue.py`).
 EVERYONE_FANOUT = "everyone_fanout"
 
-__all__ = ["EVERYONE_FANOUT"]
+#: `util_calladms`'s DM half (`cb_worker/jobs/calladms.py`), enqueued from
+#: `cb_gateway/handlers/calladms.py` once a confirmed `/adm` press has pinged
+#: the group. Second consumer of the same wiring.
+CALLADMS_NOTIFY_ADMINS = "notify_admins_of_call"
+
+__all__ = ["CALLADMS_NOTIFY_ADMINS", "EVERYONE_FANOUT"]

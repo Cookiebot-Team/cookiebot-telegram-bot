@@ -19,25 +19,24 @@ would turn every mention of a user called "admin" into a command. The one
 narrowing: v1's raw `startswith` also fired on `@admins` and `@adminfoo`, and the
 word boundary here does not — recorded in the contract.
 
-One thing this port deliberately does **not** reproduce:
-
-1. **The DM fan-out is not implemented here.** v1's `call_admins`
-   (`UserRegisters.py:178-203`) DMs every admin individually — a distinct
-   Telegram chat per admin, throttled with `time.sleep(0.1)` and an occasional
-   `forwardMessage` to the bot owner. That is multi-chat fan-out exactly as
-   AGENTS.md section 2.4 describes it, so it belongs in a `cb-worker` job, not
-   the reply path. No such job exists yet (`cb-worker` currently ships only
-   cron jobs, and `cb-gateway` has no arq pool to enqueue one), and both
-   `cb-worker/*` and `cb_gateway/main.py` are out of this port's file
-   ownership — see the contract for exactly what the job needs.
+**The DM fan-out is a `cb-worker` job, not reply-path work.** v1's
+`call_admins` (`UserRegisters.py:178-203`) DMs every admin individually — a
+distinct Telegram chat per admin, throttled with `time.sleep(0.1)` — which is
+multi-chat fan-out exactly as AGENTS.md section 2.4 describes it. Once the
+group ping is sent, `confirm_call_admins` below enqueues
+`jobs.CALLADMS_NOTIFY_ADMINS` (scalars only, same discipline
+`handlers/everyone.py` already established for its own fan-out) and returns;
+no DM, no per-admin Telegram call happens here. The job itself is
+`cb_worker/jobs/calladms.py`; see `.specs/features/util_calladms/` and
+`docs/contracts/util_calladms.md` for the full DM-half behaviour contract.
 
 Everything else is exact: the confirmation prompt (open to anyone — v1 never
 checks who may *ask* to call admins), the 600-second staleness window measured
 from the prompt's own timestamp, the unconditional delete of the prompt on any
 button press, and the group-ping text (admins mentioned by username, including
 the bot's own username when the bot itself is an admin — v1 only excludes the
-bot from the *DM* loop, which this port does not implement, never from the
-mention text).
+bot from the *DM* loop, never from the mention text, and the DM-fan-out job
+preserves that same exclusion).
 """
 
 from __future__ import annotations
@@ -55,9 +54,11 @@ from aiogram.types import (
     Message,
 )
 
+from cb_core import jobs
 from cb_core.logging import get_logger
 from cb_gateway.context import context_for, t
 from cb_gateway.filters import CommandName
+from cb_gateway.queue import enqueue
 from cb_gateway.telemetry import mark_outcome
 
 log = get_logger("cb.calladms")
@@ -237,14 +238,17 @@ async def confirm_call_admins(callback: CallbackQuery, bot: Bot) -> None:
     text = mentions + t(ctx, "call_admin", caller=caller)
     await bot.send_message(chat_id, text)
 
-    # The DM fan-out (`UserRegisters.py:186-203`) is a cb-worker job, not reply-path
-    # work — see the module docstring and docs/contracts/util_calladms.md. This
-    # log line is the only trace of that gap until the job exists.
-    log.info(
-        "calladms.dm_fanout_not_implemented",
+    # The DM fan-out (`UserRegisters.py:190-203`) is cb-worker's job, not the
+    # reply path's (AGENTS.md §2.4, module docstring). Scalars only, same
+    # discipline `handlers/everyone.py` uses for its own fan-out — the worker
+    # re-resolves admins itself (design R2.2) rather than trusting the
+    # username list this handler already fetched for the group ping.
+    await enqueue(
+        jobs.CALLADMS_NOTIFY_ADMINS,
         group_id=chat_id,
-        admin_count=len(usernames),
+        chat_title=callback.message.chat.title or "",
         original_message_id=original_message_id,
+        lang=ctx.lang,
     )
 
 

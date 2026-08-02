@@ -3,11 +3,11 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Call the admins"
-description: "group ping done; v1 also DMs each admin - needs a cb-worker fan-out job"
-status: partial
+description: "group ping on the reply path; DM fan-out to every admin in cb-worker"
+status: done
 milestone: M2
 area: util
-layer: gateway
+layer: worker
 triggers: ["/adm", "@admin", "/report"]
 v1_source: "UserRegisters.py:168-203"
 contract: "docs/contracts/util_calladms.md"
@@ -16,15 +16,43 @@ contract: "docs/contracts/util_calladms.md"
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+Anyone in the group can type `/adm` (also `/admin`, `/report`, or the bare
+mentions `@admin`/`@adm`) to ask the bot to summon its admins. The bot replies
+with a Yes/No confirmation. Pressing Yes deletes that prompt and posts a
+single message tagging every admin by username; each admin then also gets a
+private message telling them they were called, with a button linking back to
+the moment in the chat. Pressing No, or waiting more than ten minutes before
+pressing anything, cancels it instead.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+All four v1 triggers work, plus the two bare-word mention forms — nobody
+needs an admin permission to *ask*, only Telegram itself gates who can press
+the confirmation buttons meaningfully (anyone can press them; there is no
+permission check on the press either, matching v1 exactly). The confirmation
+expires 600 seconds after it was sent, and pressing it past that point always
+deletes the prompt and answers "Message too old, use /adm again" — a bare
+English string, never localised, same as v1. The group ping text and the
+admin-notification DM text are byte-identical to v1's, including the
+bot's own username appearing in the group ping whenever the bot itself is an
+admin (only the DM loop skips the bot, never the mention list).
 
-The full behaviour contract lives in [`docs/contracts/util_calladms.md`](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/blob/main/docs/contracts/util_calladms.md).
+One thing is deliberately **not** the same as v1: it used to quietly forward
+the triggering message to the bot's owner every tenth admin notification. v2
+does not do this at all, to anyone, under any circumstance — recorded in
+[the contract](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/blob/main/docs/contracts/util_calladms.md)
+alongside the rest of the DM-fan-out behaviour.
+
+The admin notifications are sent by `cb-worker`, not by the reply that
+confirms the group ping — a group can have anywhere from one to a few dozen
+admins, and sequential DMs with a throttle between them do not belong on the
+path that has to answer Telegram's callback quickly.
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/features/util_calladms.feature` — seven scenarios (the base flow, four
+alternate-trigger variants, decline, and staleness), run with
+`python scripts/cb.py test`. By hand in the sandbox: run `/adm` in a group
+with at least one other admin, press the checkmark, and watch the group
+message tag every admin while each admin's own chat gets a private
+notification with a "Show message" link back to the group.

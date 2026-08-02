@@ -190,10 +190,10 @@ report. The random pool needs a backfill job that downloads from Telegram.
 5. **No gateway -> worker enqueue wiring — closed.** `util_everyone` built it:
    `cb_gateway/queue.py` (`enqueue`/`close`, one `arq` pool on the existing
    Redis DSN, never raises into a handler) and `cb_core/jobs.py` for the
-   shared job-name constants. `util_calladms`'s DM-every-admin half is now
-   unblocked but not yet ported (see `docs/contracts/util_calladms.md`'s "What
-   the job needs" section); the captcha's 30s unban (gap 1, above) is the
-   other named follow-up.
+   shared job-name constants. `util_calladms`'s DM-every-admin half used it
+   next and is now ported too (`cb_worker/jobs/calladms.py`,
+   `docs/contracts/util_calladms.md`); the captcha's 30s unban (gap 1, above)
+   is the one remaining named follow-up.
 6. **`randomdatabase` backfill** — see the import section above.
 
 ## 2. Resume in three commands
@@ -234,8 +234,8 @@ directly.
 
 **This section was stale for a while — trust `python scripts/cb.py status`, not
 prose.** `fun_random`, `util_embedder`, `fun_dice`, `fun_ship`, `fun_firecracker`,
-`fun_complaint`, `util_everyone` and the group half of `util_calladms` have all
-landed since it was written.
+`fun_complaint`, `util_everyone` and `util_calladms` (both the group ping and,
+now, the DM fan-out) have all landed since it was written.
 
 The next batch, in dependency order, now that the member registry exists:
 

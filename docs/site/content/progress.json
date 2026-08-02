@@ -1,11 +1,11 @@
 {
   "generated_at": "2026-08-02",
-  "commit": "39b01ac",
-  "test_summary": "2119 passed, 44 skipped, 143 deselected, 1 warning in 27.06s",
+  "commit": "92d00db",
+  "test_summary": "2127 passed, 44 skipped, 143 deselected, 1 warning in 17.62s",
   "totals": {
     "features": 53,
-    "done": 29,
-    "partial": 6,
+    "done": 30,
+    "partial": 5,
     "planned": 18,
     "blocked": 0,
     "spec_scenarios": 63,
@@ -32,7 +32,7 @@
     {
       "id": "M2",
       "title": "Fun and utility commands",
-      "done": 7,
+      "done": 8,
       "total": 15
     },
     {
@@ -825,16 +825,16 @@
       "id": "util_calladms",
       "title": "Call the admins",
       "area": "util",
-      "layer": "gateway",
+      "layer": "worker",
       "milestone": "M2",
-      "status": "partial",
+      "status": "done",
       "triggers": [
         "/adm",
         "@admin",
         "/report"
       ],
       "v1_source": "UserRegisters.py:168-203",
-      "notes": "group ping done; v1 also DMs each admin - needs a cb-worker fan-out job",
+      "notes": "group ping on the reply path; DM fan-out to every admin in cb-worker",
       "contract": "docs/contracts/util_calladms.md",
       "scenarios": {
         "spec": 1,

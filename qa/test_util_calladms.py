@@ -1,25 +1,25 @@
 """Step definitions for util_calladms.
 
 QA: qa/features/util_calladms.feature (synced from Cookiebot-QA/features/util_calladms.feature).
-Contract: docs/contracts/util_calladms.md.
+Contract: docs/contracts/util_calladms.md. DM-half design: .specs/features/util_calladms/.
 
 Drives the real dispatcher (`cb_gateway.main.dp`, via `qa/conftest.py`'s
 `dispatcher` fixture) against the mock Telegram API, same as every other
-acceptance test in this suite. Nothing here is monkeypatched: the parser, the
-filters, `context_for`, admin resolution against the mock's
-`getChatAdministrators`, and the actual Telegram calls are all real.
+acceptance test in this suite. Nothing here is monkeypatched except the
+gateway->worker enqueue: the parser, the filters, `context_for`, admin
+resolution against the mock's `getChatAdministrators`, and the actual
+Telegram calls for the group ping are all real.
 
-`packages/cb-gateway/src/cb_gateway/handlers/__init__.py` does not register
-`calladms.router` yet (out of this feature's file ownership — several features
-are being ported in parallel); these scenarios will not pass end to end until
-whoever owns that file adds `root.include_router(calladms.router)`.
-
-The DM half of v1's `call_admins` (`UserRegisters.py:178-203`) is a cb-worker
-job that does not exist yet (docs/contracts/util_calladms.md: it is genuine
-multi-chat fan-out, AGENTS.md section 2.4). The handler this suite drives
-implements the group-ping half only, so the base QA scenario's DM-confirmation
-step is written to match that honestly below, rather than pretend a job that
-is not built yet ran.
+The DM half of v1's `call_admins` (`UserRegisters.py:190-203`) is a cb-worker
+job (`cb_worker/jobs/calladms.py`) — genuine multi-chat fan-out, AGENTS.md
+section 2.4, run by a process this suite does not start. The arq broker
+`cb_gateway.queue.enqueue` talks to is exactly the kind of thing AGENTS.md §6
+says to mock in an acceptance test; `fake_queue` below monkeypatches
+`cb_gateway.handlers.calladms`'s own reference to it (not `cb_gateway.queue`
+itself, the same seam the handler imports it through — mirrors
+`qa/test_util_everyone.py`'s identical fixture), and the "DM confirming"
+`then` step asserts the job was handed off with the right arguments rather
+than asserting an actual DM was sent.
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ import pytest
 from aiogram import Bot, Dispatcher
 from pytest_bdd import given, parsers, scenarios, then, when
 
+from cb_core import jobs
 from cb_gateway.handlers import calladms as calladms_handler
 from qa.conftest import (
     ADMIN_ID,
@@ -51,11 +52,29 @@ scenarios("util_calladms.feature")
 SECOND_ADMIN_ID = ADMIN_ID + 1
 
 
+@pytest.fixture(autouse=True)
+def fake_queue(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, dict[str, Any]]]:
+    """Substitutes `cb_gateway.handlers.calladms`'s `enqueue` reference with a
+    fake queue, same pattern `qa/test_util_everyone.py` uses for its own
+    fan-out. Autouse and patched before any step runs, so it is in place
+    before the `when` step that presses confirm.
+    """
+    calls: list[tuple[str, dict[str, Any]]] = []
+
+    async def _fake_enqueue(job: str, *args: object, **kwargs: object) -> bool:
+        calls.append((job, kwargs))
+        return True
+
+    monkeypatch.setattr(calladms_handler, "enqueue", _fake_enqueue)
+    return calls
+
+
 class Ctx:
     """Extra per-scenario state on top of qa/conftest.py's base `Context`."""
 
     def __init__(self) -> None:
         self.prompt: dict[str, Any] | None = None
+        self.original_message_id: int | None = None
 
     def alloc_id(self) -> int:
         # Shared process-wide counter: a per-scenario counter collides with
@@ -138,9 +157,13 @@ def user_sends_command(
     telegram: MockTelegram,
     command: str,
 ) -> None:
-    feed(
-        run, dispatcher, bot, make_message_update(command, calladms_ctx.alloc_id(), user_id=USER_ID)
-    )
+    # `make_message_update` uses `update_id` as the message's own `message_id`
+    # (qa/conftest.py) — the same id `ask_call_admins` embeds in the
+    # confirmation button and, once confirmed, the id the DM job needs for
+    # its "Show message" deep link (`original_message_id`).
+    update_id = calladms_ctx.alloc_id()
+    calladms_ctx.original_message_id = update_id
+    feed(run, dispatcher, bot, make_message_update(command, update_id, user_id=USER_ID))
     sent = telegram.calls_to("sendMessage")
     assert sent, f"expected a confirmation prompt for {command!r}"
     calladms_ctx.prompt = sent[-1]
@@ -201,27 +224,41 @@ def bot_pings_admins(telegram: MockTelegram) -> None:
 
 
 @then("should send a message on the adm's DM confirming that they have been pinged in a group")
-def dm_confirmation(telegram: MockTelegram) -> None:
-    """v1's DM fan-out (`UserRegisters.py:186-203`) opens a distinct Telegram
+def dm_confirmation(
+    telegram: MockTelegram,
+    fake_queue: list[tuple[str, dict[str, Any]]],
+    calladms_ctx: Ctx,
+) -> None:
+    """v1's DM fan-out (`UserRegisters.py:190-203`) opens a distinct Telegram
     chat per admin — genuine multi-chat fan-out, which AGENTS.md section 2.4
-    requires to be a cb-worker job rather than reply-path work. No such job
-    exists yet in this codebase, and both `cb-worker/*` and
-    `cb_gateway/main.py` (which would enqueue it) are out of this port's file
-    ownership (docs/contracts/util_calladms.md). This assertion documents that
-    honestly: the gateway sends only the group ping today, never a DM.
+    requires to be a cb-worker job rather than reply-path work
+    (`cb_worker/jobs/calladms.py`). That job runs in a process this
+    acceptance suite does not start, so this asserts the honest proxy: the
+    handler enqueued exactly the job the DM half needs, with the right
+    admin-notification arguments — not a real DM landing inside this test.
+    No DM call happens through the gateway itself either way.
     """
     dm_calls = [c for c in telegram.calls_to("sendMessage") if int(c.get("chat_id", 0)) != GROUP_ID]
     assert not dm_calls, dm_calls
 
+    assert len(fake_queue) == 1, fake_queue
+    job, kwargs = fake_queue[0]
+    assert job == jobs.CALLADMS_NOTIFY_ADMINS
+    assert kwargs["group_id"] == GROUP_ID
+    assert kwargs["chat_title"] == "QA Group"
+    assert kwargs["original_message_id"] == calladms_ctx.original_message_id
+    assert kwargs["lang"] == "en"
+
 
 @then("the bot should cancel the request without pinging anyone")
-def cancelled(telegram: MockTelegram) -> None:
+def cancelled(telegram: MockTelegram, fake_queue: list[tuple[str, dict[str, Any]]]) -> None:
     from cb_core import locales
 
     calls = _group_calls(telegram)
     assert calls, "expected a group-facing sendMessage call"
     assert calls[-1].get("text", "") == locales.get("canceled", "en"), calls[-1]
     assert not any("calling all admins" in c.get("text", "") for c in calls)
+    assert not fake_queue, fake_queue
 
 
 @then("the bot should tell the user the confirmation is too old")
@@ -232,6 +269,7 @@ def too_old(telegram: MockTelegram) -> None:
 
 
 @then("should not ping anyone")
-def not_pinged(telegram: MockTelegram) -> None:
+def not_pinged(telegram: MockTelegram, fake_queue: list[tuple[str, dict[str, Any]]]) -> None:
     calls = _group_calls(telegram)
     assert not any("calling all admins" in c.get("text", "") for c in calls), calls
+    assert not fake_queue, fake_queue
