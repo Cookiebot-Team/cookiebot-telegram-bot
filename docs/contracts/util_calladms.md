@@ -1,6 +1,13 @@
 # Contract: `util_calladms` (v1 -> v2)
 
-Phase 2 of `/migrate-feature` for the `/adm` "summon the group's admins" flow.
+Phase 2/6 of `/migrate-feature` for the `/adm` "summon the group's admins"
+flow. The group-ping half and the DM half were ported in two sessions; the DM
+half's own spec/design/tasks live in `.specs/features/util_calladms/`. Files
+owned by the DM half: `packages/cb-core/src/cb_core/jobs.py`
+(`CALLADMS_NOTIFY_ADMINS`), `packages/cb-worker/src/cb_worker/jobs/calladms.py`
+(new), `packages/cb-worker/src/cb_worker/main.py` (registration),
+`packages/cb-gateway/src/cb_gateway/handlers/calladms.py` (the enqueue call),
+and the tests listed in the Tests table below.
 
 ## Phase 1 — where v1 lives
 
@@ -40,7 +47,7 @@ Phase 2 of `/migrate-feature` for the `/adm` "summon the group's admins" flow.
 | External calls | `get_request_backend(f"users?username={username}")` per admin, to resolve a username to a Telegram user id for the DM (`UserRegisters.py:191`) — an N+1 backend call pattern, same shape FEATURE-MAP already flags for `util_everyone`. |
 | Known defects | No cooldown/anti-abuse at all (not a v1 defect list item — this command was simply never rate limited). The "not gated by `functionsUtility` despite being filed under Util" quirk is preserved as v1 behaviour, not fixed — fixing it would be a deliberate behavioural *change*, not a port. All four v1 triggers are live. |
 
-## Decision: this needs a cb-worker job
+## The DM half is a cb-worker job (`cb_worker/jobs/calladms.py`)
 
 The DM step in `call_admins` (`UserRegisters.py:178-203`) sends a message to a
 **distinct Telegram chat per admin** — not the group the command was run in —
@@ -56,35 +63,52 @@ The **group ping is different**: it is one `sendMessage` call to the chat the
 command already came from — no different from any other reply-path handler in
 this codebase (e.g. `rules.py`, `config_menu.py`) — so it stays in the handler.
 
-This port therefore implements the group-confirmation-ping half only
-(`packages/cb-gateway/src/cb_gateway/handlers/calladms.py`) and does **not**
-implement the DM fan-out. Both `cb-worker/*` and `cb_gateway/main.py` (which
-would need an arq pool and an enqueue call) are out of this port's file
-ownership; neither exists in this codebase yet (`cb-worker` currently ships only
-cron jobs, no per-message job functions, and `cb-gateway` has no arq client at
-all).
+This was left as a named follow-up when the group-ping half shipped, blocked
+on gateway->worker enqueue not existing yet. `util_everyone` built that
+wiring (`cb_gateway/queue.py`, `cb_core/jobs.py`, `cb_core/bot.py` +
+`ctx["bot"]` in `cb_worker/main.py`); this feature is its second consumer.
+`.specs/features/util_calladms/` has the full spec/design for what follows.
 
-### What the job needs
+### What the job actually needs — and what it re-derives itself
 
-A `cb-worker` job (suggested name: `notify_admins_of_call`) needs:
+`confirm_call_admins` (`packages/cb-gateway/src/cb_gateway/handlers/calladms.py`)
+enqueues `jobs.CALLADMS_NOTIFY_ADMINS` with four scalars only:
 
-- `group_id: int` — the group whose admins to DM.
+- `group_id: int` — the group whose admins to DM (same value as the Telegram
+  chat id; this job never reads the database, so there is no separate
+  DB-vs-Telegram id split the way `util_everyone`'s payload has).
 - `chat_title: str` — for the DM text (`notification_admin`, `%(title)s`).
-- `admin_user_ids: list[int]` — **not** usernames; `cb_core.admins.admin_ids(bot, group_id)`
-  already gives this, cached and outage-resilient, and is the right call for the
-  job (unlike the handler here, the job is not latency-sensitive, so the extra
-  Telegram round trip through the shared cache is the correct trade-off).
-- `bot_id: int` — to skip DMing the bot itself (`bot.id`, no API call needed).
-- `original_message_id: int` — to build the "Show message" `tg://` deep link,
-  only when `group_id` is a supergroup (its id contains `-100`, same test v1 uses).
-- `lang: str` — the group's resolved language, for `notification_admin`.
-- Throttling between sends belongs to the job (arq's own rate limiting or a
-  simple `asyncio.sleep`), not a hardcoded `time.sleep(0.1)` — v1's value is a
-  reasonable starting point but is a job-implementation detail, not part of this
-  handler's contract.
-- The owner-forward-every-10th behaviour (`UserRegisters.py:195-196`) is
-  optional to reproduce; it exists in v1 as a debugging aid, not a
-  user-facing behaviour QA specifies.
+- `original_message_id: int` — to build the "Show message" deep link, only
+  when `group_id` is a supergroup (its id contains `-100`, v1's exact
+  substring test, reproduced byte-for-byte rather than "starts with").
+- `lang: str` — the group's resolved language.
+
+**Not** in the payload, unlike the earlier draft above: `admin_user_ids` and
+`bot_id`. Both are cheap for the job to derive itself, and deriving them late
+is more correct, not just more convenient:
+
+- `cb_core.admins.admin_ids(bot, group_id)` is one cached, outage-resilient
+  Telegram call the job makes directly — the job is not latency-sensitive,
+  so trading a few hundred milliseconds for "whoever is an admin right now"
+  beats shipping a list that could already be stale by the time the job runs.
+- `bot.id` needs no API call (`aiogram.Bot.id` is derived from the token) and
+  `ctx["bot"]` in the worker is built from the same token the gateway's bot
+  uses (`cb_core.bot.build_bot`), so it is identical either way.
+
+Throttling is `asyncio.sleep(0.1)` between sends inside the job, same value
+v1 used. The owner-forward-every-10th behaviour
+(`UserRegisters.py:195-196`) is **not** reproduced — see the Defects section
+below; it is dropped outright, not merely optional.
+
+## Defects — verdict per item (DM half)
+
+| id | Defect | Verdict |
+|---|---|---|
+| D-CA-1 | N+1 username->id backend lookup per admin (`:191`) | **fix** — `cb_core.admins.admin_ids` resolves ids directly, no per-admin round trip |
+| D-CA-2 | Every-10th-DM forward to a hardcoded owner id (`:195-196`) | **drop** — undisclosed exfiltration of group content, no configuration, no v2 concept of an owner id; identical reasoning and precedent to `util_everyone`'s D-EV-5 |
+| D-CA-3 | Each DM silently swallowed on any exception (`:202-203`) | **preserve** — "blocked by user" is the routine outcome, not an error |
+| D-CA-4 | `0.1s` throttle between DMs (`:201`) | **preserve** |
+| D-CA-5 | Bot excluded from its own DM loop only, not from the group mention text (`:192`) | **preserve** — already correct in the shipped group-ping half; the DM job excludes `bot.id` (no API call) rather than comparing usernames |
 
 ## Policy decided for v2
 
@@ -120,3 +144,31 @@ A `cb-worker` job (suggested name: `notify_admins_of_call`) needs:
    FEATURE-MAP category. v1's actual code never checks the flag for this
    command; QA's spec is silent on it either way, so v1 code wins per
    AGENTS.md's tie-break rule.
+6. **The DM job re-resolves admins from `cb_core.admins` rather than trusting
+   a list captured when the button was pressed.** Symmetric with policy #3's
+   choice for the group ping, but the opposite trade-off on purpose: the
+   group ping is latency-sensitive (a fresh, uncached Telegram call is worth
+   it to avoid a second round trip for usernames the cache doesn't carry),
+   while the DM job has no such constraint and a stale admin list is a worse
+   failure mode than one more cached lookup.
+
+## Phase 6 — parity table (DM half)
+
+| Aspect | Verdict |
+|---|---|
+| DM sent to every resolvable admin | **same** — `notification_admin`, `parse_mode='HTML'` |
+| Admin resolution | **changed (intentional)** — one cached `cb_core.admins.admin_ids` call instead of v1's N `GET users?username=` lookups (D-CA-1) |
+| Bot excluded from the DM loop | **same** — `bot.id` comparison replaces v1's `int(user[0]['id']) == int(myself['id'])`, same effect, no API call needed either way |
+| "Show message" button, supergroup-only | **same, byte-identical condition** — `'-100' in str(group_id)`, v1's exact substring test, not aiogram's "starts with -100" convention |
+| Deep-link URL construction | **same** — `_deep_link` replaces v1's `.replace('-100', '')` with `.removeprefix`, same output for every id Telegram actually sends (D-CA-1 in `util_everyone`'s contract makes the identical correction for its own deep link) |
+| Throttle between DMs | **same** — `0.1s` |
+| Each DM individually failure-suppressed | **same** — "blocked by user" is the routine outcome in both (D-CA-3) |
+| DM fan-out location | **changed (intentional)** — v1 DMs from the same handler thread that answered the confirmation; v2 enqueues `jobs.CALLADMS_NOTIFY_ADMINS` with scalars only and returns, the fan-out runs in `cb-worker` (AGENTS.md §2 "nothing slow on the reply path") |
+| Every-10th-DM owner forward | **dropped (D-CA-2)** — undisclosed exfiltration, no v2 equivalent, same call `util_everyone`'s D-EV-5 already made |
+
+## Tests (DM half)
+
+| Layer | File |
+|---|---|
+| Unit — deep-link URL, `-100`-substring button gating, bot-id exclusion, empty-admins degrade, a raising send not aborting the loop | `packages/cb-worker/tests/test_calladms_notify.py` |
+| Acceptance — the existing QA "DM confirming" scenario, rewritten to assert the fan-out job is enqueued with the right arguments (mock broker, same pattern `qa/test_util_everyone.py` uses) | `qa/features/util_calladms.feature`, `qa/test_util_calladms.py` |

@@ -26,6 +26,7 @@ from cb_core.logging import configure_logging, get_logger
 from cb_core.migrations import ensure_schema
 from cb_core.settings import Settings, get_settings
 from cb_core.telemetry import context_from_carrier, setup_tracing, span
+from cb_worker.jobs.calladms import notify_admins_of_call
 from cb_worker.jobs.everyone import everyone_fanout
 
 settings = get_settings()
@@ -193,6 +194,7 @@ class WorkerSettings:
     redis_settings = RedisSettings.from_dsn(settings.redis_dsn)
     functions: ClassVar[list] = [
         everyone_fanout,  # first non-cron job: util_everyone's DM fan-out (design R5.1)
+        notify_admins_of_call,  # util_calladms's DM fan-out (.specs/features/util_calladms)
         maintain_partitions,
         rollup_yesterday,
         rollup_llm_costs,
