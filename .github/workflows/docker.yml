@@ -85,8 +85,15 @@ jobs:
             GIT_SHA=${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,scope=${{ matrix.service }},mode=max
-          provenance: true
-          sbom: true
+          # Attestations make buildx emit a manifest list, and the docker
+          # exporter behind `load` cannot export one — "docker exporter does not
+          # currently support exporting manifest lists". A PR run is the only
+          # one that loads, so it is the only one that has to choose, and what a
+          # PR needs is proof the image builds. Provenance and SBOM matter on
+          # the artefact the cluster actually pulls, which is only ever pushed
+          # from main or a tag.
+          provenance: ${{ github.event_name != 'pull_request' }}
+          sbom: ${{ github.event_name != 'pull_request' }}
 
       # A regression here is silent otherwise: one careless dependency and the
       # image doubles. The number goes in the job summary, so a PR review sees it.
