@@ -42,6 +42,10 @@ dependencies = [
     # llm providers
     "anthropic>=0.120",
     "openai>=2.0",
+    # multi-provider routing via `init_chat_model` — see llm/langchain_provider.py
+    "langchain>=0.3",
+    "langchain-anthropic>=0.3",
+    "langchain-openai>=0.3",
     # pure-python mode shadow module; the compiled .so does not need it at runtime,
     # but the uncompiled fallback import does.
     "Cython>=3.0.11",

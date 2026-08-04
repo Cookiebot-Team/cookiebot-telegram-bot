@@ -48,11 +48,20 @@ class TaskConfig(msgspec.Struct, frozen=True):
     system: str | None = None
 
 
-# Conservative defaults. `chat` runs the flagship at low effort: thinking stays on
-# (disabling it on these models can put a tool call into visible text and leak
-# <thinking> tags), and effort is the latency/cost lever instead.
+# Conservative defaults. `chat` runs behind the langchain provider so a task can
+# name any "provider:model" string (R1.8) — `effort` is dropped for it, since
+# there is no portable effort parameter across vendors and carrying one that
+# only works for a single backend would defeat the point of the abstraction.
+# `moderate`/`summarize`/`vision`/`transcribe` stay on the hand-rolled providers,
+# so `doomlist`'s live `moderate` calls are untouched by this move.
 DEFAULT_TASKS: dict[str, TaskConfig] = {
-    "chat": TaskConfig(provider="anthropic", model="claude-opus-5", max_tokens=1024, effort="low"),
+    "chat": TaskConfig(
+        provider="langchain",
+        model="anthropic:claude-opus-5",
+        max_tokens=1024,
+        temperature=1.0,
+        timeout=30.0,
+    ),
     "moderate": TaskConfig(
         provider="anthropic", model="claude-haiku-4-5", max_tokens=256, temperature=0.0
     ),
@@ -288,6 +297,7 @@ def build_router(settings: Settings) -> LLMRouter:
     rather than crashing the service — a bot with no OpenAI key should still boot,
     and only `transcribe` should fail."""
     from cb_core.llm.anthropic_provider import AnthropicProvider
+    from cb_core.llm.langchain_provider import LangchainProvider
     from cb_core.llm.openai_provider import OpenAIProvider
 
     providers: dict[str, LLMProvider] = {}
@@ -303,6 +313,10 @@ def build_router(settings: Settings) -> LLMRouter:
             base_url=settings.openai_base_url or None,
             timeout=settings.llm_timeout_seconds,
         )
+    # Registered unconditionally: credential resolution happens inside each
+    # per-model integration package, so there is nothing to gate on at boot. An
+    # unconfigured model surfaces as an `LLMError` at call time (R1.7).
+    providers["langchain"] = LangchainProvider(settings)
 
     tasks = {name: msgspec.convert(cfg, TaskConfig) for name, cfg in settings.llm_tasks.items()}
     log.info(
