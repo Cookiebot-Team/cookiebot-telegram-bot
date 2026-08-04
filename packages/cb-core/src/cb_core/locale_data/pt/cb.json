@@ -1,4 +1,7 @@
 {
   "handler_error": "⚠️ Algo deu errado ao executar isso.\n<blockquote>%(reason)s</blockquote>\nReferência: <code>%(trace)s</code>",
-  "config_write_failed": "ERRO: não consegui salvar a configuração\n<blockquote>%(reason)s</blockquote>\nReferência: <code>%(trace)s</code>"
+  "config_write_failed": "ERRO: não consegui salvar a configuração\n<blockquote>%(reason)s</blockquote>\nReferência: <code>%(trace)s</code>",
+  "ai_unavailable": "A IA está temporariamente indisponível. Tente novamente mais tarde.",
+  "ai_quota_spent": "O orçamento de IA deste grupo acabou por este mês. Volta no mês que vem.",
+  "ai_rate_limited": "Muitas perguntas pra IA nesse grupo agora, tenta de novo daqui a pouco."
 }

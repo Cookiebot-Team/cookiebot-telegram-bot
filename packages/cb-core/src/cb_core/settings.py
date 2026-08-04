@@ -86,6 +86,11 @@ class Settings(BaseSettings):
     llm_allow_ambient_credentials: bool = True
     # task -> {provider, model, max_tokens, effort, thinking, temperature, timeout, system}
     llm_tasks: dict[str, dict[str, object]] = Field(default_factory=dict)
+    # x_conversational_ai: per-group rate limit on top of v1's per-user streak
+    # counter and the tenant spend cap (design.md R3.4). ai_chat_group_limit
+    # triggers within ai_chat_window_seconds before ai_rate_limited fires.
+    ai_chat_group_limit: int = 20
+    ai_chat_window_seconds: int = 60
 
     # util_youtube — v1 used google-api-python-client (Bot/SocialContent.py:20);
     # v2 calls the same REST endpoint directly over the httpx client already in
