@@ -115,11 +115,20 @@ class LLMRouter:
         user_id: int | None = None,
         system: str | None = None,
         max_tokens: int | None = None,
+        tenant_id: str | None = None,
     ) -> Completion:
         cfg = self.config_for(task)
         provider = self.provider_for(task)
         breaker = self._breakers[cfg.provider]
         now = time.monotonic()
+
+        if tenant_id is not None:
+            # R2.5: `tenant_id=None` (every caller before this task) skips the
+            # check entirely. A budget refusal is not a provider failure, so it
+            # runs before the breaker gate and outside its accounting.
+            from cb_core.llm.budget import ensure_within_budget
+
+            await ensure_within_budget(tenant_id)
 
         if not breaker.allow(now):
             metrics.llm_requests_total.labels(
@@ -190,9 +199,16 @@ class LLMRouter:
         filename: str = "audio.ogg",
         language: str | None = None,
         group_id: int | None = None,
+        tenant_id: str | None = None,
     ) -> Transcript:
         cfg = self.config_for("transcribe")
         provider = self.provider_for("transcribe")
+
+        if tenant_id is not None:
+            from cb_core.llm.budget import ensure_within_budget
+
+            await ensure_within_budget(tenant_id)
+
         start = time.perf_counter()
         outcome = "ok"
         try:
