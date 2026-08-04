@@ -13,6 +13,7 @@ the money".
 
 from __future__ import annotations
 
+import asyncio
 import time
 from collections.abc import Sequence
 
@@ -199,36 +200,65 @@ class LLMRouter:
         filename: str = "audio.ogg",
         language: str | None = None,
         group_id: int | None = None,
+        user_id: int | None = None,
         tenant_id: str | None = None,
     ) -> Transcript:
         cfg = self.config_for("transcribe")
         provider = self.provider_for("transcribe")
+        breaker = self._breakers[cfg.provider]
+        now = time.monotonic()
 
         if tenant_id is not None:
+            # R2.5, same as complete(): a budget refusal is not a provider
+            # failure, so it runs before the breaker gate and outside its
+            # accounting.
             from cb_core.llm.budget import ensure_within_budget
 
             await ensure_within_budget(tenant_id)
 
+        if not breaker.allow(now):
+            metrics.llm_requests_total.labels(
+                provider=cfg.provider, model=cfg.model, task="transcribe", outcome="circuit_open"
+            ).inc()
+            raise LLMUnavailableError(f"{cfg.provider} circuit is open")
+
         start = time.perf_counter()
         outcome = "ok"
+        transcript: Transcript | None = None
         try:
             with span(
                 "llm.transcribe",
                 **{"llm.provider": cfg.provider, "llm.model": cfg.model},  # type: ignore[arg-type]  # see complete()
             ):
-                return await provider.transcribe(
-                    audio, model=cfg.model, filename=filename, language=language
-                )
+                # D-ST-2: v1 set no timeout on this call at all. `LLMProvider.transcribe`
+                # takes no `timeout` kwarg (unlike `complete`), so the bound is applied
+                # here rather than threaded into every provider.
+                async with asyncio.timeout(cfg.timeout):
+                    transcript = await provider.transcribe(
+                        audio, model=cfg.model, filename=filename, language=language
+                    )
+        except TimeoutError as exc:
+            outcome = "error"
+            breaker.record(False, now)
+            raise LLMError(f"{cfg.provider} transcribe timed out after {cfg.timeout}s") from exc
         except Exception:
             outcome = "error"
+            breaker.record(False, now)
             raise
         finally:
+            elapsed = time.perf_counter() - start
             metrics.llm_duration.labels(
                 provider=cfg.provider, model=cfg.model, task="transcribe", outcome=outcome
-            ).observe(time.perf_counter() - start)
+            ).observe(elapsed)
             metrics.llm_requests_total.labels(
                 provider=cfg.provider, model=cfg.model, task="transcribe", outcome=outcome
             ).inc()
+
+        breaker.record(True, now)
+
+        if self._record_usage and group_id is not None:
+            await self._persist_transcript(transcript, group_id, user_id, elapsed)
+        return transcript
 
     async def count_tokens(
         self, task: str, messages: Sequence[Message], *, system: str | None = None
@@ -301,6 +331,51 @@ class LLMRouter:
             )
         except Exception as exc:  # noqa: BLE001
             log.warning("llm.usage_persist_failed", error=str(exc), task=task)
+
+    @staticmethod
+    async def _persist_transcript(
+        transcript: Transcript,
+        group_id: int,
+        user_id: int | None,
+        latency: float,
+    ) -> None:
+        """One `llm_usage` row per transcription call, on the group's shard.
+
+        `Transcript` carries no token usage and whisper has no entry in
+        `catalog.py` — per HANDOFF §6.3 no price is to be guessed — so this
+        records zero tokens and a null `cost_usd` rather than the real
+        `completion.usage`/`completion.cost_usd` `_persist` has. Latency and
+        attribution (group/user/model/provider) are real. Never raises into a
+        handler — losing an accounting row must not cost a reply.
+        """
+        from cb_core import db
+
+        try:
+            await db.execute(
+                """
+                INSERT INTO llm_usage (
+                    usage_id, group_id, user_id, task, provider, model,
+                    input_tokens, output_tokens, cache_read_tokens,
+                    cost_usd, latency_ms, outcome, trace_id
+                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+                """,
+                uuid7(),
+                group_id,
+                user_id,
+                "transcribe",
+                transcript.provider,
+                transcript.model,
+                0,
+                0,
+                0,
+                None,
+                int(latency * 1000),
+                "ok",
+                current_trace_id(),
+                name="llm_usage_insert",
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("llm.usage_persist_failed", error=str(exc), task="transcribe")
 
 
 # ---------------------------------------------------------------------- assembly
