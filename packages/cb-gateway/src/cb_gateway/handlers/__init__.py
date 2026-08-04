@@ -17,6 +17,7 @@ from cb_gateway.handlers import (
     battle,
     birthday,
     calladms,
+    chat_ai,
     complaint,
     config_menu,
     dice,
@@ -91,6 +92,14 @@ def build_router() -> Router:
     # more sticker in the flood counter. v1 never faced the overlap: Telegram
     # blocked a restricted member's sticker client-side.
     root.include_router(stickerspam.router)
+    # x_conversational_ai: registered immediately before embedder, on purpose
+    # (design.md R5.2). v1 only runs `check_reply_embed` in the `else` reached
+    # when the AI branch did *not* match (COOKIEBOT.py:309-316), so the embed
+    # rewrite must sit downstream of the AI trigger. Every branch that
+    # intercepts ahead of the AI in v1 (welcome/rules reply prompts, `who`,
+    # the captcha-caption reply, the complaint reply, a reply_markup reply) is
+    # already registered earlier above — do not reorder any of it.
+    root.include_router(chat_ai.router)
     # Link rewriting reacts to ordinary text, which no other handler claims, but
     # it yields like the rest so a message is never consumed on its behalf.
     root.include_router(embedder.router)
