@@ -359,6 +359,7 @@ def make_message_update(
     photo: bool = False,
     video: bool = False,
     animation: bool = False,
+    voice: int | None = None,
     anonymous: bool = False,
 ) -> dict[str, Any]:
     """One message update.
@@ -367,6 +368,11 @@ def make_message_update(
     (sticker spam), media (media restriction), replies (/newrules, /newwelcome)
     and anonymous admin posts, where Telegram replaces the sender with the
     GroupAnonymousBot and sets `sender_chat` to the group itself.
+
+    `voice`, when given, is the note's `duration` in seconds -- the one field
+    x_speech_to_text's cap (D-ST-3) reads before anything else, so a plain
+    int is enough to drive both the ordinary and the over-length scenario
+    without a second, more elaborate parameter.
     """
     message: dict[str, Any] = {
         "message_id": update_id,
@@ -427,6 +433,13 @@ def make_message_update(
             "width": 320,
             "height": 240,
             "duration": 3,
+        }
+    if voice is not None:
+        message["voice"] = {
+            "file_id": "voice-1",
+            "file_unique_id": "uvo1",
+            "duration": voice,
+            "mime_type": "audio/ogg",
         }
     return {"update_id": update_id, "message": message}
 
