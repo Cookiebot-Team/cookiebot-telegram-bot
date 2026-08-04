@@ -9,8 +9,8 @@ Here state is shared, TTL'd, and invalidation is a pub/sub message.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
-from typing import Any
+from collections.abc import Awaitable, Callable
+from typing import Any, cast
 
 import msgspec
 import redis.asyncio as redis
@@ -123,3 +123,66 @@ async def incr_window(key: str, window_seconds: int) -> int:
         pipe.expire(key, window_seconds, nx=True)
         count, _ = await pipe.execute()
     return int(count)
+
+
+# Seed-then-clamp-then-refresh has to be one round trip: a GET/compute/SET done
+# from Python would race the same way v1's dict did (`Cooldowns.py:24-36`), just
+# against other gateway replicas instead of other threads. EVAL is Valkey's only
+# way to make "read, seed if absent, clamp, write, re-arm the TTL" atomic.
+_BUMP_CLAMPED_SCRIPT = """
+local current = redis.call('GET', KEYS[1])
+if current == false then
+    current = tonumber(ARGV[3])
+else
+    current = tonumber(current)
+end
+
+local value = current + tonumber(ARGV[1])
+local lo = tonumber(ARGV[4])
+local hi = tonumber(ARGV[5])
+if value < lo then
+    value = lo
+elseif value > hi then
+    value = hi
+end
+
+redis.call('SET', KEYS[1], value, 'EX', ARGV[2])
+return value
+"""
+
+
+async def bump_clamped(
+    key: str, delta: int, *, lo: int, hi: int, initial: int, ttl_seconds: int
+) -> int | None:
+    """Atomic signed counter, clamped into `[lo, hi]` — v1's per-user AI streak
+    (`Cooldowns.py:5,24-36`), which `incr_window` cannot serve: that primitive
+    only increments and has no way to seed a missing key or fold the result
+    back into a bound.
+
+    `None` on any Valkey error, the same swallow-and-fail-open contract as
+    `incr_window`'s callers use (see `cb_gateway/handlers/stickerspam.py::_bump`)
+    — except here the swallow lives in the primitive itself, because this
+    counter has exactly one caller and no reason to duplicate the same
+    try/except at every call site.
+    """
+    try:
+        # redis-py's `eval()` is typed `Union[Awaitable[str], str]` even on the
+        # async client (the sync signature is inherited verbatim) — the cast
+        # matches what actually comes back from an async connection.
+        raw = await cast(
+            Awaitable[Any],
+            client().eval(
+                _BUMP_CLAMPED_SCRIPT,
+                1,
+                key,
+                str(delta),
+                str(ttl_seconds),
+                str(initial),
+                str(lo),
+                str(hi),
+            ),
+        )
+    except Exception as exc:  # noqa: BLE001 - infra outage must fail open, not raise
+        log.warning("cache.bump_clamped.failed", key=key, error=str(exc))
+        return None
+    return int(raw)
