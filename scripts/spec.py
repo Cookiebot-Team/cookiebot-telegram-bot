@@ -178,12 +178,16 @@ FEATURES: tuple[Feature, ...] = (
     # ---------------------------------- shipped in v1, never specified in QA
     Feature("x_giveaways", "util", "Giveaways", "M3", Status.PLANNED,
             Layer.GATEWAY, "Giveaways.py:25-173", ("/giveaway",), "no QA scenario exists - write one"),
-    Feature("x_conversational_ai", "fun", "Conversational AI replies", "M3", Status.PARTIAL,
+    Feature("x_conversational_ai", "fun", "Conversational AI replies", "M3", Status.DONE,
             Layer.GATEWAY, "NaturalLanguage.py:65-77", (),
-            "LLM router + cost metering done; handler and quota not written"),
-    Feature("x_speech_to_text", "util", "Voice transcription", "M3", Status.PARTIAL,
-            Layer.WORKER, "Audio.py:22-32", (),
-            "transcribe task routed to the openai provider; handler not written"),
+            "langchain provider behind the router, tenant budget cap, v1's per-user "
+            "streak on a new cache.bump_clamped primitive, per-group rate limit; "
+            "QA authored, not ported (7 scenarios) - see docs/contracts/x_conversational_ai.md"),
+    Feature("x_speech_to_text", "util", "Voice transcription", "M3", Status.DONE,
+            Layer.GATEWAY, "Audio.py:22-32", (),
+            "shape (a) ports the voice-to-AI sub-step; shape (b) is a net-new "
+            "/transcribe command with no v1 equivalent; QA authored, not ported "
+            "(5 scenarios) - see docs/contracts/x_speech_to_text.md"),
     Feature("x_reverse_search", "util", "Reverse image search", "M3", Status.PLANNED,
             Layer.GATEWAY, "SocialContent.py:113-142", ("/searchsource", "/buscarfonte")),
     Feature("x_distortion", "fun", "Media distortion", "M3", Status.PLANNED,

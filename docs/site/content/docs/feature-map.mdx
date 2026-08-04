@@ -25,7 +25,7 @@ Legend: **QA** = spec exists · **BOT** = python handler · **API** = backend en
 | `core_stickerspam` | sticker flood | sticker event | `Cooldowns.py:12-22` `sticker_anti_spam` | `configs.stickerSpamLimit` | ⚠ counter in unlocked process-local dict |
 | `core_welcome` | `/newwelcome` + join | same | `GroupShield.py:140-171`, `Configurations.py:265-267`,`:253-263` | `GET/PUT /welcomes/{id}` | ✅ |
 
-## 2. Fun — 9 specs, 21 scenarios
+## 2. Fun — 10 specs, 21 scenarios (+7 authored locally for `x_conversational_ai`, not counted against upstream QA)
 
 | QA feature | Trigger (spec) | Trigger (code) | Bot handler | Backend | Status |
 |---|---|---|---|---|---|
@@ -38,8 +38,9 @@ Legend: **QA** = spec exists · **BOT** = python handler · **API** = backend en
 | `fun_partneredcons` | `/bff`,`/patas`,`/fursmeet`,`/trex`,`/furcamp`,`/pawstral` | `/patas`,`/bff`,`/furcamp`,`/fursmeet`,`/pawstral` | `Miscellaneous.py:261-323` `event_countdown` | — | ❌ **`/trex` spec'd, not implemented** |
 | `fun_random` | `/random` | `/aleatorio`,`/random` | `SocialContent.py:198-206` | `GET/POST /randomdatabase` | ⚠ backend loads whole collection to pick 1 |
 | `fun_ship` | `/shipp` | `/shippar`,`/ship` | `UserRegisters.py:216-250` | `GET /registers/{id}/users` | ❌ **spec expects a lone `@user1` to be used; v1 discards it** (`:219`) — ported per v1, see `docs/contracts/fun_ship.md` |
+| `x_conversational_ai` | none — no upstream QA scenario exists | mention the skin's name/`@username`, or reply to a bot message | `NaturalLanguage.py:65-77` | — | ⚠ **no `Cookiebot-QA` scenario, confirmed against the full listing** — `qa/features/x_conversational_ai.feature`'s 7 scenarios are authored locally against `.specs/features/x_conversational_ai/spec.md`, not ported. Four recorded behavioural changes: the DAN jailbreak system prompt is not ported (D-AI-1, persona kept, fabrication instruction inverted); the dead `api.simsimi.vn` NSFW branch is dropped (D-AI-6, unreachable in v1); the trigger is derived per-skin (`tenancy.registry.by_skin`) rather than hardcoded to `"cookiebot"`/`"@CookieMWbot"` (D-AI-7); v1's per-user streak counter is ported as-is and a per-group rate limit plus the tenant's `monthly_llm_budget_usd` hard cap are added on top (D-AI-8). See `docs/contracts/x_conversational_ai.md`. |
 
-## 3. Util — 12 specs, 18 scenarios
+## 3. Util — 13 specs, 18 scenarios (+5 authored locally for `x_speech_to_text`, not counted against upstream QA)
 
 | QA feature | Trigger (spec) | Trigger (code) | Bot handler | Backend | Status |
 |---|---|---|---|---|---|
@@ -55,11 +56,19 @@ Legend: **QA** = spec exists · **BOT** = python handler · **API** = backend en
 | `util_postforwarder` | cross-group forward | `/divulgar`,`/publish`,`/publicar` | `Publisher.py:46-92`,`:223-286` | `configs.publisherPost/Ask/MembersOnly` | ⚠ **shared unlocked SQLite conn** `Publisher.py:15-16` |
 | `util_postgetter` | receive forwarded | channel-forward event | `Publisher.py:46-55` `ask_publisher` | `configs.threadPosts`,`maxPosts` | ✅ |
 | `util_youtube` | `/youtube <q>` | `/youtube` | `SocialContent.py:172-189` | — | ✅ (YouTube Data API) |
+| `x_speech_to_text` | none — no upstream QA scenario exists | voice reply to the bot (shape a); `/transcribe`,`/transcrever`,`/transcribir` (shape b) | `Audio.py:22-32` `speech_to_text` | — | ⚠ **no `Cookiebot-QA` scenario** — the only voice-adjacent QA file is `core_musicdetection.feature` (Shazam, a different function in the same v1 file). `qa/features/x_speech_to_text.feature`'s 5 scenarios are authored locally. **Shape (b), the standalone `/transcribe` command, is net-new and has no v1 equivalent at all** — the same asymmetry `/trex` records for `fun_partneredcons`, just inverted: here the code is ahead of any spec rather than a spec ahead of the code. Shape (a) fixes six defects on the way (D-ST-1 through D-ST-6: no more disk-written temp file, a bounded call, a duration cap, no `.capitalize()`, a language hint, and every failure path now replies). See `docs/contracts/x_speech_to_text.md`. |
 | `publicador(PTBR).md` | approval workflow | `/repost` scheduling | `Publisher.py:288-314`,`:329-357` scheduler | `Publisher.db` | ⚠ prose only, no Gherkin |
 
 ---
 
-## 4. Implemented but **NOT** spec'd in QA (spec debt — 20+ features)
+## 4. Implemented but **NOT** spec'd in QA (spec debt — 19 features remaining, 21 originally)
+
+Two of the original 21 (`Conversational AI`, `Speech-to-text`) now have a v2
+port with a locally authored acceptance suite — see their rows in §2/§3
+above and `docs/contracts/x_conversational_ai.md` /
+`docs/contracts/x_speech_to_text.md`. They stay listed below too, since the
+underlying fact this table tracks — no scenario in `../Cookiebot-QA/
+features/` — is still true; only their v2 build status changed.
 
 | Feature | Trigger | Code |
 |---|---|---|
@@ -74,8 +83,8 @@ Legend: **QA** = spec exists · **BOT** = python handler · **API** = backend en
 | Drawing idea | `/ideiadesenho`,`/drawingidea` | `Miscellaneous.py:137-143` |
 | Analysis | `/analise`,`/analysis` | `Miscellaneous.py:71-81` |
 | Sticker DB auto-reply | sticker/doc reply | `SocialContent.py:208-222` |
-| Conversational AI | mention "cookiebot" / reply | `NaturalLanguage.py:65-77` (OpenAI) |
-| Speech-to-text | voice msg | `Audio.py:22-32` (Whisper API) |
+| Conversational AI — **v2 done**, see `x_conversational_ai` in §2 | mention "cookiebot" / reply | `NaturalLanguage.py:65-77` (OpenAI) |
+| Speech-to-text — **v2 done**, see `x_speech_to_text` in §3 | voice msg | `Audio.py:22-32` (Whisper API) |
 | Custom commands | GCS `Custom/` prefix | `Miscellaneous.py:145-158` |
 | Owner: list groups | `/grupos` | `Miscellaneous.py:83-112` |
 | Owner: broadcast | `/broadcast` | `Miscellaneous.py:114-122` |

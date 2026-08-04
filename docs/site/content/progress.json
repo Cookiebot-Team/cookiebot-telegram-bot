@@ -1,19 +1,19 @@
 {
-  "generated_at": "2026-08-02",
-  "commit": "cd10b7a",
-  "test_summary": "2286 passed, 45 skipped, 143 deselected, 1 warning in 20.56s",
+  "generated_at": "2026-08-04",
+  "commit": "b9cf615",
+  "test_summary": "2404 passed, 45 skipped, 143 deselected, 1 warning in 13.91s",
   "totals": {
     "features": 53,
-    "done": 32,
-    "partial": 7,
+    "done": 34,
+    "partial": 5,
     "planned": 13,
     "blocked": 1,
     "spec_scenarios": 63,
     "ported": 125,
     "spec_files": 31,
     "spec_files_covered": 23,
-    "new_specs": 17,
-    "green": 205,
+    "new_specs": 29,
+    "green": 217,
     "failing": 0
   },
   "milestones": [
@@ -38,7 +38,7 @@
     {
       "id": "M3",
       "title": "Publisher, AI, giveaways, owner tooling",
-      "done": 0,
+      "done": 2,
       "total": 11
     },
     {
@@ -992,15 +992,15 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "partial",
+      "status": "done",
       "triggers": [],
       "v1_source": "NaturalLanguage.py:65-77",
-      "notes": "LLM router + cost metering done; handler and quota not written",
-      "contract": null,
+      "notes": "langchain provider behind the router, tenant budget cap, v1's per-user streak on a new cache.bump_clamped primitive, per-group rate limit; QA authored, not ported (7 scenarios) - see docs/contracts/x_conversational_ai.md",
+      "contract": "docs/contracts/x_conversational_ai.md",
       "scenarios": {
         "spec": 0,
-        "ported": 0,
-        "green": 0,
+        "ported": 7,
+        "green": 7,
         "failing": 0
       },
       "url": "/docs/features/x_conversational_ai"
@@ -1009,17 +1009,17 @@
       "id": "x_speech_to_text",
       "title": "Voice transcription",
       "area": "util",
-      "layer": "worker",
+      "layer": "gateway",
       "milestone": "M3",
-      "status": "partial",
+      "status": "done",
       "triggers": [],
       "v1_source": "Audio.py:22-32",
-      "notes": "transcribe task routed to the openai provider; handler not written",
-      "contract": null,
+      "notes": "shape (a) ports the voice-to-AI sub-step; shape (b) is a net-new /transcribe command with no v1 equivalent; QA authored, not ported (5 scenarios) - see docs/contracts/x_speech_to_text.md",
+      "contract": "docs/contracts/x_speech_to_text.md",
       "scenarios": {
         "spec": 0,
-        "ported": 0,
-        "green": 0,
+        "ported": 5,
+        "green": 5,
         "failing": 0
       },
       "url": "/docs/features/x_speech_to_text"
@@ -1772,6 +1772,22 @@
       "green": 1,
       "failing": 0,
       "state": "green"
+    },
+    {
+      "stem": "x_conversational_ai",
+      "spec": 0,
+      "ported": 7,
+      "green": 7,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "x_speech_to_text",
+      "spec": 0,
+      "ported": 5,
+      "green": 5,
+      "failing": 0,
+      "state": "v2-only spec"
     }
   ],
   "defects": [

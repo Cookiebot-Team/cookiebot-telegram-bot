@@ -12,14 +12,14 @@ depends on T6 here.
 
 | Task | Status | Notes |
 |------|--------|-------|
-| T1 — Langchain provider behind the router | ⏳ not started | |
-| T2 [P] — Tenant budget cap | ⏳ not started | first thing ever to read `monthly_llm_budget_usd` |
-| T3 [P] — `cache.bump_clamped` | ⏳ not started | the primitive v1's signed counter needs |
-| T4 [P] — Strings and settings | ⏳ not started | `cb.json` only — never `lib.json` |
-| T5 [P] — Failing unit tests for the pure logic | ⏳ not started | |
-| T6 — Handler and router registration | ⏳ not started | depends on T1–T5 |
-| T7 — Acceptance suite | ⏳ not started | authored, not ported — no v1 scenario exists |
-| T-final — Close out | ⏳ not started | |
+| T1 — Langchain provider behind the router | ✅ done | |
+| T2 [P] — Tenant budget cap | ✅ done | first thing ever to read `monthly_llm_budget_usd` |
+| T3 [P] — `cache.bump_clamped` | ✅ done | the primitive v1's signed counter needs |
+| T4 [P] — Strings and settings | ✅ done | `cb.json` only — never `lib.json` |
+| T5 [P] — Failing unit tests for the pure logic | ✅ done | |
+| T6 — Handler and router registration | ✅ done | depends on T1–T5 |
+| T7 — Acceptance suite | ✅ done | authored, not ported — no v1 scenario exists |
+| T-final — Close out | ✅ done | |
 
 ## Tasks
 

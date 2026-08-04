@@ -294,8 +294,31 @@ directly.
 prose.** `fun_random`, `util_embedder`, `fun_dice`, `fun_ship`, `fun_firecracker`,
 `fun_complaint`, `util_everyone`, `util_calladms` (both the group ping and the
 DM fan-out), `fun_battle`'s two-people shape, private-chat dispatch,
-`util_youtube`, and `util_birthday`/`util_nextbirthday`'s manual shape have
-all landed since it was written.
+`util_youtube`, `util_birthday`/`util_nextbirthday`'s manual shape,
+`x_conversational_ai` and `x_speech_to_text` have all landed since it was
+written.
+
+**`x_conversational_ai` + `x_speech_to_text` — done, one slice.** Both ship
+together (`docs/contracts/x_conversational_ai.md`,
+`docs/contracts/x_speech_to_text.md`): a new langchain-backed LLM provider
+behind `cb_core.llm.router()` (only the `chat` task moved onto it —
+`moderate`/`summarize`/`vision`/`transcribe` stay on the hand-rolled
+providers, so `util_doomlist`'s live `moderate` calls are untouched), the
+first-ever enforcement of `Tenant.monthly_llm_budget_usd` (a hard cap, in
+both `complete()` and `transcribe()`, over budget refuses and an infra
+failure fails open), v1's per-user AI-reply streak ported onto a new
+`cache.bump_clamped` Lua primitive, and `x_speech_to_text`'s net-new
+`/transcribe` command alongside the ported voice→AI sub-step. Neither
+feature had a QA scenario anywhere — `qa/features/x_conversational_ai.
+feature` (7 scenarios) and `qa/features/x_speech_to_text.feature` (5
+scenarios) are authored, not ported. **Both acceptance suites need a live
+Postgres for a non-obvious reason**: filters registered ahead of these
+routers in `build_router` — `core_groupguardian`'s captcha-reply check
+(ahead of `chat_ai`, queries the DB for every plain group text message) and
+`core_mediarestrict`'s join-time lookup (ahead of `transcribe`, queries the
+DB for every voice note) — raise instead of failing open when there is no
+live pool, so the whole file skips cleanly rather than crashing when
+Postgres is unreachable.
 
 The next batch, in dependency order, now that the member registry exists:
 
