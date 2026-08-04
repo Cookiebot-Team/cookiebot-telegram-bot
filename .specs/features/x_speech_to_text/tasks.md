@@ -12,12 +12,12 @@ voice→AI sub-step, and **(b)** a net-new standalone transcript command.
 
 | Task | Status | Notes |
 |------|--------|-------|
-| T1 — Harden `LLMRouter.transcribe` | ⏳ not started | timeout, breaker, usage row, budget |
-| T2 [P] — Strings, settings, aliases | ⏳ not started | `cb.json` only — never `lib.json` |
-| T3 — Both handlers and registration | ⏳ not started | depends on `x_conversational_ai` T6 |
-| T4 — Unit tests | ⏳ not started | |
-| T5 — Acceptance suite | ⏳ not started | authored, not ported |
-| T-final — Close out | ⏳ not started | |
+| T1 — Harden `LLMRouter.transcribe` | ✅ done | timeout, breaker, usage row, budget |
+| T2 [P] — Strings, settings, aliases | ✅ done | `cb.json` only — never `lib.json` |
+| T3 — Both handlers and registration | ✅ done | depends on `x_conversational_ai` T6 |
+| T4 — Unit tests | ✅ done | |
+| T5 — Acceptance suite | ✅ done | authored, not ported |
+| T-final — Close out | ✅ done | |
 
 ## Tasks
 
