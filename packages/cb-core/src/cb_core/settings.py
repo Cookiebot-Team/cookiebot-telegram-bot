@@ -92,6 +92,13 @@ class Settings(BaseSettings):
     ai_chat_group_limit: int = 20
     ai_chat_window_seconds: int = 60
 
+    # x_speech_to_text — duration cap checked against message.voice.duration
+    # before any download (D-ST-3), so an oversized note costs neither a
+    # download nor a transcription. The transcription *timeout* is deliberately
+    # not a separate setting: it is DEFAULT_TASKS["transcribe"].timeout,
+    # already overridable through CB_LLM_TASKS.
+    transcribe_max_duration_seconds: int = 300
+
     # util_youtube — v1 used google-api-python-client (Bot/SocialContent.py:20);
     # v2 calls the same REST endpoint directly over the httpx client already in
     # use everywhere else, rather than adding a second HTTP client library for

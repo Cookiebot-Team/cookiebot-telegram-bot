@@ -3,5 +3,8 @@
   "config_write_failed": "ERRO: não consegui salvar a configuração\n<blockquote>%(reason)s</blockquote>\nReferência: <code>%(trace)s</code>",
   "ai_unavailable": "A IA está temporariamente indisponível. Tente novamente mais tarde.",
   "ai_quota_spent": "O orçamento de IA deste grupo acabou por este mês. Volta no mês que vem.",
-  "ai_rate_limited": "Muitas perguntas pra IA nesse grupo agora, tenta de novo daqui a pouco."
+  "ai_rate_limited": "Muitas perguntas pra IA nesse grupo agora, tenta de novo daqui a pouco.",
+  "transcribe_no_voice": "responde a uma mensagem de voz pra transcrever ela",
+  "transcribe_too_long": "essa mensagem de voz é longa demais pra transcrever (máximo %(max)s segundos)",
+  "transcribe_failed": "não consegui transcrever essa mensagem de voz"
 }

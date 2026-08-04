@@ -3,5 +3,8 @@
   "config_write_failed": "ERROR: no se pudo guardar la configuración\n<blockquote>%(reason)s</blockquote>\nReferencia: <code>%(trace)s</code>",
   "ai_unavailable": "La IA no está disponible por ahora. Intenta de nuevo más tarde.",
   "ai_quota_spent": "El presupuesto de IA de este grupo se acabó este mes. Vuelve el próximo mes.",
-  "ai_rate_limited": "Demasiadas preguntas para la IA en este grupo ahora mismo, intenta de nuevo en un rato."
+  "ai_rate_limited": "Demasiadas preguntas para la IA en este grupo ahora mismo, intenta de nuevo en un rato.",
+  "transcribe_no_voice": "responde a un mensaje de voz para transcribirlo",
+  "transcribe_too_long": "ese mensaje de voz es muy largo para transcribir (máximo %(max)s segundos)",
+  "transcribe_failed": "no se pudo transcribir ese mensaje de voz"
 }

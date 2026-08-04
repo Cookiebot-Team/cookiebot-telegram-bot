@@ -56,6 +56,7 @@ COMMAND_ALIASES: dict[str, str] = {
     "everyone": "everyone",
     "adm": "calladms", "admin": "calladms", "report": "calladms",
     "youtube": "youtube",
+    "transcribe": "transcribe", "transcrever": "transcribe", "transcribir": "transcribe",
     # QA spells this /deletereposts; v1 shipped /deleteposts — accept both.
     "deletereposts": "deletereposts", "deleteposts": "deletereposts",
     "apagarposts": "deletereposts",
