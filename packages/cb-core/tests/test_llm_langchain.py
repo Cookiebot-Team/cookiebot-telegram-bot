@@ -23,6 +23,7 @@ from langchain_core.messages import (
 from cb_core.llm import langchain_provider
 from cb_core.llm.catalog import CATALOG
 from cb_core.llm.langchain_provider import LangchainProvider
+from cb_core.llm.router import DEFAULT_TASKS
 from cb_core.llm.types import LLMError, Message
 from cb_core.settings import Settings
 
@@ -222,6 +223,57 @@ class TestComplete:
             [Message(role="user", content="hi")], model="openai:gpt-4o-mini", max_tokens=10
         )
         assert result.cost_usd is None
+
+
+class TestTemperatureGating:
+    """Would have caught the original bug: `_resolve` forwarded `temperature`
+    to `init_chat_model` unconditionally, so `DEFAULT_TASKS["chat"]`'s
+    `temperature=1.0` reached `claude-opus-5` (`supports_sampling=False`) and
+    every chat reply 400'd."""
+
+    async def test_shipped_chat_default_drops_temperature_for_the_model_that_rejects_it(
+        self, provider: LangchainProvider, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        cfg = DEFAULT_TASKS["chat"]
+        # Sanity: this test only proves something if the shipped config still
+        # carries a temperature, and the shipped model still can't take one.
+        assert cfg.temperature is not None
+        bare_model = cfg.model.partition(":")[2]
+        assert CATALOG[bare_model].supports_sampling is False
+
+        message = AIMessage(
+            content="ok", usage_metadata={"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}
+        )
+        calls = _install_fake(monkeypatch, _FakeClient(message))
+
+        await provider.complete(
+            [Message(role="user", content="hi")],
+            model=cfg.model,
+            max_tokens=cfg.max_tokens,
+            temperature=cfg.temperature,
+            timeout=cfg.timeout,
+        )
+
+        assert "temperature" not in calls[0], calls[0]
+
+    async def test_temperature_is_forwarded_for_a_model_that_supports_it(
+        self, provider: LangchainProvider, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        assert CATALOG["claude-haiku-4-5"].supports_sampling is True
+
+        message = AIMessage(
+            content="ok", usage_metadata={"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}
+        )
+        calls = _install_fake(monkeypatch, _FakeClient(message))
+
+        await provider.complete(
+            [Message(role="user", content="hi")],
+            model="anthropic:claude-haiku-4-5",
+            max_tokens=100,
+            temperature=0.5,
+        )
+
+        assert calls[0]["temperature"] == 0.5
 
 
 class TestStream:

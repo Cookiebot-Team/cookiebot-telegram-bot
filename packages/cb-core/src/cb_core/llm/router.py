@@ -55,6 +55,20 @@ class TaskConfig(msgspec.Struct, frozen=True):
 # only works for a single backend would defeat the point of the abstraction.
 # `moderate`/`summarize`/`vision`/`transcribe` stay on the hand-rolled providers,
 # so `doomlist`'s live `moderate` calls are untouched by this move.
+#
+# `temperature=1.0` is kept despite `claude-opus-5` (the model this task
+# names today) rejecting it outright — `langchain_provider._resolve` gates
+# it on `catalog.spec_for(...).supports_sampling` before it ever reaches
+# `init_chat_model`, the same filtering `anthropic_provider.py` already does
+# for the hand-rolled path. That gating is the existing, established shape
+# of this abstraction (`catalog.py`'s whole docstring, AGENTS.md §5): a task
+# config states the *intended* sampling temperature, and per-model filtering
+# is what keeps a value that's meaningless for one backend from ever
+# reaching it, without making it meaningless for every backend. Zeroing it
+# out here instead would silently strand v1's temperature=1 intent
+# (`NaturalLanguage.py:34`) the moment `CB_LLM_TASKS` repoints `chat` at a
+# model that *does* accept it (an OpenAI one, say) with no code change —
+# exactly the kind of config-only move R1.8 says this task should support.
 DEFAULT_TASKS: dict[str, TaskConfig] = {
     "chat": TaskConfig(
         provider="langchain",

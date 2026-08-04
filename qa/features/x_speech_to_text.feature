@@ -21,6 +21,13 @@ Feature: speech to text -- a voice note becomes text, two ways
         When the user sends a voice note that is not a reply to anything
         Then the bot sends nothing at all
 
+    Scenario: The fun feature being off is silent for a voice reply too, not a fun_off notice
+        Given the fun feature is turned off in the group
+        When the user sends a voice note replying to a message from the bot
+        Then the bot sends nothing at all
+        And the transcript is never generated
+        And the model is never asked
+
     Scenario: /transcribe on a voice reply returns the transcript
         Given the transcript will be "this is what the voice note said"
         When the user replies to a voice note with "/transcribe"

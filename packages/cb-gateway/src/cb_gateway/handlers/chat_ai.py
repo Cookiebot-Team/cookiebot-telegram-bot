@@ -230,7 +230,16 @@ def build_messages(
 # ------------------------------------------------------------------------ gates
 
 
-def _group_key(group_id: int) -> str:
+def group_window_key(group_id: int) -> str:
+    """R3.1's key shape, `f"cb:ai:{group_id}"` — the *one* home for it.
+
+    `x_speech_to_text`'s `transcribe.voice_ai` shares this exact allowance
+    (design.md's R1.7: the per-group AI-reply rate limit binds the voice path
+    too, so a group cannot double its effective rate by alternating text
+    mentions and voice replies) and imports this function rather than
+    building its own copy of the key — a public name here, not a duplicated
+    private one there, is what keeps the two from drifting apart.
+    """
     return f"{_GROUP_KEY_PREFIX}{group_id}"
 
 
@@ -242,7 +251,7 @@ async def _bump_group(group_id: int, window_seconds: int) -> int | None:
     """R3.1/R3.3: same fail-open contract as `stickerspam._bump` — `None`
     means "cannot tell", never "assume over the limit"."""
     try:
-        return await cache.incr_window(_group_key(group_id), window_seconds)
+        return await cache.incr_window(group_window_key(group_id), window_seconds)
     except Exception as exc:  # noqa: BLE001 - infra outage must fail open, not raise
         log.warning("chat_ai.group_window_failed", group_id=group_id, error=str(exc))
         return None
@@ -437,6 +446,7 @@ __all__ = [
     "ai_reply",
     "brevity_line",
     "build_messages",
+    "group_window_key",
     "replenish",
     "reply_with_ai",
     "router",

@@ -86,12 +86,26 @@ class LangchainProvider:
         if client is not None:
             return client
 
+        kwargs: dict[str, Any] = {"max_tokens": max_tokens, "timeout": timeout}
+        if temperature is not None:
+            provider_prefix, bare_model = _split_model(model)
+            spec = spec_for(bare_model, provider=provider_prefix)
+            # Mirrors `anthropic_provider.py`'s own gating (`build_request`,
+            # ~lines 98-102): current Claude models 400 on `temperature`, so a
+            # task config that carries one (DEFAULT_TASKS["chat"] does, for v1
+            # parity) must not reach a model whose spec says it will reject
+            # it. Forwarding it unconditionally is exactly the bug this
+            # gating fixes — every chat reply 400'd because the shipped
+            # default model, claude-opus-5, has `supports_sampling=False`.
+            if spec.supports_sampling:
+                kwargs["temperature"] = temperature
+            else:
+                log.debug("llm.sampling_dropped", model=model, reason="model rejects it")
+
         # `init_chat_model` returns `_ConfigurableModel` only when a caller
         # passes `configurable_fields`, which this provider never does — the
         # overload below resolves to a plain `BaseChatModel`.
-        resolved = init_chat_model(
-            model, max_tokens=max_tokens, temperature=temperature, timeout=timeout
-        )
+        resolved = init_chat_model(model, **kwargs)
         self._clients[key] = resolved
         return resolved
 
@@ -173,6 +187,19 @@ class LangchainProvider:
 # ------------------------------------------------------------------- mapping
 
 
+def _split_model(model: str) -> tuple[str | None, str]:
+    """Split a fully qualified `"provider:model"` string into
+    `(provider_prefix, bare_model)`. Without a `provider:` qualifier there is
+    nothing to strip and nothing to filter on, so the prefix is `None`.
+
+    Shared by `_resolve` (catalog lookup for sampling-parameter gating) and
+    `_to_completion` (catalog lookup for cost), so the two never drift on how
+    a model string is parsed.
+    """
+    head, sep, tail = model.partition(":")
+    return (head, tail) if sep else (None, head)
+
+
 def _to_langchain_messages(messages: Sequence[Message], *, system: str | None) -> list[BaseMessage]:
     out: list[BaseMessage] = []
     if system:
@@ -191,11 +218,7 @@ def _to_completion(response: AIMessage, requested_model: str) -> Completion:
         input_tokens=input_tokens, output_tokens=output_tokens, cache_read_tokens=cache_read
     )
 
-    head, sep, tail = requested_model.partition(":")
-    # With a `provider:` qualifier, strip it for the lookup and filter on it;
-    # without one, there is nothing to strip and nothing to filter on.
-    provider_prefix: str | None = head if sep else None
-    bare_model = tail if sep else head
+    provider_prefix, bare_model = _split_model(requested_model)
     spec = spec_for(bare_model, provider=provider_prefix)
 
     return Completion(

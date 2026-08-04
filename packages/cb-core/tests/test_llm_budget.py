@@ -8,11 +8,16 @@ convention as `test_admins.py`, per the "don't fake our own code" rule.
 The load-bearing behaviour is R2.4's asymmetry: a spend query that *succeeds*
 and shows the tenant over budget raises; a cache or database *failure* while
 computing the spend fails open instead.
+
+A second load-bearing behaviour, added by the Finding 2 fix: the cross-shard
+aggregate must never block a reply once a tenant has *any* cached total, stale
+or not — only a truly empty cache (a tenant's first-ever check) blocks.
+`TestMonthToDateUsdFreshness` covers that.
 """
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Iterator, Sequence
 from typing import Any
 
 import pytest
@@ -21,6 +26,17 @@ from cb_core.llm import budget as budget_mod
 from cb_core.llm.router import LLMRouter, TaskConfig
 from cb_core.llm.types import Completion, LLMBudgetExceededError, Message, Transcript, Usage
 from cb_core.tenancy import Tenant
+
+
+@pytest.fixture(autouse=True)
+def _clear_refresh_state() -> Iterator[None]:
+    """`budget._refreshing` is module-level, shared process state — clear it
+    around every test so one test's in-flight refresh can never dedupe away
+    another test's."""
+    budget_mod._refreshing.clear()  # noqa: SLF001
+    yield
+    budget_mod._refreshing.clear()  # noqa: SLF001
+
 
 # --------------------------------------------------------------------------- helpers
 
@@ -100,12 +116,18 @@ class TestMonthToDateUsd:
         await budget_mod.month_to_date_usd("acme")
 
         assert len(fetchrow.calls) == 2, "second call must be served from cache, not re-queried"
-        assert fake_cache.store["cb:llm:mtd:acme"] == pytest.approx(1.0)
+        assert fake_cache.store["cb:llm:mtd:acme"]["total"] == pytest.approx(1.0)
 
     async def test_cache_hit_skips_the_database_entirely(
         self, fake_cache: FakeCache, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        fake_cache.store["cb:llm:mtd:acme"] = 7.5
+        # Fresh `computed_at`: this test is about the cache hit itself, not
+        # staleness -- a stale entry would additionally schedule a background
+        # refresh, which is `TestMonthToDateUsdFreshness`'s concern.
+        fake_cache.store["cb:llm:mtd:acme"] = {
+            "total": 7.5,
+            "computed_at": budget_mod._now(),  # noqa: SLF001
+        }
 
         async def boom(*_args: Any, **_kwargs: Any) -> None:
             raise AssertionError("database must not be queried on a cache hit")
@@ -113,6 +135,86 @@ class TestMonthToDateUsd:
         monkeypatch.setattr(budget_mod.db, "fetchrow", boom)
 
         assert await budget_mod.month_to_date_usd("acme") == pytest.approx(7.5)
+
+
+class TestMonthToDateUsdFreshness:
+    """Finding 2: the reply path must never block on the cross-shard query
+    once a tenant has any cached total -- only a genuinely empty cache (the
+    tenant's first-ever check) may block."""
+
+    async def test_fresh_cache_triggers_no_refresh(
+        self, fake_cache: FakeCache, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake_cache.store["cb:llm:mtd:acme"] = {
+            "total": 3.0,
+            "computed_at": budget_mod._now(),  # noqa: SLF001
+        }
+        refreshed: list[str] = []
+        monkeypatch.setattr(budget_mod, "_refresh_in_background", refreshed.append)
+
+        total = await budget_mod.month_to_date_usd("acme")
+
+        assert total == pytest.approx(3.0)
+        assert refreshed == []
+
+    async def test_stale_cache_returns_immediately_and_schedules_a_refresh(
+        self, fake_cache: FakeCache, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        stale_at = budget_mod._now() - budget_mod._STALE_AFTER_SECONDS - 1  # noqa: SLF001
+        fake_cache.store["cb:llm:mtd:acme"] = {"total": 3.0, "computed_at": stale_at}
+        refreshed: list[str] = []
+        monkeypatch.setattr(budget_mod, "_refresh_in_background", refreshed.append)
+
+        async def boom(*_args: Any, **_kwargs: Any) -> None:
+            raise AssertionError("a stale-but-present cache read must not block on the database")
+
+        monkeypatch.setattr(budget_mod.db, "fetchrow", boom)
+
+        total = await budget_mod.month_to_date_usd("acme")
+
+        assert total == pytest.approx(3.0), "the stale value is still served, not withheld"
+        assert refreshed == ["acme"]
+
+    async def test_background_refresh_updates_the_cache(
+        self, fake_cache: FakeCache, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fetchrow = make_fetchrow({"llm_budget_rolled_up": 2.0, "llm_budget_today": 1.0})
+        monkeypatch.setattr(budget_mod.db, "fetchrow", fetchrow)
+
+        task = budget_mod._refresh_in_background("acme")  # noqa: SLF001
+        assert task is not None
+        await task
+
+        assert fake_cache.store["cb:llm:mtd:acme"]["total"] == pytest.approx(3.0)
+        assert "acme" not in budget_mod._refreshing  # noqa: SLF001
+
+    async def test_background_refresh_dedupes_concurrent_calls_for_the_same_tenant(
+        self, fake_cache: FakeCache, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fetchrow = make_fetchrow({"llm_budget_rolled_up": 1.0, "llm_budget_today": 0.0})
+        monkeypatch.setattr(budget_mod.db, "fetchrow", fetchrow)
+
+        first = budget_mod._refresh_in_background("acme")  # noqa: SLF001
+        second = budget_mod._refresh_in_background("acme")  # noqa: SLF001
+
+        assert first is not None
+        assert second is None, "a refresh already in flight must not spawn a second one"
+        await first
+
+    async def test_a_failed_background_refresh_never_raises(
+        self, fake_cache: FakeCache, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        async def boom(*_args: Any, **_kwargs: Any) -> None:
+            raise RuntimeError("connection refused")
+
+        monkeypatch.setattr(budget_mod.db, "fetchrow", boom)
+
+        task = budget_mod._refresh_in_background("acme")  # noqa: SLF001
+        assert task is not None
+        await task  # must not raise: the failure is swallowed and logged
+
+        assert "cb:llm:mtd:acme" not in fake_cache.store
+        assert "acme" not in budget_mod._refreshing  # noqa: SLF001
 
 
 # --------------------------------------------------------------------------- ensure_within_budget

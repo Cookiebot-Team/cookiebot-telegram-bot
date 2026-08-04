@@ -45,7 +45,7 @@ from cb_core.settings import get_settings
 from cb_core.textmatch import ParsedCommand
 from cb_gateway.context import ChatContext, context_for, deny_if_disabled, t
 from cb_gateway.filters import CommandName, FeatureGate
-from cb_gateway.handlers.chat_ai import reply_with_ai
+from cb_gateway.handlers.chat_ai import group_window_key, reply_with_ai
 from cb_gateway.telemetry import mark_outcome
 
 log = get_logger("cb.transcribe")
@@ -116,25 +116,18 @@ class ReplyToBotFilter(BaseFilter):
 # --------------------------------------------------------------- group window
 
 
-def _group_window_key(group_id: int) -> str:
-    """R1.7: deliberately the *same* key format `chat_ai.py`'s own (private)
-    `_group_key` builds (`f"cb:ai:{group_id}"`), not a parallel counter.
-    R1.7 requires the per-group AI-reply rate limit to bind the voice path
-    too -- a distinct counter here would just be a second, independently
+async def _bump_group_window(group_id: int, window_seconds: int) -> int | None:
+    """R1.7: shares `chat_ai.group_window_key`'s counter, not a parallel one
+    -- a distinct counter here would just be a second, independently
     refillable allowance, letting a group double its effective AI-reply
     rate by alternating text mentions and voice replies instead of being
-    capped by the one limit both are meant to share. Duplicated rather than
-    imported because it is one private, `_`-prefixed line in another
-    handler module, not a shared export.
-    """
-    return f"cb:ai:{group_id}"
+    capped by the one limit both are meant to share. Imported rather than
+    duplicated so the two paths cannot drift onto different key shapes.
 
-
-async def _bump_group_window(group_id: int, window_seconds: int) -> int | None:
-    """Same fail-open contract as `chat_ai._bump_group` / `stickerspam._bump`:
+    Same fail-open contract as `chat_ai._bump_group` / `stickerspam._bump`:
     `None` means "cannot tell", never "assume over the limit"."""
     try:
-        return await cache.incr_window(_group_window_key(group_id), window_seconds)
+        return await cache.incr_window(group_window_key(group_id), window_seconds)
     except Exception as exc:  # noqa: BLE001 - infra outage must fail open, not raise
         log.warning("transcribe.group_window_failed", group_id=group_id, error=str(exc))
         return None
@@ -231,7 +224,7 @@ async def voice_ai(
 
     # R1.7: the per-group AI-reply rate limit applies to this path too, even
     # though the per-user streak (R4) deliberately does not -- see
-    # `_group_window_key`'s docstring. Mirrors chat_ai.ai_reply's own
+    # `_bump_group_window`'s docstring. Mirrors chat_ai.ai_reply's own
     # gate-order and reply-once-at-the-limit behaviour exactly, since the
     # two paths now share the one counter.
     group_count = await _bump_group_window(ctx.group_id, settings.ai_chat_window_seconds)

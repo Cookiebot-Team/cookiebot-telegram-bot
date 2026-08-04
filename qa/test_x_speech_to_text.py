@@ -61,6 +61,7 @@ own warning, equally true here).
 
 from __future__ import annotations
 
+import dataclasses
 import io
 import json
 import time
@@ -71,6 +72,7 @@ from unittest.mock import AsyncMock
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
+from cb_core import group_config
 from cb_core.llm.types import Completion, Transcript, Usage
 from cb_gateway.handlers import chat_ai, transcribe
 from qa.conftest import BOT_USERNAME, GROUP_ID, USER_ID, feed, make_message_update, next_update_id
@@ -210,6 +212,20 @@ def ai_will_answer(st_ctx: Ctx, text: str) -> None:
     st_ctx.fake_chat_router.complete = AsyncMock(return_value=_completion(text))
 
 
+@given("the fun feature is turned off in the group")
+def fun_off() -> None:
+    """Same seam `qa/test_x_conversational_ai.py`'s own `fun_off` step uses
+    (`group_config._l1` directly, no database needed): shape (a) is gated on
+    `FeatureGate("fun")` exactly like `chat_ai.ai_reply` is, and this proves
+    the voice path's silence the same structural way -- via a real dispatch,
+    not by inspecting the router's filter list or calling `FeatureGate`
+    directly (the gap Finding 4 closes; `packages/cb-gateway/tests/
+    test_transcribe.py::TestVoiceAiFunGateIsSilentWhenClosed` still covers
+    those narrower checks at the unit layer)."""
+    config = dataclasses.replace(group_config.DEFAULTS, group_id=GROUP_ID, functions_fun=False)
+    group_config._l1[GROUP_ID] = (config, time.monotonic() + 9999)  # noqa: SLF001
+
+
 # ---------------------------------------------------------------------- when
 
 
@@ -330,3 +346,11 @@ def transcript_never_generated(st_ctx: Ctx) -> None:
     # transcribed -- an over-length note costs neither.
     st_ctx.download.assert_not_awaited()
     st_ctx.fake_transcribe_router.transcribe.assert_not_awaited()
+
+
+@then("the model is never asked")
+def model_never_asked(st_ctx: Ctx) -> None:
+    # Finding 4: a closed `fun` gate must stop `voice_ai` before
+    # `reply_with_ai` ever calls `chat_ai`'s router, same as it already stops
+    # `transcribe` from being called at all.
+    st_ctx.fake_chat_router.complete.assert_not_awaited()

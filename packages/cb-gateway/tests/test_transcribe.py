@@ -39,7 +39,7 @@ from cb_core.llm.types import LLMError, Transcript
 from cb_core.textmatch import ParsedCommand
 from cb_gateway.context import ChatContext
 from cb_gateway.filters import FeatureGate
-from cb_gateway.handlers import transcribe
+from cb_gateway.handlers import chat_ai, transcribe
 
 # --------------------------------------------------------------------- fakes
 
@@ -149,6 +149,26 @@ def _wire_happy_collaborators(
     monkeypatch.setattr(
         transcribe.tenancy.registry, "by_skin", AsyncMock(return_value=_FakeTenant())
     )
+
+
+# ------------------------------------------------- shared per-group window (R1.7)
+
+
+class TestGroupWindowKeyIsShared:
+    """R1.7: the voice path must bind the *same* per-group AI-reply allowance
+    `chat_ai.ai_reply` does, not a second, independently refillable one --
+    otherwise a group could double its effective rate by alternating text
+    mentions and voice replies. `transcribe.py` imports `chat_ai.
+    group_window_key` rather than keeping its own copy, so this pins the
+    single source of truth directly instead of just comparing outputs (which
+    would still pass if the two modules held two functions that happened to
+    agree today and drifted tomorrow)."""
+
+    def test_transcribe_uses_chat_ais_own_key_function(self) -> None:
+        assert transcribe.group_window_key is chat_ai.group_window_key
+
+    def test_the_shared_key_has_the_documented_shape(self) -> None:
+        assert chat_ai.group_window_key(42) == "cb:ai:42"
 
 
 # --------------------------------------------------- duration cap (D-ST-3/R1.3)
