@@ -37,6 +37,7 @@ from cb_gateway.handlers import (
     setlang,
     ship,
     stickerspam,
+    transcribe,
     welcome,
     youtube,
 )
@@ -100,6 +101,11 @@ def build_router() -> Router:
     # the captcha-caption reply, the complaint reply, a reply_markup reply) is
     # already registered earlier above — do not reorder any of it.
     root.include_router(chat_ai.router)
+    # x_speech_to_text: F.voice is disjoint from F.text (chat_ai) and from the
+    # command triggers above (F.voice never carries a leading "/"), so its
+    # relative order against either is irrelevant (design.md R1.8) -- it only
+    # has to stay ahead of embedder/fun_random below, and it does.
+    root.include_router(transcribe.router)
     # Link rewriting reacts to ordinary text, which no other handler claims, but
     # it yields like the rest so a message is never consumed on its behalf.
     root.include_router(embedder.router)
