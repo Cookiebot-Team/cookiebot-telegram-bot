@@ -135,6 +135,24 @@ async def _store(tenant_id: str, total: float) -> None:
         log.warning("llm.budget_cache_write_failed", tenant_id=tenant_id, error=str(exc))
 
 
+# Module constants, not inlined in `_query_month_to_date_usd`, so
+# `qa/integration/test_citus_topology.py` can EXPLAIN the exact SQL this
+# module issues instead of retyping it — a copy in the test would silently
+# drift from the real query the first time either one changed.
+_ROLLED_UP_SQL = """
+    SELECT coalesce(sum(d.cost_usd), 0) AS total
+    FROM llm_daily_cost d
+    JOIN groups g ON g.group_id = d.group_id
+    WHERE g.tenant_id = $1 AND d.day >= $2 AND d.day < $3
+    """
+_TODAY_LIVE_SQL = """
+    SELECT coalesce(sum(u.cost_usd), 0) AS total
+    FROM llm_usage u
+    JOIN groups g ON g.group_id = u.group_id
+    WHERE g.tenant_id = $1 AND u.created_at >= $2
+    """
+
+
 async def _query_month_to_date_usd(tenant_id: str) -> float:
     """The nightly `llm_daily_cost` rollup for the month so far, plus today's
     `llm_usage` rows the rollup has not folded in yet (R2.3, `cb_worker/main.py`'s
@@ -155,24 +173,14 @@ async def _query_month_to_date_usd(tenant_id: str) -> float:
     today_start = datetime(today.year, today.month, today.day, tzinfo=UTC)
 
     rolled_up = await db.fetchrow(
-        """
-        SELECT coalesce(sum(d.cost_usd), 0) AS total
-        FROM llm_daily_cost d
-        JOIN groups g ON g.group_id = d.group_id
-        WHERE g.tenant_id = $1 AND d.day >= $2 AND d.day < $3
-        """,
+        _ROLLED_UP_SQL,
         tenant_id,
         month_start,
         today,
         name="llm_budget_rolled_up",
     )
     today_live = await db.fetchrow(
-        """
-        SELECT coalesce(sum(u.cost_usd), 0) AS total
-        FROM llm_usage u
-        JOIN groups g ON g.group_id = u.group_id
-        WHERE g.tenant_id = $1 AND u.created_at >= $2
-        """,
+        _TODAY_LIVE_SQL,
         tenant_id,
         today_start,
         name="llm_budget_today",
