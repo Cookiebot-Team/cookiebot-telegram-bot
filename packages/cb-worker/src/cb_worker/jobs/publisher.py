@@ -420,11 +420,20 @@ async def _run_approve(
     has_nsfw: bool,
 ) -> None:
     settings = get_settings()
-    post = await pending_posts.take(pending_key)
+    # Read, don't consume. v1's `prepare_post` pops the cache entry as its last
+    # act (`:219-220`), which is fine for a function that cannot be retried —
+    # but this is an arq job, and arq retries. Consuming here would mean a
+    # failure anywhere below (a Telegram 5xx mid-upload, a pool blip) leaves the
+    # retry with nothing to render: it would answer `publish_expired` and the
+    # campaign would be lost silently, having already posted whatever part of
+    # the render succeeded. The entry is discarded once the fan-out has
+    # committed, so a retry re-renders instead — duplicate Mural posts are
+    # visible and recoverable; a silently dropped campaign is neither.
+    post = await pending_posts.get(pending_key)
     if post is None:
+        # Genuinely gone — a restart before Valkey took the write, or the TTL.
         # v1 raised KeyError into the global traceback handler and told nobody
-        # (D-PF-3). The submission is genuinely gone — a restart, or a TTL —
-        # and the honest answer is to say so where it was submitted.
+        # (D-PF-3); the honest answer is to say so where it was submitted.
         log.warning("publisher.pending_missing", key=pending_key)
         await _try_send(bot, requester_chat_id, "publish_expired", reply_to=requester_message_id)
         return
@@ -463,6 +472,10 @@ async def _run_approve(
         sent_pt=sent_pt,
         sent_en=sent_en,
     )
+
+    # The rows are committed; nothing below can fail in a way a retry would
+    # help with, so this is the point the submission stops being pending.
+    await pending_posts.discard(pending_key)
 
     # v1 wraps *only* the reporting block, so a DM failure changes the reply and
     # nothing else (`:277-286`). Same boundary here.

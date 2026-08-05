@@ -135,6 +135,91 @@ async def test_blank_text_is_never_sent_to_the_model(monkeypatch: pytest.MonkeyP
     assert await job._translate("   ", "English", group_id=1) == "   "  # noqa: SLF001
 
 
+# ------------------------------------------------------------------ retry safety
+
+
+@pytest.mark.asyncio
+async def test_a_failed_render_leaves_the_submission_pending(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """arq retries this job, so consuming the pending post up front loses the
+    campaign on any mid-job failure.
+
+    v1's `prepare_post` pops the cache entry as its last act (`:219-220`),
+    which is safe only because v1's version cannot be retried — it ran inline
+    in the callback handler. Ported verbatim, a Telegram 5xx during the second
+    upload would leave the retry with nothing to render: it would answer
+    `publish_expired`, and the half-posted campaign would vanish with no trace
+    beyond one orphaned Mural message.
+    """
+    from cb_core import pending_posts
+
+    stored = pending_posts.PendingPost(media_kind="photo", file_id="f", caption="c")
+    discarded: list[str] = []
+
+    async def _get(_key: str) -> Any:
+        return stored
+
+    async def _discard(key: str) -> None:
+        discarded.append(str(key))
+
+    monkeypatch.setattr(pending_posts, "get", _get)
+    monkeypatch.setattr(pending_posts, "discard", _discard)
+    monkeypatch.setattr(job, "get_settings", _settings)
+
+    bot = AsyncMock()
+    bot.get_chat.return_value = SimpleNamespace(title="T", username="t", is_forum=False)
+    bot.get_chat_member.return_value = SimpleNamespace(
+        user=SimpleNamespace(first_name="Ana", username="ana")
+    )
+    # The second upload is the interesting one: the first already posted into
+    # the Mural, so this is the state a naive retry would strand.
+    bot.send_photo.side_effect = [SimpleNamespace(message_id=1), TimeoutError("upload died")]
+
+    with pytest.raises(TimeoutError):
+        await job._run_approve(  # noqa: SLF001
+            bot,
+            pending_key="77",
+            origin_chat_id=-1001,
+            requester_chat_id=-1002,
+            requester_message_id=7,
+            requester_user_id=99,
+            days=7,
+            has_nsfw=False,
+        )
+
+    assert discarded == [], "a failed render must leave the post for the retry"
+
+
+@pytest.mark.asyncio
+async def test_a_missing_submission_says_so_instead_of_crashing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """D-PF-3: v1 raised KeyError into the global traceback handler and told
+    nobody (`:183`)."""
+    from cb_core import pending_posts
+
+    async def _get(_key: str) -> Any:
+        return None
+
+    monkeypatch.setattr(pending_posts, "get", _get)
+    monkeypatch.setattr(job, "get_settings", _settings)
+
+    bot = AsyncMock()
+    await job._run_approve(  # noqa: SLF001
+        bot,
+        pending_key="404",
+        origin_chat_id=-1001,
+        requester_chat_id=-1002,
+        requester_message_id=7,
+        requester_user_id=99,
+        days=7,
+        has_nsfw=False,
+    )
+    bot.send_photo.assert_not_awaited()
+    bot.send_message.assert_awaited_once()
+
+
 # ---------------------------------------------------------------------- scheduling
 
 
