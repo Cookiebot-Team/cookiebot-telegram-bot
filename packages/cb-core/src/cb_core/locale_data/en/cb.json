@@ -6,5 +6,21 @@
   "ai_rate_limited": "Too many AI questions in this group right now, try again in a bit.",
   "transcribe_no_voice": "reply to a voice message to transcribe it",
   "transcribe_too_long": "that voice message is too long to transcribe (max %(max)s seconds)",
-  "transcribe_failed": "could not transcribe that voice message"
+  "transcribe_failed": "could not transcribe that voice message",
+  "publisher_ask_prompt": "Share post?",
+  "publish_need_reply": "You need to reply to a message with the command for me to be able to share it!",
+  "publish_not_channel": "This message is not from a channel!",
+  "publish_needs_media": "This ad needs to have a photo, video or GIF",
+  "publish_sent_for_approval": "Post sent for approval, please wait",
+  "publish_queued": "Post added to the publication queue!",
+  "publish_queued_no_dm": "Post added to the publication queue, but I was unable to send you the times.\n<blockquote> Send /start in my DM so I can send you messages. </blockquote>",
+  "publish_expired": "That post is no longer pending — ask for it again with /publish",
+  "publisher_unavailable": "The publisher network is not configured on this bot.",
+  "not_group_admin": "You are not a group admin!",
+  "repost_need_reply": "You need to reply to a message with the command for me to be able to repost it in this group!",
+  "repost_bad_days": "You need to put a valid number of days!",
+  "repost_scheduled_days": "Repost scheduled for the group for %(days)s days!",
+  "repost_scheduled_nolimit": "Repost scheduled for the group! (no limit of days)",
+  "notify_post_reply_sent": "Reply sent to the owner of the post!",
+  "deletereposts_done": "Posts and reposts canceled!"
 }

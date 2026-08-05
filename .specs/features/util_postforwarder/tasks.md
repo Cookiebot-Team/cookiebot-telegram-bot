@@ -8,8 +8,8 @@ pieces (T1–T3) are prerequisites for `util_postgetter` and
 
 | Task | Status | Notes |
 |------|--------|-------|
-| T1 — Migration `0005` + `scheduled_posts` repository | ⏳ not started | shared with the other two features |
-| T2 — Settings, job names, locale strings, `translate` task | ⏳ not started | shared |
+| T1 — Migration `0005` + `scheduled_posts` repository | ✅ done | shared with the other two features |
+| T2 — Settings, job names, locale strings, `translate` task | 🔄 in progress | shared |
 | T3 — `cb_core/publisher.py` + `cb_core/pending_posts.py` | ⏳ not started | shared pure logic |
 | T4 — Worker: `publisher_approve` (render + fan-out) | ⏳ not started | |
 | T5 — Worker: `deliver_scheduled_posts` cron | ⏳ not started | |

@@ -407,6 +407,7 @@ dependencies = [
     { name = "opentelemetry-sdk" },
     { name = "orjson" },
     { name = "polars" },
+    { name = "price-parser" },
     { name = "prometheus-client" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
@@ -441,6 +442,7 @@ requires-dist = [
     { name = "opentelemetry-sdk", specifier = ">=1.29" },
     { name = "orjson", specifier = ">=3.10" },
     { name = "polars", specifier = ">=1.20" },
+    { name = "price-parser", specifier = ">=0.4" },
     { name = "prometheus-client", specifier = ">=0.21" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pydantic", specifier = ">=2.10" },
@@ -2322,6 +2324,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/db/e2/047c7695f08a9b18614c0e1ec5e70a754455542a21a6d52955f7f05c6268/polars_runtime_32-1.43.0-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:9cd8b813afe67d59e87027dedcaf5c6a06fe602472fd74e1a49f4bafea47259c", size = 55169401, upload-time = "2026-07-21T04:29:25.902Z" },
     { url = "https://files.pythonhosted.org/packages/92/dc/bfd2533c487563c7a21ab7d7af3d78f820b0236e14dc5ee63d46188cd275/polars_runtime_32-1.43.0-cp310-abi3-win_amd64.whl", hash = "sha256:41a75fb3cb4cc574eb21801383578f75cfc374597c22322ef457ab7bac8a3301", size = 52541527, upload-time = "2026-07-21T04:29:29.162Z" },
     { url = "https://files.pythonhosted.org/packages/46/d7/5c47f1bf57479d1671669af9c421f9abf4986b2ddaa64c177244ff811de0/polars_runtime_32-1.43.0-cp310-abi3-win_arm64.whl", hash = "sha256:c285e598dd91e08560e519275b8b8108adbafb438d218a175ebe073dbc2027fb", size = 46552281, upload-time = "2026-07-21T04:29:32.224Z" },
+]
+
+[[package]]
+name = "price-parser"
+version = "0.5.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/54/c7/217521864c88b4ee862fea2fbf49b0eb64be43fe9e4ca696362ea1b4ecef/price_parser-0.5.1.tar.gz", hash = "sha256:6861919270cba24a21c70f30e1444338eb2b03ca2bf2d2ddaaa3287176cfab4c", size = 34441, upload-time = "2026-03-19T11:33:24.102Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9d/99/734dd8b0a0ae187aeeb4d7b35bf6aa85bc755842aff7a2b146885c293811/price_parser-0.5.1-py3-none-any.whl", hash = "sha256:d401fb2a866e86103a19383396bee5ac7f72408a9db6bf3c6edf3210e4212910", size = 14800, upload-time = "2026-03-19T11:33:22.722Z" },
 ]
 
 [[package]]

@@ -6,5 +6,19 @@
   "ai_rate_limited": "Muitas perguntas pra IA nesse grupo agora, tenta de novo daqui a pouco.",
   "transcribe_no_voice": "responde a uma mensagem de voz pra transcrever ela",
   "transcribe_too_long": "essa mensagem de voz é longa demais pra transcrever (máximo %(max)s segundos)",
-  "transcribe_failed": "não consegui transcrever essa mensagem de voz"
+  "transcribe_failed": "não consegui transcrever essa mensagem de voz",
+  "publisher_ask_prompt": "Divulgar postagem?",
+  "publish_need_reply": "Você precisa responder a uma mensagem com o comando para eu poder divulgar ela!",
+  "publish_not_channel": "Essa mensagem não é de um canal!",
+  "publish_needs_media": "O anúncio precisa ter uma foto, vídeo ou GIF",
+  "publish_sent_for_approval": "Post enviado para aprovação, aguarde",
+  "publish_expired": "Essa postagem não está mais pendente — peça de novo com /divulgar",
+  "publisher_unavailable": "A rede de divulgação não está configurada neste bot.",
+  "not_group_admin": "Você não é um administrador do grupo!",
+  "repost_need_reply": "Você precisa responder a uma mensagem com o comando para eu poder repostar ela nesse grupo!",
+  "repost_bad_days": "Você precisa colocar um número de dias válido!",
+  "repost_scheduled_days": "Repostagem programada para o grupo por %(days)s dias!",
+  "repost_scheduled_nolimit": "Repostagem programada para o grupo! (sem limite de dias)",
+  "notify_post_reply_sent": "Resposta enviada ao dono do post!",
+  "deletereposts_done": "Posts e reposts do grupo cancelados!"
 }

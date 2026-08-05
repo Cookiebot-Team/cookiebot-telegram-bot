@@ -36,10 +36,19 @@ BIRTHDAY_COLLAGE = "birthday_collage"
 #: one with arq's native `_defer_by` instead — durable, in Redis, not memory.
 NEXT_BIRTHDAYS_FOLLOWUP = "next_birthdays_followup"
 
+#: `util_postforwarder`'s render-and-fan-out (`cb_worker/jobs/publisher.py`),
+#: enqueued from `cb_gateway/handlers/publisher.py` when the owner approves a
+#: post. Two translations, N currency lookups, two media sends and a write per
+#: consenting group — AGENTS.md §2.4 in every one of its clauses at once.
+#: The delivery cron in the same module needs no constant: it is never
+#: enqueued by name, only registered as a `cron_job`.
+PUBLISHER_APPROVE = "publisher_approve"
+
 __all__ = [
     "BIRTHDAY_COLLAGE",
     "CALLADMS_NOTIFY_ADMINS",
     "EVERYONE_FANOUT",
     "NEXT_BIRTHDAYS_FOLLOWUP",
+    "PUBLISHER_APPROVE",
     "YOUTUBE_SEARCH",
 ]

@@ -87,6 +87,15 @@ DEFAULT_TASKS: dict[str, TaskConfig] = {
         provider="anthropic", model="claude-sonnet-5", max_tokens=1024, effort="medium"
     ),
     "transcribe": TaskConfig(provider="openai", model="whisper-1", max_tokens=0),
+    # util_postforwarder. v1 called Google Cloud Translate v2 directly
+    # (`universal_funcs.py:139-161`); adding `google-cloud-translate` here would
+    # be a second way to reach a third party for one call, which AGENTS.md §5
+    # forbids when one already exists. Temperature 0 because a caption
+    # translation is not a place for sampling, and the same 1020-character
+    # truncation applies afterwards either way.
+    "translate": TaskConfig(
+        provider="anthropic", model="claude-haiku-4-5", max_tokens=2048, temperature=0.0
+    ),
 }
 
 
