@@ -28,7 +28,14 @@ INTEGRATION_DSN = os.environ.get(
 )
 
 # Tables migration 0001/0002 must have created before these tests mean anything.
-_REQUIRED_TABLES = ("groups", "users", "media_objects", "media_blobs", "llm_usage")
+_REQUIRED_TABLES = (
+    "groups",
+    "users",
+    "media_objects",
+    "media_blobs",
+    "llm_usage",
+    "scheduled_posts",
+)
 
 
 @pytest.fixture(scope="session")

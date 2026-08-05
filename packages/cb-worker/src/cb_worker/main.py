@@ -22,6 +22,7 @@ from whenever import Instant
 
 from cb_core import cache, db, metrics, storage, tenancy
 from cb_core.bot import build_bot
+from cb_core.llm import close_llm, init_llm
 from cb_core.logging import configure_logging, get_logger
 from cb_core.migrations import ensure_schema
 from cb_core.settings import Settings, get_settings
@@ -29,6 +30,7 @@ from cb_core.telemetry import context_from_carrier, setup_tracing, span
 from cb_worker.jobs.birthday import next_birthdays_followup, post_birthday_collage
 from cb_worker.jobs.calladms import notify_admins_of_call
 from cb_worker.jobs.everyone import everyone_fanout
+from cb_worker.jobs.publisher import deliver_scheduled_posts, publisher_approve
 from cb_worker.jobs.youtube import search_youtube
 
 settings = get_settings()
@@ -169,6 +171,10 @@ async def startup(ctx: dict[str, Any]) -> None:
     await db.init_pool(settings)
     await cache.init_cache(settings)
     await storage.init_storage(settings)
+    # util_postforwarder translates ad captions through the router rather than
+    # a second translation SDK (design R5.1), so the worker needs one too —
+    # until now only `cb-gateway` did.
+    init_llm(settings)
     from cb_core.cooldowns import COMPILED
 
     metrics.start_metrics_server(settings.metrics_port, "cb-worker", "0.1.0", COMPILED)
@@ -186,6 +192,7 @@ async def shutdown(ctx: dict[str, Any]) -> None:
     bot = ctx.get("bot")
     if bot is not None:
         await bot.session.close()
+    await close_llm()
     await storage.close_storage()
     await cache.close_cache()
     await db.close_pool()
@@ -200,6 +207,8 @@ class WorkerSettings:
         search_youtube,  # util_youtube's search + reply (.specs/features/util_youtube)
         post_birthday_collage,  # util_birthday's collage (.specs/features/util_birthday)
         next_birthdays_followup,  # the durable replacement for v1's threading.Timer
+        publisher_approve,  # util_postforwarder's render + fan-out
+        deliver_scheduled_posts,
         maintain_partitions,
         rollup_yesterday,
         rollup_llm_costs,
@@ -212,6 +221,10 @@ class WorkerSettings:
         cron(rollup_llm_costs, hour=0, minute=25),
         cron(collect_media_garbage, hour=3, minute=40),  # off-peak
         cron(expire_captchas, minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}),
+        # v1's `scheduler_check` re-armed a `threading.Timer(300, ...)` in the
+        # primary bot process only (COOKIEBOT.py:448-455) — a crash between
+        # ticks stopped every scheduled post forever, silently (D-PF-11).
+        cron(deliver_scheduled_posts, minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}),
     ]
     on_startup = startup
     on_shutdown = shutdown

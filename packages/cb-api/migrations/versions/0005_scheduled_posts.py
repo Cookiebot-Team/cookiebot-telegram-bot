@@ -63,8 +63,7 @@ def upgrade() -> None:
         """
     )
     op.execute(
-        "SELECT create_distributed_table('scheduled_posts', 'group_id', "
-        "colocate_with => 'groups')"
+        "SELECT create_distributed_table('scheduled_posts', 'group_id', colocate_with => 'groups')"
     )
 
     # The delivery cron's due sweep, and the per-group view behind `max_posts`.
