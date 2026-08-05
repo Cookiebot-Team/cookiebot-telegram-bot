@@ -32,7 +32,7 @@ _SEEDED_USERNAME = "upcoming_birthday_person"
 
 
 @pytest.fixture(autouse=True)
-def _clean(run: Callable[[Coroutine[Any, Any, Any]], Any]) -> Iterator[None]:
+def _clean_seeded_user(run: Callable[[Coroutine[Any, Any, Any]], Any]) -> Iterator[None]:
     yield
     try:
         db.pool()

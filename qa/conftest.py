@@ -257,9 +257,20 @@ clean_members = _table_cleaner("group_members")
 
 
 @pytest.fixture(autouse=True)
-def _clean(
+def _reset_scenario_state(
     telegram: TelegramFake, run: Callable[[Coroutine[Any, Any, Any]], Any]
 ) -> Iterator[None]:
+    """Everything that must be true at the start of every scenario, anywhere.
+
+    **The name is deliberately distinctive.** This used to be called `_clean`,
+    and an autouse fixture of the same name in a test *module* shadows this one
+    for that module — which silently disables the whole reset below: recorded
+    Telegram calls survive into the next scenario, the admin caches keep the
+    previous scenario's answer, and `group_configs` is never reseeded. Nothing
+    errors; a scenario just starts asserting against the one before it. Two
+    modules had done it by the time it was noticed. Do not name a module-level
+    autouse fixture after this one.
+    """
     telegram.reset()
     telegram.clear_failures()
     # Admin-gated scenarios opt in with `telegram.set_admins(...)`. Starting from
