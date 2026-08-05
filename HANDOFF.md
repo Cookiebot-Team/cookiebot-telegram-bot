@@ -6,10 +6,44 @@ what to do first.
 
 ---
 
-## 0a. Most recent session — the publisher trio (read before §0)
+## 0a. Most recent session (read before §0)
 
-`util_postforwarder`, `util_postgetter` and `util_deletereposts` are ported —
-all of v1's `Bot/Publisher.py`, three feature ids, one slice. **37/53 done.**
+Four features ported: the publisher trio (all of v1's `Bot/Publisher.py`) and
+`x_reverse_search`. **38/53 done, 5 partial, 3 blocked, 7 planned.**
+
+### `x_reverse_search` — and a credential leak fixed
+
+`/buscarfonte` (aliased `/searchsource`, `/buscarfuente`; none of the three
+resolved before). The gateway keeps the utility gate, the reply requirement and
+the file-id resolution; `cb_worker/jobs/reverse_search.py` calls SauceNAO.
+
+**v1 leaks the bot token to a third party.** `reverse_search` builds
+`https://api.telegram.org/file/bot{TOKEN}/{path}` and hands that URL to
+SauceNAO, which fetches it — so the token lands in an external service's access
+logs and any referer it forwards. Anyone holding it controls the bot. v2
+downloads the bytes and uploads them; the URL is never constructed, and
+`test_the_bot_token_is_never_sent_to_saucenao` asserts the outgoing request
+carries a `file` part and no `url`, so reintroducing it fails the build. Now
+FEATURE-MAP **D14**. If v1 is still running, that token should be considered
+exposed and rotated.
+
+### Three "planned" features are actually blocked — check before you start
+
+`fun_partneredcons` and `x_custom_commands` were both marked planned and both
+turn out to need the same private GCS bucket as `fun_death`. I found this only
+because HANDOFF §1.7 says to verify rather than assume, and it is worth
+repeating: **read the v1 source before scheduling a port.**
+`x_custom_commands` is the worst of them — the command *names* are the
+bucket's `Custom/` folder names (`Miscellaneous.py:23`), so without the export
+there is not even a trigger list. One export of `cookiebot-bucket` now unblocks
+four features: `Death/`, `Fight/English` + `Fight/Portuguese`, five
+`Countdown/*`, and `Custom/`.
+
+`scripts/spec.py`'s note on `x_custom_commands` ("the seed of tenant handler
+packs") is still right, but the dependency runs the other way from what the M3
+ordering implies: `platform_tenancy` should **not** wait on it.
+
+### The publisher trio
 
 ```
 ruff check + format --check   clean
