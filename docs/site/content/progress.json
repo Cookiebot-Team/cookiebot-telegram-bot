@@ -1,19 +1,19 @@
 {
   "generated_at": "2026-08-05",
-  "commit": "36fbb3d",
-  "test_summary": "2522 passed, 45 skipped, 159 deselected, 1 warning in 19.96s",
+  "commit": "2c6a66e",
+  "test_summary": "2564 passed, 45 skipped, 159 deselected, 1 warning in 20.61s",
   "totals": {
     "features": 53,
-    "done": 37,
+    "done": 38,
     "partial": 5,
-    "planned": 8,
+    "planned": 7,
     "blocked": 3,
     "spec_scenarios": 63,
     "ported": 139,
     "spec_files": 31,
     "spec_files_covered": 26,
-    "new_specs": 30,
-    "green": 232,
+    "new_specs": 36,
+    "green": 238,
     "failing": 0
   },
   "milestones": [
@@ -38,7 +38,7 @@
     {
       "id": "M3",
       "title": "Publisher, AI, giveaways, owner tooling",
-      "done": 5,
+      "done": 6,
       "total": 11
     },
     {
@@ -1035,20 +1035,21 @@
       "id": "x_reverse_search",
       "title": "Reverse image search",
       "area": "util",
-      "layer": "gateway",
+      "layer": "worker",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/searchsource",
-        "/buscarfonte"
+        "/buscarfonte",
+        "/buscarfuente"
       ],
       "v1_source": "SocialContent.py:113-142",
-      "notes": "",
-      "contract": null,
+      "notes": "v1 handed SauceNAO a Telegram file URL carrying the bot token (D-RS-1); v2 uploads the bytes instead",
+      "contract": "docs/contracts/x_reverse_search.md",
       "scenarios": {
         "spec": 0,
-        "ported": 0,
-        "green": 0,
+        "ported": 6,
+        "green": 6,
         "failing": 0
       },
       "url": "/docs/features/x_reverse_search"
@@ -1789,6 +1790,14 @@
       "state": "v2-only spec"
     },
     {
+      "stem": "x_reverse_search",
+      "spec": 0,
+      "ported": 6,
+      "green": 6,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
       "stem": "x_speech_to_text",
       "spec": 0,
       "ported": 6,
@@ -1864,7 +1873,5 @@
       "addressed": true
     }
   ],
-  "problems": [
-    "x_custom_commands: marked blocked with no .specs/features/x_custom_commands/spec.md or docs/contracts/x_custom_commands.md - the state is undocumented, which reads as neglect rather than a decision"
-  ]
+  "problems": []
 }

@@ -3,13 +3,14 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Reverse image search"
-description: "util · M3"
-status: planned
+description: "v1 handed SauceNAO a Telegram file URL carrying the bot token (D-RS-1); v2 uploads the bytes instead"
+status: done
 milestone: M3
 area: util
-layer: gateway
-triggers: ["/searchsource", "/buscarfonte"]
+layer: worker
+triggers: ["/searchsource", "/buscarfonte", "/buscarfuente"]
 v1_source: "SocialContent.py:113-142"
+contract: "docs/contracts/x_reverse_search.md"
 ---
 <FeatureHeader id="x_reverse_search" />
 

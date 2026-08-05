@@ -36,6 +36,7 @@ from cb_gateway.handlers import (
     postgetter,
     privacy,
     publisher,
+    reverse_search,
     rules,
     setlang,
     ship,
@@ -78,6 +79,7 @@ def build_router() -> Router:
     # order-dependent and is registered further down, on its own router.
     root.include_router(publisher.router)
     root.include_router(deletereposts.router)
+    root.include_router(reverse_search.router)
 
     # ---- join chain: order matters, see the module docstring ----
     # 1. Bookkeeping first. `group_members.joined_at` is recorded even for a

@@ -62,6 +62,10 @@ COMMAND_ALIASES: dict[str, str] = {
     "apagarposts": "deletereposts",
     "publish": "publish", "divulgar": "publish", "publicar": "publish",
     "repost": "repost", "repostar": "repost", "reenviar": "repost",
+    # x_reverse_search. v1 dispatches all three (COOKIEBOT.py:212); the
+    # Portuguese spelling is the one its own users type.
+    "searchsource": "searchsource", "buscarfonte": "searchsource",
+    "buscarfuente": "searchsource",
     # partnered conventions (fun_partneredcons) — /trex was spec'd but missing in v1.
     "bff": "con_bff", "patas": "con_patas", "fursmeet": "con_fursmeet",
     "trex": "con_trex", "furcamp": "con_furcamp", "pawstral": "con_pawstral",

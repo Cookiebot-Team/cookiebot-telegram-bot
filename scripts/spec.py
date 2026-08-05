@@ -193,8 +193,11 @@ FEATURES: tuple[Feature, ...] = (
             "shape (a) ports the voice-to-AI sub-step; shape (b) is a net-new "
             "/transcribe command with no v1 equivalent; QA authored, not ported "
             "(5 scenarios) - see docs/contracts/x_speech_to_text.md"),
-    Feature("x_reverse_search", "util", "Reverse image search", "M3", Status.PLANNED,
-            Layer.GATEWAY, "SocialContent.py:113-142", ("/searchsource", "/buscarfonte")),
+    Feature("x_reverse_search", "util", "Reverse image search", "M3", Status.DONE,
+            Layer.WORKER, "SocialContent.py:113-142",
+            ("/searchsource", "/buscarfonte", "/buscarfuente"),
+            "v1 handed SauceNAO a Telegram file URL carrying the bot token (D-RS-1); "
+            "v2 uploads the bytes instead"),
     Feature("x_distortion", "fun", "Media distortion", "M3", Status.PLANNED,
             Layer.WORKER, "Distortioner.py:114-156", ("/destroy", "/zoar"),
             "v1 busy-waits on a module global; replace with a worker semaphore"),

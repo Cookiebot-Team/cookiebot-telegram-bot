@@ -106,6 +106,13 @@ class Settings(BaseSettings):
     youtube_api_key: str = ""
     youtube_timeout_seconds: float = 5.0
 
+    # x_reverse_search — SauceNAO. v1 set no timeout at all (neither the call
+    # site nor `saucenao_api`); 15s rather than youtube's 5s because SauceNAO
+    # is hashing an uploaded image, not answering from an index. Empty key ->
+    # the search degrades to reverse_no_found, as every other failure does.
+    saucenao_api_key: str = ""
+    saucenao_timeout_seconds: float = 15.0
+
     # util_postforwarder / util_postgetter — v1 hardcoded one deployment's
     # channel ids as module constants (Bot/Publisher.py:20-22). v2 is
     # multi-tenant, so they are configuration, and the publisher is inert until
