@@ -144,6 +144,25 @@ class TestMissingKeys:
                 assert key in en_catalog
                 assert key not in catalog
 
+    def test_this_bots_own_untranslated_strings_are_each_deliberate(self) -> None:
+        """Every `cb.json` key missing from `pt`/`es` answers that group in
+        English. Enumerated so adding one is a decision, not an accident.
+
+        Reported separately from `missing_keys()`, which is about v1's
+        inherited `lib.json` drift — merging the two made an assertion about
+        v1's data change every time this bot added a string.
+        """
+        missing = locales.missing_cb_keys()
+
+        # v1's own ternary has a `pt` arm and an English `else`, with no
+        # Spanish arm at all (`Publisher.py:48`). Preserved as an omission so
+        # the gap stays visible — docs/contracts/util_postgetter.md, D-PG-3.
+        assert missing["es"] == ("publish_queued", "publish_queued_no_dm", "publisher_ask_prompt")
+
+        # v1 never localises either of these: both are English literals in the
+        # source (`Publisher.py:281,285`).
+        assert missing["pt"] == ("publish_queued", "publish_queued_no_dm")
+
 
 class TestLines:
     @pytest.mark.parametrize("lang", locales.LANGUAGES)

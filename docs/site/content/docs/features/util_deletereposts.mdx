@@ -4,12 +4,13 @@
 # `docs-sync --check` fails CI when it drifts.
 title: "Delete scheduled reposts"
 description: "QA says /deletereposts, v1 ships /deleteposts"
-status: planned
+status: done
 milestone: M3
 area: util
 layer: gateway
 triggers: ["/deletereposts", "/deleteposts", "/apagarposts"]
 v1_source: "Publisher.py:316-327"
+contract: "docs/contracts/util_deletereposts.md"
 ---
 <FeatureHeader id="util_deletereposts" />
 

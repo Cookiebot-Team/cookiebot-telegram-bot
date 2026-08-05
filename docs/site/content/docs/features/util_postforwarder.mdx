@@ -3,12 +3,14 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Cross-group post forwarding"
-description: "util · M3"
-status: planned
+description: "scheduled_posts replaces Publisher.db; approve press now authorised by chat"
+status: done
 milestone: M3
 area: util
 layer: worker
+triggers: ["/divulgar", "/publish", "/publicar", "/repost", "/repostar", "/reenviar"]
 v1_source: "Publisher.py:46-92"
+contract: "docs/contracts/util_postforwarder.md"
 ---
 <FeatureHeader id="util_postforwarder" />
 

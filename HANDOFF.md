@@ -6,7 +6,109 @@ what to do first.
 
 ---
 
-## 0. Latest session (read this before §1, which describes the one before it)
+## 0a. Most recent session — the publisher trio (read before §0)
+
+`util_postforwarder`, `util_postgetter` and `util_deletereposts` are ported —
+all of v1's `Bot/Publisher.py`, three feature ids, one slice. **37/53 done.**
+
+```
+ruff check + format --check   clean
+mypy                          clean (112 source files)
+pytest                        2522 passed, 45 skipped
+migrate-check                 upgrade → downgrade → upgrade, all green
+bench                         gate clear
+scripts/cb.py check           exit 0
+```
+
+| Piece | Where |
+|---|---|
+| The schedule table (replaces `Publisher.db`) | migration `0005`, `cb_core/scheduled_posts.py` |
+| Caption pipeline, keyboard, price conversion | `cb_core/publisher.py` |
+| Pending-post cache (was a module dict) | `cb_core/pending_posts.py` |
+| Render + fan-out, and the delivery cron | `cb_worker/jobs/publisher.py` |
+| `/divulgar`, `/repost`, callbacks, reply relay | `cb_gateway/handlers/publisher.py` |
+| The auto-forward prompt | `cb_gateway/handlers/postgetter.py` |
+| `/deleteposts` | `cb_gateway/handlers/deletereposts.py` |
+| Contracts | `docs/contracts/util_{postforwarder,postgetter,deletereposts}.md` |
+
+Five things to know before building on it:
+
+1. **Two registration-order constraints, both silent when wrong**, both now
+   asserted in unit tests. `postgetter.router` must precede `fun_random.router`
+   or every auto-forwarded ad also joins the group's random pool.
+   `publisher.relay_router` must sit after `groupguardian`/`complaint` and
+   before `chat_ai`, which is where v1's `elif` is — after `chat_ai`, the AI
+   answers replies meant for a post's author.
+2. **The publisher is inert until configured.** `CB_POSTMAIL_CHAT_ID`,
+   `CB_POSTMAIL_CHAT_LINK` and `CB_APPROVAL_CHAT_ID` were hardcoded module
+   constants in v1 (`Publisher.py:20-22`). Unset ⇒ `/divulgar` and `/repost`
+   answer `publisher_unavailable`. v1's values are in `.env.example` for
+   reference.
+3. **Translation runs through `cb_core.llm.router()`'s new `translate` task**,
+   not Google Cloud Translate. Same contract (pt + en captions, untranslated
+   on failure — which v1 also does), different vendor, no new SDK. `cb-worker`
+   now calls `init_llm()` at startup, which it never did before.
+4. **Two statements deliberately fan out across shards** —
+   `delete_by_requester` (the cancel) and `find_by_origin_title` (the reply
+   relay). The rows a campaign owns are spread across every group it targeted,
+   so no `group_id` predicate is correct. Both are index-backed single-table
+   statements, both are commented, both are reached only from a human command.
+5. **`price-parser` is a new dependency.** v1 parses ad prices with it
+   (`Publisher.py:12,138`) and reimplementing its symbol/amount handling would
+   silently change every converted caption.
+
+**`pg_durable` was evaluated for these jobs and rejected.** Microsoft's
+in-database durable-execution extension (PG 17/18 — this deployment is 17.2, so
+the version fits). Four blockers: it is explicitly **preview**, with the
+published image saying "do not use it in production"; it has no Citus story at
+all, and every tenant table here is distributed; it needs
+`shared_preload_libraries` plus a superuser background worker, which means a
+custom image on top of stock `citusdata/citus:13.0`; and its steps are a SQL
+DSL plus `df.http()`, while this codebase's jobs are aiogram calls, an LLM
+router with budget enforcement, and Pillow. Its own README names the
+disqualifier: don't use it when "you need arbitrary application logic that does
+not map cleanly to SQL steps". **Stay on arq.** If more multi-step jobs appear,
+the thing to evaluate is **DBOS** — same Postgres-backed checkpointed-replay
+idea, but it decorates Python functions rather than requiring SQL; check its
+Citus story first.
+
+The evaluation did pay for itself: it surfaced a real bug in
+`publisher_approve`. v1's `prepare_post` pops the pending post as its last act,
+safe only because v1 ran it inline in a callback where nothing retries. In an
+arq job it is not — a Telegram 5xx during the second Mural upload left the
+retry with nothing to render, so it answered `publish_expired` and the campaign
+vanished after the first caption had already posted. Fixed: read, and discard
+only once the fan-out commits.
+
+### Two pre-existing defects fixed on the way
+
+- **`qa/conftest.py`'s per-scenario reset was silently disabled for two test
+  modules.** It was an autouse fixture named `_clean`, and
+  `qa/test_util_nextbirthday.py` and (initially) the new postgetter suite each
+  defined their own autouse `_clean` — which shadows it for that module.
+  Recorded Telegram calls survive into the next scenario, the admin caches keep
+  the previous answer, and `group_configs` is never reseeded. Nothing errors;
+  scenarios just start asserting against the one before them. Renamed to
+  `_reset_scenario_state`, with the trap documented on the fixture. **This is
+  the most likely cause of the six unreproducible `core_mediarestrict`
+  failures** seen at the start of the session.
+- **`qa/integration/test_llm_usage.py` compared the client's local date against
+  a UTC rollup window**, so it was red on any host behind UTC between UTC
+  midnight and local midnight.
+
+And two tests that had quietly stopped testing anything:
+`core_llm_provider.feature`'s "no configured model" scenario used the task name
+`"translate"`, which this slice defined — it silently started exercising a
+different error path. And `locales.missing_keys()` merged `lib.json` with
+`cb.json`, so an assertion about **v1's** inherited drift changed every time
+this bot added a string; it now reports on `lib.json` alone, with
+`missing_cb_keys()` and an enumerated test covering v2's own deliberate
+omissions (`publisher_ask_prompt` is absent from `es` on purpose — v1 prompts
+Spanish groups in English).
+
+---
+
+## 0. Previous session
 
 Verified green on this machine, last run:
 

@@ -1,20 +1,20 @@
 {
-  "generated_at": "2026-08-04",
-  "commit": "b9cf615",
-  "test_summary": "2404 passed, 45 skipped, 143 deselected, 1 warning in 13.91s",
+  "generated_at": "2026-08-05",
+  "commit": "84e28d9",
+  "test_summary": "3 failed, 2517 passed, 45 skipped, 159 deselected, 1 warning in 19.87s",
   "totals": {
     "features": 53,
-    "done": 34,
+    "done": 37,
     "partial": 5,
-    "planned": 13,
+    "planned": 10,
     "blocked": 1,
     "spec_scenarios": 63,
-    "ported": 125,
+    "ported": 139,
     "spec_files": 31,
-    "spec_files_covered": 23,
-    "new_specs": 29,
-    "green": 217,
-    "failing": 0
+    "spec_files_covered": 26,
+    "new_specs": 30,
+    "green": 231,
+    "failing": 1
   },
   "milestones": [
     {
@@ -38,7 +38,7 @@
     {
       "id": "M3",
       "title": "Publisher, AI, giveaways, owner tooling",
-      "done": 2,
+      "done": 5,
       "total": 11
     },
     {
@@ -910,15 +910,22 @@
       "area": "util",
       "layer": "worker",
       "milestone": "M3",
-      "status": "planned",
-      "triggers": [],
+      "status": "done",
+      "triggers": [
+        "/divulgar",
+        "/publish",
+        "/publicar",
+        "/repost",
+        "/repostar",
+        "/reenviar"
+      ],
       "v1_source": "Publisher.py:46-92",
-      "notes": "",
-      "contract": null,
+      "notes": "scheduled_posts replaces Publisher.db; approve press now authorised by chat",
+      "contract": "docs/contracts/util_postforwarder.md",
       "scenarios": {
         "spec": 2,
-        "ported": 0,
-        "green": 0,
+        "ported": 8,
+        "green": 8,
         "failing": 0
       },
       "url": "/docs/features/util_postforwarder"
@@ -929,15 +936,15 @@
       "area": "util",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [],
       "v1_source": "Publisher.py:46-55",
-      "notes": "",
-      "contract": null,
+      "notes": "auto-forward prompt; must stay registered ahead of fun_random",
+      "contract": "docs/contracts/util_postgetter.md",
       "scenarios": {
         "spec": 1,
-        "ported": 0,
-        "green": 0,
+        "ported": 4,
+        "green": 4,
         "failing": 0
       },
       "url": "/docs/features/util_postgetter"
@@ -948,7 +955,7 @@
       "area": "util",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/deletereposts",
         "/deleteposts",
@@ -956,11 +963,11 @@
       ],
       "v1_source": "Publisher.py:316-327",
       "notes": "QA says /deletereposts, v1 ships /deleteposts",
-      "contract": null,
+      "contract": "docs/contracts/util_deletereposts.md",
       "scenarios": {
         "spec": 2,
-        "ported": 0,
-        "green": 0,
+        "ported": 2,
+        "green": 2,
         "failing": 0
       },
       "url": "/docs/features/util_deletereposts"
@@ -1018,8 +1025,8 @@
       "contract": "docs/contracts/x_speech_to_text.md",
       "scenarios": {
         "spec": 0,
-        "ported": 5,
-        "green": 5,
+        "ported": 6,
+        "green": 6,
         "failing": 0
       },
       "url": "/docs/features/x_speech_to_text"
@@ -1537,8 +1544,8 @@
       "stem": "core_llm_provider",
       "spec": 0,
       "ported": 9,
-      "green": 9,
-      "failing": 0,
+      "green": 8,
+      "failing": 1,
       "state": "v2-only spec"
     },
     {
@@ -1704,10 +1711,10 @@
     {
       "stem": "util_deletereposts",
       "spec": 2,
-      "ported": 0,
-      "green": 0,
+      "ported": 2,
+      "green": 2,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "util_doomlist",
@@ -1752,18 +1759,18 @@
     {
       "stem": "util_postforwarder",
       "spec": 2,
-      "ported": 0,
-      "green": 0,
+      "ported": 8,
+      "green": 8,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "util_postgetter",
       "spec": 1,
-      "ported": 0,
-      "green": 0,
+      "ported": 4,
+      "green": 4,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "util_youtube",
@@ -1784,8 +1791,8 @@
     {
       "stem": "x_speech_to_text",
       "spec": 0,
-      "ported": 5,
-      "green": 5,
+      "ported": 6,
+      "green": 6,
       "failing": 0,
       "state": "v2-only spec"
     }

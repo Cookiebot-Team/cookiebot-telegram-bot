@@ -41,11 +41,21 @@ def test_registered_ahead_of_fun_random() -> None:
 
     aiogram reproduces that only through registration order, and getting it
     wrong is silent — hence an assertion rather than a comment.
+
+    Read off the source rather than by calling `build_router()`: the routers
+    are module-level singletons, so a second call in the same interpreter
+    raises `RuntimeError: Router is already attached` once any other suite has
+    built the dispatcher. The ordering being asserted *is* the order of these
+    two lines, so reading them is the honest check anyway.
     """
+    import inspect
+
     from cb_gateway.handlers import build_router
 
-    names = [r.name for r in build_router().sub_routers]
-    assert names.index("postgetter") < names.index("fun_random")
+    source = inspect.getsource(build_router)
+    assert source.index("include_router(postgetter.router)") < source.index(
+        "include_router(fun_random.router)"
+    )
 
 
 class _FakeUser:

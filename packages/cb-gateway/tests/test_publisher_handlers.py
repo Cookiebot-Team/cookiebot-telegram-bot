@@ -97,6 +97,31 @@ def test_approval_chat_deny_payload_carries_the_id() -> None:
     assert publisher.parse_deny("nPub 77") == 77
 
 
+# ------------------------------------------------------------- registration order
+
+
+def test_the_reply_relay_is_registered_where_v1s_elif_sits() -> None:
+    """v1 runs `check_notify_post_reply` from an `elif` after the captcha-reply
+    and complaint-reply checks and *before* the conversational-AI branch
+    (`COOKIEBOT.py:296-303`).
+
+    Registered after `chat_ai`, a reply to a published post is answered by the
+    AI instead of reaching the post's author — and nothing errors, which is why
+    this is a test and not a comment. Read off the source: the routers are
+    module-level singletons, so calling `build_router()` twice in one
+    interpreter raises `RuntimeError: Router is already attached`.
+    """
+    import inspect
+
+    from cb_gateway.handlers import build_router
+
+    source = inspect.getsource(build_router)
+    relay = source.index("include_router(publisher.relay_router)")
+    assert source.index("include_router(groupguardian.router)") < relay
+    assert source.index("include_router(complaint.router)") < relay
+    assert relay < source.index("include_router(chat_ai.router)")
+
+
 # --------------------------------------------------------------------- /repost args
 
 
