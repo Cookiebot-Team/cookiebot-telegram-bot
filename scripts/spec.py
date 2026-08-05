@@ -139,9 +139,11 @@ FEATURES: tuple[Feature, ...] = (
     Feature("fun_complaint", "fun", "Complaint bit", "M2", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:240-259",
             ("/complaint", "/milton", "/reclamacao", "/reclamação", "/queja")),
-    Feature("fun_partneredcons", "fun", "Partnered convention posters", "M2", Status.PLANNED,
+    Feature("fun_partneredcons", "fun", "Partnered convention posters", "M2", Status.BLOCKED,
             Layer.GATEWAY, "Miscellaneous.py:261-323",
             ("/bff", "/patas", "/fursmeet", "/trex", "/furcamp", "/pawstral"),
+            "same GCS blocker as fun_death: every branch reads a Countdown/* prefix "
+            "(Miscellaneous.py:18-22) and the single send_photo is unconditional. "
             "/trex is spec'd in QA but missing from v1 - net-new"),
 
     # -------------------------------------------------------------------- util
@@ -199,9 +201,12 @@ FEATURES: tuple[Feature, ...] = (
     Feature("x_owner_commands", "util", "Owner-only operations", "M3", Status.PLANNED,
             Layer.GATEWAY, "COOKIEBOT.py:83-105",
             ("/grupos", "/broadcast", "/leave", "/blacklist", "/stop", "/restart")),
-    Feature("x_custom_commands", "fun", "Per-group custom commands", "M3", Status.PLANNED,
+    Feature("x_custom_commands", "fun", "Per-group custom commands", "M3", Status.BLOCKED,
             Layer.GATEWAY, "Miscellaneous.py:145-158", (),
-            "the seed of tenant handler packs"),
+            "same GCS blocker as fun_death, and worse: the command *names* are the "
+            "bucket's Custom/ folder names (Miscellaneous.py:23), so without the "
+            "export there is not even a trigger list. Still the seed of tenant "
+            "handler packs once the assets land"),
     Feature("x_webhub_login", "platform", "Telegram-login JWT for the web console", "M4", Status.PLANNED,
             Layer.API, "Server.py:25-52", (),
             "v1 regenerates the signing key on every restart (D7) - persist it"),

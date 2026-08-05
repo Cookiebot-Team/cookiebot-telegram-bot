@@ -1,20 +1,20 @@
 {
   "generated_at": "2026-08-05",
-  "commit": "84e28d9",
-  "test_summary": "3 failed, 2517 passed, 45 skipped, 159 deselected, 1 warning in 19.87s",
+  "commit": "36fbb3d",
+  "test_summary": "2522 passed, 45 skipped, 159 deselected, 1 warning in 19.96s",
   "totals": {
     "features": 53,
     "done": 37,
     "partial": 5,
-    "planned": 10,
-    "blocked": 1,
+    "planned": 8,
+    "blocked": 3,
     "spec_scenarios": 63,
     "ported": 139,
     "spec_files": 31,
     "spec_files_covered": 26,
     "new_specs": 30,
-    "green": 231,
-    "failing": 1
+    "green": 232,
+    "failing": 0
   },
   "milestones": [
     {
@@ -735,7 +735,7 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M2",
-      "status": "planned",
+      "status": "blocked",
       "triggers": [
         "/bff",
         "/patas",
@@ -745,7 +745,7 @@
         "/pawstral"
       ],
       "v1_source": "Miscellaneous.py:261-323",
-      "notes": "/trex is spec'd in QA but missing from v1 - net-new",
+      "notes": "same GCS blocker as fun_death: every branch reads a Countdown/* prefix (Miscellaneous.py:18-22) and the single send_photo is unconditional. /trex is spec'd in QA but missing from v1 - net-new",
       "contract": null,
       "scenarios": {
         "spec": 7,
@@ -1107,10 +1107,10 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "blocked",
       "triggers": [],
       "v1_source": "Miscellaneous.py:145-158",
-      "notes": "the seed of tenant handler packs",
+      "notes": "same GCS blocker as fun_death, and worse: the command *names* are the bucket's Custom/ folder names (Miscellaneous.py:23), so without the export there is not even a trigger list. Still the seed of tenant handler packs once the assets land",
       "contract": null,
       "scenarios": {
         "spec": 0,
@@ -1544,8 +1544,8 @@
       "stem": "core_llm_provider",
       "spec": 0,
       "ported": 9,
-      "green": 8,
-      "failing": 1,
+      "green": 9,
+      "failing": 0,
       "state": "v2-only spec"
     },
     {
@@ -1864,5 +1864,7 @@
       "addressed": true
     }
   ],
-  "problems": []
+  "problems": [
+    "x_custom_commands: marked blocked with no .specs/features/x_custom_commands/spec.md or docs/contracts/x_custom_commands.md - the state is undocumented, which reads as neglect rather than a decision"
+  ]
 }
