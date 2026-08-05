@@ -1,19 +1,19 @@
 {
-  "generated_at": "2026-08-02",
-  "commit": "cd10b7a",
-  "test_summary": "2286 passed, 45 skipped, 143 deselected, 1 warning in 20.56s",
+  "generated_at": "2026-08-05",
+  "commit": "2c6a66e",
+  "test_summary": "2564 passed, 45 skipped, 159 deselected, 1 warning in 20.61s",
   "totals": {
     "features": 53,
-    "done": 32,
-    "partial": 7,
-    "planned": 13,
-    "blocked": 1,
+    "done": 38,
+    "partial": 5,
+    "planned": 7,
+    "blocked": 3,
     "spec_scenarios": 63,
-    "ported": 125,
+    "ported": 139,
     "spec_files": 31,
-    "spec_files_covered": 23,
-    "new_specs": 17,
-    "green": 205,
+    "spec_files_covered": 26,
+    "new_specs": 36,
+    "green": 238,
     "failing": 0
   },
   "milestones": [
@@ -38,7 +38,7 @@
     {
       "id": "M3",
       "title": "Publisher, AI, giveaways, owner tooling",
-      "done": 0,
+      "done": 6,
       "total": 11
     },
     {
@@ -735,7 +735,7 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M2",
-      "status": "planned",
+      "status": "blocked",
       "triggers": [
         "/bff",
         "/patas",
@@ -745,7 +745,7 @@
         "/pawstral"
       ],
       "v1_source": "Miscellaneous.py:261-323",
-      "notes": "/trex is spec'd in QA but missing from v1 - net-new",
+      "notes": "same GCS blocker as fun_death: every branch reads a Countdown/* prefix (Miscellaneous.py:18-22) and the single send_photo is unconditional. /trex is spec'd in QA but missing from v1 - net-new",
       "contract": null,
       "scenarios": {
         "spec": 7,
@@ -910,15 +910,22 @@
       "area": "util",
       "layer": "worker",
       "milestone": "M3",
-      "status": "planned",
-      "triggers": [],
+      "status": "done",
+      "triggers": [
+        "/divulgar",
+        "/publish",
+        "/publicar",
+        "/repost",
+        "/repostar",
+        "/reenviar"
+      ],
       "v1_source": "Publisher.py:46-92",
-      "notes": "",
-      "contract": null,
+      "notes": "scheduled_posts replaces Publisher.db; approve press now authorised by chat",
+      "contract": "docs/contracts/util_postforwarder.md",
       "scenarios": {
         "spec": 2,
-        "ported": 0,
-        "green": 0,
+        "ported": 8,
+        "green": 8,
         "failing": 0
       },
       "url": "/docs/features/util_postforwarder"
@@ -929,15 +936,15 @@
       "area": "util",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [],
       "v1_source": "Publisher.py:46-55",
-      "notes": "",
-      "contract": null,
+      "notes": "auto-forward prompt; must stay registered ahead of fun_random",
+      "contract": "docs/contracts/util_postgetter.md",
       "scenarios": {
         "spec": 1,
-        "ported": 0,
-        "green": 0,
+        "ported": 4,
+        "green": 4,
         "failing": 0
       },
       "url": "/docs/features/util_postgetter"
@@ -948,7 +955,7 @@
       "area": "util",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/deletereposts",
         "/deleteposts",
@@ -956,11 +963,11 @@
       ],
       "v1_source": "Publisher.py:316-327",
       "notes": "QA says /deletereposts, v1 ships /deleteposts",
-      "contract": null,
+      "contract": "docs/contracts/util_deletereposts.md",
       "scenarios": {
         "spec": 2,
-        "ported": 0,
-        "green": 0,
+        "ported": 2,
+        "green": 2,
         "failing": 0
       },
       "url": "/docs/features/util_deletereposts"
@@ -992,15 +999,15 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "partial",
+      "status": "done",
       "triggers": [],
       "v1_source": "NaturalLanguage.py:65-77",
-      "notes": "LLM router + cost metering done; handler and quota not written",
-      "contract": null,
+      "notes": "langchain provider behind the router, tenant budget cap, v1's per-user streak on a new cache.bump_clamped primitive, per-group rate limit; QA authored, not ported (7 scenarios) - see docs/contracts/x_conversational_ai.md",
+      "contract": "docs/contracts/x_conversational_ai.md",
       "scenarios": {
         "spec": 0,
-        "ported": 0,
-        "green": 0,
+        "ported": 7,
+        "green": 7,
         "failing": 0
       },
       "url": "/docs/features/x_conversational_ai"
@@ -1009,17 +1016,17 @@
       "id": "x_speech_to_text",
       "title": "Voice transcription",
       "area": "util",
-      "layer": "worker",
+      "layer": "gateway",
       "milestone": "M3",
-      "status": "partial",
+      "status": "done",
       "triggers": [],
       "v1_source": "Audio.py:22-32",
-      "notes": "transcribe task routed to the openai provider; handler not written",
-      "contract": null,
+      "notes": "shape (a) ports the voice-to-AI sub-step; shape (b) is a net-new /transcribe command with no v1 equivalent; QA authored, not ported (5 scenarios) - see docs/contracts/x_speech_to_text.md",
+      "contract": "docs/contracts/x_speech_to_text.md",
       "scenarios": {
         "spec": 0,
-        "ported": 0,
-        "green": 0,
+        "ported": 6,
+        "green": 6,
         "failing": 0
       },
       "url": "/docs/features/x_speech_to_text"
@@ -1028,20 +1035,21 @@
       "id": "x_reverse_search",
       "title": "Reverse image search",
       "area": "util",
-      "layer": "gateway",
+      "layer": "worker",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/searchsource",
-        "/buscarfonte"
+        "/buscarfonte",
+        "/buscarfuente"
       ],
       "v1_source": "SocialContent.py:113-142",
-      "notes": "",
-      "contract": null,
+      "notes": "v1 handed SauceNAO a Telegram file URL carrying the bot token (D-RS-1); v2 uploads the bytes instead",
+      "contract": "docs/contracts/x_reverse_search.md",
       "scenarios": {
         "spec": 0,
-        "ported": 0,
-        "green": 0,
+        "ported": 6,
+        "green": 6,
         "failing": 0
       },
       "url": "/docs/features/x_reverse_search"
@@ -1100,10 +1108,10 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "blocked",
       "triggers": [],
       "v1_source": "Miscellaneous.py:145-158",
-      "notes": "the seed of tenant handler packs",
+      "notes": "same GCS blocker as fun_death, and worse: the command *names* are the bucket's Custom/ folder names (Miscellaneous.py:23), so without the export there is not even a trigger list. Still the seed of tenant handler packs once the assets land",
       "contract": null,
       "scenarios": {
         "spec": 0,
@@ -1704,10 +1712,10 @@
     {
       "stem": "util_deletereposts",
       "spec": 2,
-      "ported": 0,
-      "green": 0,
+      "ported": 2,
+      "green": 2,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "util_doomlist",
@@ -1752,18 +1760,18 @@
     {
       "stem": "util_postforwarder",
       "spec": 2,
-      "ported": 0,
-      "green": 0,
+      "ported": 8,
+      "green": 8,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "util_postgetter",
       "spec": 1,
-      "ported": 0,
-      "green": 0,
+      "ported": 4,
+      "green": 4,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "util_youtube",
@@ -1772,6 +1780,30 @@
       "green": 1,
       "failing": 0,
       "state": "green"
+    },
+    {
+      "stem": "x_conversational_ai",
+      "spec": 0,
+      "ported": 7,
+      "green": 7,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "x_reverse_search",
+      "spec": 0,
+      "ported": 6,
+      "green": 6,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "x_speech_to_text",
+      "spec": 0,
+      "ported": 6,
+      "green": 6,
+      "failing": 0,
+      "state": "v2-only spec"
     }
   ],
   "defects": [

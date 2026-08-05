@@ -13,6 +13,7 @@ the money".
 
 from __future__ import annotations
 
+import asyncio
 import time
 from collections.abc import Sequence
 
@@ -48,11 +49,34 @@ class TaskConfig(msgspec.Struct, frozen=True):
     system: str | None = None
 
 
-# Conservative defaults. `chat` runs the flagship at low effort: thinking stays on
-# (disabling it on these models can put a tool call into visible text and leak
-# <thinking> tags), and effort is the latency/cost lever instead.
+# Conservative defaults. `chat` runs behind the langchain provider so a task can
+# name any "provider:model" string (R1.8) — `effort` is dropped for it, since
+# there is no portable effort parameter across vendors and carrying one that
+# only works for a single backend would defeat the point of the abstraction.
+# `moderate`/`summarize`/`vision`/`transcribe` stay on the hand-rolled providers,
+# so `doomlist`'s live `moderate` calls are untouched by this move.
+#
+# `temperature=1.0` is kept despite `claude-opus-5` (the model this task
+# names today) rejecting it outright — `langchain_provider._resolve` gates
+# it on `catalog.spec_for(...).supports_sampling` before it ever reaches
+# `init_chat_model`, the same filtering `anthropic_provider.py` already does
+# for the hand-rolled path. That gating is the existing, established shape
+# of this abstraction (`catalog.py`'s whole docstring, AGENTS.md §5): a task
+# config states the *intended* sampling temperature, and per-model filtering
+# is what keeps a value that's meaningless for one backend from ever
+# reaching it, without making it meaningless for every backend. Zeroing it
+# out here instead would silently strand v1's temperature=1 intent
+# (`NaturalLanguage.py:34`) the moment `CB_LLM_TASKS` repoints `chat` at a
+# model that *does* accept it (an OpenAI one, say) with no code change —
+# exactly the kind of config-only move R1.8 says this task should support.
 DEFAULT_TASKS: dict[str, TaskConfig] = {
-    "chat": TaskConfig(provider="anthropic", model="claude-opus-5", max_tokens=1024, effort="low"),
+    "chat": TaskConfig(
+        provider="langchain",
+        model="anthropic:claude-opus-5",
+        max_tokens=1024,
+        temperature=1.0,
+        timeout=30.0,
+    ),
     "moderate": TaskConfig(
         provider="anthropic", model="claude-haiku-4-5", max_tokens=256, temperature=0.0
     ),
@@ -63,6 +87,15 @@ DEFAULT_TASKS: dict[str, TaskConfig] = {
         provider="anthropic", model="claude-sonnet-5", max_tokens=1024, effort="medium"
     ),
     "transcribe": TaskConfig(provider="openai", model="whisper-1", max_tokens=0),
+    # util_postforwarder. v1 called Google Cloud Translate v2 directly
+    # (`universal_funcs.py:139-161`); adding `google-cloud-translate` here would
+    # be a second way to reach a third party for one call, which AGENTS.md §5
+    # forbids when one already exists. Temperature 0 because a caption
+    # translation is not a place for sampling, and the same 1020-character
+    # truncation applies afterwards either way.
+    "translate": TaskConfig(
+        provider="anthropic", model="claude-haiku-4-5", max_tokens=2048, temperature=0.0
+    ),
 }
 
 
@@ -106,11 +139,20 @@ class LLMRouter:
         user_id: int | None = None,
         system: str | None = None,
         max_tokens: int | None = None,
+        tenant_id: str | None = None,
     ) -> Completion:
         cfg = self.config_for(task)
         provider = self.provider_for(task)
         breaker = self._breakers[cfg.provider]
         now = time.monotonic()
+
+        if tenant_id is not None:
+            # R2.5: `tenant_id=None` (every caller before this task) skips the
+            # check entirely. A budget refusal is not a provider failure, so it
+            # runs before the breaker gate and outside its accounting.
+            from cb_core.llm.budget import ensure_within_budget
+
+            await ensure_within_budget(tenant_id)
 
         if not breaker.allow(now):
             metrics.llm_requests_total.labels(
@@ -181,29 +223,65 @@ class LLMRouter:
         filename: str = "audio.ogg",
         language: str | None = None,
         group_id: int | None = None,
+        user_id: int | None = None,
+        tenant_id: str | None = None,
     ) -> Transcript:
         cfg = self.config_for("transcribe")
         provider = self.provider_for("transcribe")
+        breaker = self._breakers[cfg.provider]
+        now = time.monotonic()
+
+        if tenant_id is not None:
+            # R2.5, same as complete(): a budget refusal is not a provider
+            # failure, so it runs before the breaker gate and outside its
+            # accounting.
+            from cb_core.llm.budget import ensure_within_budget
+
+            await ensure_within_budget(tenant_id)
+
+        if not breaker.allow(now):
+            metrics.llm_requests_total.labels(
+                provider=cfg.provider, model=cfg.model, task="transcribe", outcome="circuit_open"
+            ).inc()
+            raise LLMUnavailableError(f"{cfg.provider} circuit is open")
+
         start = time.perf_counter()
         outcome = "ok"
+        transcript: Transcript | None = None
         try:
             with span(
                 "llm.transcribe",
                 **{"llm.provider": cfg.provider, "llm.model": cfg.model},  # type: ignore[arg-type]  # see complete()
             ):
-                return await provider.transcribe(
-                    audio, model=cfg.model, filename=filename, language=language
-                )
+                # D-ST-2: v1 set no timeout on this call at all. `LLMProvider.transcribe`
+                # takes no `timeout` kwarg (unlike `complete`), so the bound is applied
+                # here rather than threaded into every provider.
+                async with asyncio.timeout(cfg.timeout):
+                    transcript = await provider.transcribe(
+                        audio, model=cfg.model, filename=filename, language=language
+                    )
+        except TimeoutError as exc:
+            outcome = "error"
+            breaker.record(False, now)
+            raise LLMError(f"{cfg.provider} transcribe timed out after {cfg.timeout}s") from exc
         except Exception:
             outcome = "error"
+            breaker.record(False, now)
             raise
         finally:
+            elapsed = time.perf_counter() - start
             metrics.llm_duration.labels(
                 provider=cfg.provider, model=cfg.model, task="transcribe", outcome=outcome
-            ).observe(time.perf_counter() - start)
+            ).observe(elapsed)
             metrics.llm_requests_total.labels(
                 provider=cfg.provider, model=cfg.model, task="transcribe", outcome=outcome
             ).inc()
+
+        breaker.record(True, now)
+
+        if self._record_usage and group_id is not None:
+            await self._persist_transcript(transcript, group_id, user_id, elapsed)
+        return transcript
 
     async def count_tokens(
         self, task: str, messages: Sequence[Message], *, system: str | None = None
@@ -277,6 +355,51 @@ class LLMRouter:
         except Exception as exc:  # noqa: BLE001
             log.warning("llm.usage_persist_failed", error=str(exc), task=task)
 
+    @staticmethod
+    async def _persist_transcript(
+        transcript: Transcript,
+        group_id: int,
+        user_id: int | None,
+        latency: float,
+    ) -> None:
+        """One `llm_usage` row per transcription call, on the group's shard.
+
+        `Transcript` carries no token usage and whisper has no entry in
+        `catalog.py` — per HANDOFF §6.3 no price is to be guessed — so this
+        records zero tokens and a null `cost_usd` rather than the real
+        `completion.usage`/`completion.cost_usd` `_persist` has. Latency and
+        attribution (group/user/model/provider) are real. Never raises into a
+        handler — losing an accounting row must not cost a reply.
+        """
+        from cb_core import db
+
+        try:
+            await db.execute(
+                """
+                INSERT INTO llm_usage (
+                    usage_id, group_id, user_id, task, provider, model,
+                    input_tokens, output_tokens, cache_read_tokens,
+                    cost_usd, latency_ms, outcome, trace_id
+                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+                """,
+                uuid7(),
+                group_id,
+                user_id,
+                "transcribe",
+                transcript.provider,
+                transcript.model,
+                0,
+                0,
+                0,
+                None,
+                int(latency * 1000),
+                "ok",
+                current_trace_id(),
+                name="llm_usage_insert",
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("llm.usage_persist_failed", error=str(exc), task="transcribe")
+
 
 # ---------------------------------------------------------------------- assembly
 
@@ -288,6 +411,7 @@ def build_router(settings: Settings) -> LLMRouter:
     rather than crashing the service — a bot with no OpenAI key should still boot,
     and only `transcribe` should fail."""
     from cb_core.llm.anthropic_provider import AnthropicProvider
+    from cb_core.llm.langchain_provider import LangchainProvider
     from cb_core.llm.openai_provider import OpenAIProvider
 
     providers: dict[str, LLMProvider] = {}
@@ -303,6 +427,10 @@ def build_router(settings: Settings) -> LLMRouter:
             base_url=settings.openai_base_url or None,
             timeout=settings.llm_timeout_seconds,
         )
+    # Registered unconditionally: credential resolution happens inside each
+    # per-model integration package, so there is nothing to gate on at boot. An
+    # unconfigured model surfaces as an `LLMError` at call time (R1.7).
+    providers["langchain"] = LangchainProvider(settings)
 
     tasks = {name: msgspec.convert(cfg, TaskConfig) for name, cfg in settings.llm_tasks.items()}
     log.info(

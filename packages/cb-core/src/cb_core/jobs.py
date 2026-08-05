@@ -36,10 +36,28 @@ BIRTHDAY_COLLAGE = "birthday_collage"
 #: one with arq's native `_defer_by` instead — durable, in Redis, not memory.
 NEXT_BIRTHDAYS_FOLLOWUP = "next_birthdays_followup"
 
+#: `util_postforwarder`'s render-and-fan-out (`cb_worker/jobs/publisher.py`),
+#: enqueued from `cb_gateway/handlers/publisher.py` when the owner approves a
+#: post. Two translations, N currency lookups, two media sends and a write per
+#: consenting group — AGENTS.md §2.4 in every one of its clauses at once.
+#: The delivery cron in the same module needs no constant: it is never
+#: enqueued by name, only registered as a `cron_job`.
+PUBLISHER_APPROVE = "publisher_approve"
+
+#: `x_reverse_search`'s SauceNAO lookup (`cb_worker/jobs/reverse_search.py`),
+#: enqueued from `cb_gateway/handlers/reverse_search.py`. In the worker for two
+#: reasons: it is an unbounded external call (AGENTS.md §2.4), and the image
+#: bytes are downloaded where they are used, so nothing but scalars goes on the
+#: queue -- and, critically, so no Telegram file URL carrying the bot token is
+#: ever constructed (spec D-RS-1).
+REVERSE_SEARCH = "reverse_search"
+
 __all__ = [
     "BIRTHDAY_COLLAGE",
     "CALLADMS_NOTIFY_ADMINS",
     "EVERYONE_FANOUT",
     "NEXT_BIRTHDAYS_FOLLOWUP",
+    "PUBLISHER_APPROVE",
+    "REVERSE_SEARCH",
     "YOUTUBE_SEARCH",
 ]

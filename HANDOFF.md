@@ -6,7 +6,143 @@ what to do first.
 
 ---
 
-## 0. Latest session (read this before §1, which describes the one before it)
+## 0a. Most recent session (read before §0)
+
+Four features ported: the publisher trio (all of v1's `Bot/Publisher.py`) and
+`x_reverse_search`. **38/53 done, 5 partial, 3 blocked, 7 planned.**
+
+### `x_reverse_search` — and a credential leak fixed
+
+`/buscarfonte` (aliased `/searchsource`, `/buscarfuente`; none of the three
+resolved before). The gateway keeps the utility gate, the reply requirement and
+the file-id resolution; `cb_worker/jobs/reverse_search.py` calls SauceNAO.
+
+**v1 leaks the bot token to a third party.** `reverse_search` builds
+`https://api.telegram.org/file/bot{TOKEN}/{path}` and hands that URL to
+SauceNAO, which fetches it — so the token lands in an external service's access
+logs and any referer it forwards. Anyone holding it controls the bot. v2
+downloads the bytes and uploads them; the URL is never constructed, and
+`test_the_bot_token_is_never_sent_to_saucenao` asserts the outgoing request
+carries a `file` part and no `url`, so reintroducing it fails the build. Now
+FEATURE-MAP **D14**. If v1 is still running, that token should be considered
+exposed and rotated.
+
+### Three "planned" features are actually blocked — check before you start
+
+`fun_partneredcons` and `x_custom_commands` were both marked planned and both
+turn out to need the same private GCS bucket as `fun_death`. I found this only
+because HANDOFF §1.7 says to verify rather than assume, and it is worth
+repeating: **read the v1 source before scheduling a port.**
+`x_custom_commands` is the worst of them — the command *names* are the
+bucket's `Custom/` folder names (`Miscellaneous.py:23`), so without the export
+there is not even a trigger list. One export of `cookiebot-bucket` now unblocks
+four features: `Death/`, `Fight/English` + `Fight/Portuguese`, five
+`Countdown/*`, and `Custom/`.
+
+`scripts/spec.py`'s note on `x_custom_commands` ("the seed of tenant handler
+packs") is still right, but the dependency runs the other way from what the M3
+ordering implies: `platform_tenancy` should **not** wait on it.
+
+### The publisher trio
+
+```
+ruff check + format --check   clean
+mypy                          clean (112 source files)
+pytest                        2522 passed, 45 skipped
+migrate-check                 upgrade → downgrade → upgrade, all green
+bench                         gate clear
+scripts/cb.py check           exit 0
+```
+
+| Piece | Where |
+|---|---|
+| The schedule table (replaces `Publisher.db`) | migration `0005`, `cb_core/scheduled_posts.py` |
+| Caption pipeline, keyboard, price conversion | `cb_core/publisher.py` |
+| Pending-post cache (was a module dict) | `cb_core/pending_posts.py` |
+| Render + fan-out, and the delivery cron | `cb_worker/jobs/publisher.py` |
+| `/divulgar`, `/repost`, callbacks, reply relay | `cb_gateway/handlers/publisher.py` |
+| The auto-forward prompt | `cb_gateway/handlers/postgetter.py` |
+| `/deleteposts` | `cb_gateway/handlers/deletereposts.py` |
+| Contracts | `docs/contracts/util_{postforwarder,postgetter,deletereposts}.md` |
+
+Five things to know before building on it:
+
+1. **Two registration-order constraints, both silent when wrong**, both now
+   asserted in unit tests. `postgetter.router` must precede `fun_random.router`
+   or every auto-forwarded ad also joins the group's random pool.
+   `publisher.relay_router` must sit after `groupguardian`/`complaint` and
+   before `chat_ai`, which is where v1's `elif` is — after `chat_ai`, the AI
+   answers replies meant for a post's author.
+2. **The publisher is inert until configured.** `CB_POSTMAIL_CHAT_ID`,
+   `CB_POSTMAIL_CHAT_LINK` and `CB_APPROVAL_CHAT_ID` were hardcoded module
+   constants in v1 (`Publisher.py:20-22`). Unset ⇒ `/divulgar` and `/repost`
+   answer `publisher_unavailable`. v1's values are in `.env.example` for
+   reference.
+3. **Translation runs through `cb_core.llm.router()`'s new `translate` task**,
+   not Google Cloud Translate. Same contract (pt + en captions, untranslated
+   on failure — which v1 also does), different vendor, no new SDK. `cb-worker`
+   now calls `init_llm()` at startup, which it never did before.
+4. **Two statements deliberately fan out across shards** —
+   `delete_by_requester` (the cancel) and `find_by_origin_title` (the reply
+   relay). The rows a campaign owns are spread across every group it targeted,
+   so no `group_id` predicate is correct. Both are index-backed single-table
+   statements, both are commented, both are reached only from a human command.
+5. **`price-parser` is a new dependency.** v1 parses ad prices with it
+   (`Publisher.py:12,138`) and reimplementing its symbol/amount handling would
+   silently change every converted caption.
+
+**`pg_durable` was evaluated for these jobs and rejected.** Microsoft's
+in-database durable-execution extension (PG 17/18 — this deployment is 17.2, so
+the version fits). Four blockers: it is explicitly **preview**, with the
+published image saying "do not use it in production"; it has no Citus story at
+all, and every tenant table here is distributed; it needs
+`shared_preload_libraries` plus a superuser background worker, which means a
+custom image on top of stock `citusdata/citus:13.0`; and its steps are a SQL
+DSL plus `df.http()`, while this codebase's jobs are aiogram calls, an LLM
+router with budget enforcement, and Pillow. Its own README names the
+disqualifier: don't use it when "you need arbitrary application logic that does
+not map cleanly to SQL steps". **Stay on arq.** If more multi-step jobs appear,
+the thing to evaluate is **DBOS** — same Postgres-backed checkpointed-replay
+idea, but it decorates Python functions rather than requiring SQL; check its
+Citus story first.
+
+The evaluation did pay for itself: it surfaced a real bug in
+`publisher_approve`. v1's `prepare_post` pops the pending post as its last act,
+safe only because v1 ran it inline in a callback where nothing retries. In an
+arq job it is not — a Telegram 5xx during the second Mural upload left the
+retry with nothing to render, so it answered `publish_expired` and the campaign
+vanished after the first caption had already posted. Fixed: read, and discard
+only once the fan-out commits.
+
+### Two pre-existing defects fixed on the way
+
+- **`qa/conftest.py`'s per-scenario reset was silently disabled for two test
+  modules.** It was an autouse fixture named `_clean`, and
+  `qa/test_util_nextbirthday.py` and (initially) the new postgetter suite each
+  defined their own autouse `_clean` — which shadows it for that module.
+  Recorded Telegram calls survive into the next scenario, the admin caches keep
+  the previous answer, and `group_configs` is never reseeded. Nothing errors;
+  scenarios just start asserting against the one before them. Renamed to
+  `_reset_scenario_state`, with the trap documented on the fixture. **This is
+  the most likely cause of the six unreproducible `core_mediarestrict`
+  failures** seen at the start of the session.
+- **`qa/integration/test_llm_usage.py` compared the client's local date against
+  a UTC rollup window**, so it was red on any host behind UTC between UTC
+  midnight and local midnight.
+
+And two tests that had quietly stopped testing anything:
+`core_llm_provider.feature`'s "no configured model" scenario used the task name
+`"translate"`, which this slice defined — it silently started exercising a
+different error path. And `locales.missing_keys()` merged `lib.json` with
+`cb.json`, so an assertion about **v1's** inherited drift changed every time
+this bot added a string; it now reports on `lib.json` alone, with
+`missing_cb_keys()` and an enumerated test covering v2's own deliberate
+omissions (`publisher_ask_prompt` is absent from `es` on purpose — v1 prompts
+Spanish groups in English).
+
+---
+
+## 0. Previous session
 
 Verified green on this machine, last run:
 
@@ -294,8 +430,31 @@ directly.
 prose.** `fun_random`, `util_embedder`, `fun_dice`, `fun_ship`, `fun_firecracker`,
 `fun_complaint`, `util_everyone`, `util_calladms` (both the group ping and the
 DM fan-out), `fun_battle`'s two-people shape, private-chat dispatch,
-`util_youtube`, and `util_birthday`/`util_nextbirthday`'s manual shape have
-all landed since it was written.
+`util_youtube`, `util_birthday`/`util_nextbirthday`'s manual shape,
+`x_conversational_ai` and `x_speech_to_text` have all landed since it was
+written.
+
+**`x_conversational_ai` + `x_speech_to_text` — done, one slice.** Both ship
+together (`docs/contracts/x_conversational_ai.md`,
+`docs/contracts/x_speech_to_text.md`): a new langchain-backed LLM provider
+behind `cb_core.llm.router()` (only the `chat` task moved onto it —
+`moderate`/`summarize`/`vision`/`transcribe` stay on the hand-rolled
+providers, so `util_doomlist`'s live `moderate` calls are untouched), the
+first-ever enforcement of `Tenant.monthly_llm_budget_usd` (a hard cap, in
+both `complete()` and `transcribe()`, over budget refuses and an infra
+failure fails open), v1's per-user AI-reply streak ported onto a new
+`cache.bump_clamped` Lua primitive, and `x_speech_to_text`'s net-new
+`/transcribe` command alongside the ported voice→AI sub-step. Neither
+feature had a QA scenario anywhere — `qa/features/x_conversational_ai.
+feature` (7 scenarios) and `qa/features/x_speech_to_text.feature` (5
+scenarios) are authored, not ported. **Both acceptance suites need a live
+Postgres for a non-obvious reason**: filters registered ahead of these
+routers in `build_router` — `core_groupguardian`'s captcha-reply check
+(ahead of `chat_ai`, queries the DB for every plain group text message) and
+`core_mediarestrict`'s join-time lookup (ahead of `transcribe`, queries the
+DB for every voice note) — raise instead of failing open when there is no
+live pool, so the whole file skips cleanly rather than crashing when
+Postgres is unreachable.
 
 The next batch, in dependency order, now that the member registry exists:
 

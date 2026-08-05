@@ -86,6 +86,18 @@ class Settings(BaseSettings):
     llm_allow_ambient_credentials: bool = True
     # task -> {provider, model, max_tokens, effort, thinking, temperature, timeout, system}
     llm_tasks: dict[str, dict[str, object]] = Field(default_factory=dict)
+    # x_conversational_ai: per-group rate limit on top of v1's per-user streak
+    # counter and the tenant spend cap (design.md R3.4). ai_chat_group_limit
+    # triggers within ai_chat_window_seconds before ai_rate_limited fires.
+    ai_chat_group_limit: int = 20
+    ai_chat_window_seconds: int = 60
+
+    # x_speech_to_text — duration cap checked against message.voice.duration
+    # before any download (D-ST-3), so an oversized note costs neither a
+    # download nor a transcription. The transcription *timeout* is deliberately
+    # not a separate setting: it is DEFAULT_TASKS["transcribe"].timeout,
+    # already overridable through CB_LLM_TASKS.
+    transcribe_max_duration_seconds: int = 300
 
     # util_youtube — v1 used google-api-python-client (Bot/SocialContent.py:20);
     # v2 calls the same REST endpoint directly over the httpx client already in
@@ -93,6 +105,36 @@ class Settings(BaseSettings):
     # one feature (AGENTS.md §5).
     youtube_api_key: str = ""
     youtube_timeout_seconds: float = 5.0
+
+    # x_reverse_search — SauceNAO. v1 set no timeout at all (neither the call
+    # site nor `saucenao_api`); 15s rather than youtube's 5s because SauceNAO
+    # is hashing an uploaded image, not answering from an index. Empty key ->
+    # the search degrades to reverse_no_found, as every other failure does.
+    saucenao_api_key: str = ""
+    saucenao_timeout_seconds: float = 15.0
+
+    # util_postforwarder / util_postgetter — v1 hardcoded one deployment's
+    # channel ids as module constants (Bot/Publisher.py:20-22). v2 is
+    # multi-tenant, so they are configuration, and the publisher is inert until
+    # a deployment opts in by setting them: half-running a publisher network
+    # without a Mural to render into is worse than not running one.
+    postmail_chat_id: int = 0
+    postmail_chat_link: str = ""
+    approval_chat_id: int = 0
+    #: v1 suppressed the author button for one hardcoded first name
+    #: (`'Mekhy' not in origin_user['first_name']`, Publisher.py:197). The
+    #: default reproduces that exactly; a deployment that is not that one can
+    #: change it without editing code.
+    publisher_hidden_author_names: tuple[str, ...] = ("Mekhy",)
+    #: How long a submitted-but-not-yet-approved post stays in the shared cache.
+    #: v1's `cache_posts` dict never expired, but it also never survived a
+    #: restart, so a day is strictly more generous than what v1 delivered.
+    publisher_pending_ttl_seconds: int = 86400
+    #: exchangerate-api v6, for `convert_prices_in_text` (Publisher.py:167-168).
+    #: Unset -> price conversion is skipped and captions keep their original
+    #: amounts, which is also what v1 did whenever the call failed.
+    exchangerate_api_key: str = ""
+    exchangerate_timeout_seconds: float = 10.0  # v1's own timeout, :168
 
     # telemetry
     otlp_endpoint: str = "http://localhost:4317"

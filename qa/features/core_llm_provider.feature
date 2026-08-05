@@ -14,9 +14,13 @@ Feature: LLM provider routing
     When the bot asks the "chat" task to answer "hello"
     Then the call is made with model "other-model"
 
+  # The task name here must be one `DEFAULT_TASKS` will never define. It used
+  # to be "translate", which stopped testing anything the day util_postforwarder
+  # added a translate task — the scenario silently started exercising "provider
+  # not configured" instead. A deliberate misspelling cannot be adopted later.
   Scenario: A task with no configured model fails loudly
     Given the "chat" task is configured for provider "stub" model "stub-model"
-    When the bot asks the "translate" task to answer "hello"
+    When the bot asks the "summarise_but_misspelled" task to answer "hello"
     Then the router reports that no model is configured
 
   Scenario: A configured provider that is not available

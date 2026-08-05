@@ -39,9 +39,18 @@ dependencies = [
     "structlog>=25.1",
     # http
     "httpx[http2]>=0.28",
+    # util_postforwarder: v1 parses ad prices with this exact library
+    # (Publisher.py:12,138). Pure Python, no transitive deps, and the one thing
+    # this port must not reimplement — its symbol/amount/locale handling is what
+    # decides the converted number in every ad caption.
+    "price-parser>=0.4",
     # llm providers
     "anthropic>=0.120",
     "openai>=2.0",
+    # multi-provider routing via `init_chat_model` — see llm/langchain_provider.py
+    "langchain>=0.3",
+    "langchain-anthropic>=0.3",
+    "langchain-openai>=0.3",
     # pure-python mode shadow module; the compiled .so does not need it at runtime,
     # but the uncompiled fallback import does.
     "Cython>=3.0.11",

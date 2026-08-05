@@ -139,9 +139,11 @@ FEATURES: tuple[Feature, ...] = (
     Feature("fun_complaint", "fun", "Complaint bit", "M2", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:240-259",
             ("/complaint", "/milton", "/reclamacao", "/reclamação", "/queja")),
-    Feature("fun_partneredcons", "fun", "Partnered convention posters", "M2", Status.PLANNED,
+    Feature("fun_partneredcons", "fun", "Partnered convention posters", "M2", Status.BLOCKED,
             Layer.GATEWAY, "Miscellaneous.py:261-323",
             ("/bff", "/patas", "/fursmeet", "/trex", "/furcamp", "/pawstral"),
+            "same GCS blocker as fun_death: every branch reads a Countdown/* prefix "
+            "(Miscellaneous.py:18-22) and the single send_photo is unconditional. "
             "/trex is spec'd in QA but missing from v1 - net-new"),
 
     # -------------------------------------------------------------------- util
@@ -167,34 +169,47 @@ FEATURES: tuple[Feature, ...] = (
     Feature("core_musicdetection", "core", "Identify music in voice notes", "M3", Status.PLANNED,
             Layer.WORKER, "Audio.py:6-20", (),
             "ShazamAPI is unofficial - feature-flag it behind a breaker"),
-    Feature("util_postforwarder", "util", "Cross-group post forwarding", "M3", Status.PLANNED,
-            Layer.WORKER, "Publisher.py:46-92"),
-    Feature("util_postgetter", "util", "Receive forwarded posts", "M3", Status.PLANNED,
-            Layer.GATEWAY, "Publisher.py:46-55"),
-    Feature("util_deletereposts", "util", "Delete scheduled reposts", "M3", Status.PLANNED,
+    Feature("util_postforwarder", "util", "Cross-group post forwarding", "M3", Status.DONE,
+            Layer.WORKER, "Publisher.py:46-92",
+            ("/divulgar", "/publish", "/publicar", "/repost", "/repostar", "/reenviar"),
+            "scheduled_posts replaces Publisher.db; approve press now authorised by chat"),
+    Feature("util_postgetter", "util", "Receive forwarded posts", "M3", Status.DONE,
+            Layer.GATEWAY, "Publisher.py:46-55", (),
+            "auto-forward prompt; must stay registered ahead of fun_random"),
+    Feature("util_deletereposts", "util", "Delete scheduled reposts", "M3", Status.DONE,
             Layer.GATEWAY, "Publisher.py:316-327", ("/deletereposts", "/deleteposts", "/apagarposts"),
             "QA says /deletereposts, v1 ships /deleteposts"),
 
     # ---------------------------------- shipped in v1, never specified in QA
     Feature("x_giveaways", "util", "Giveaways", "M3", Status.PLANNED,
             Layer.GATEWAY, "Giveaways.py:25-173", ("/giveaway",), "no QA scenario exists - write one"),
-    Feature("x_conversational_ai", "fun", "Conversational AI replies", "M3", Status.PARTIAL,
+    Feature("x_conversational_ai", "fun", "Conversational AI replies", "M3", Status.DONE,
             Layer.GATEWAY, "NaturalLanguage.py:65-77", (),
-            "LLM router + cost metering done; handler and quota not written"),
-    Feature("x_speech_to_text", "util", "Voice transcription", "M3", Status.PARTIAL,
-            Layer.WORKER, "Audio.py:22-32", (),
-            "transcribe task routed to the openai provider; handler not written"),
-    Feature("x_reverse_search", "util", "Reverse image search", "M3", Status.PLANNED,
-            Layer.GATEWAY, "SocialContent.py:113-142", ("/searchsource", "/buscarfonte")),
+            "langchain provider behind the router, tenant budget cap, v1's per-user "
+            "streak on a new cache.bump_clamped primitive, per-group rate limit; "
+            "QA authored, not ported (7 scenarios) - see docs/contracts/x_conversational_ai.md"),
+    Feature("x_speech_to_text", "util", "Voice transcription", "M3", Status.DONE,
+            Layer.GATEWAY, "Audio.py:22-32", (),
+            "shape (a) ports the voice-to-AI sub-step; shape (b) is a net-new "
+            "/transcribe command with no v1 equivalent; QA authored, not ported "
+            "(5 scenarios) - see docs/contracts/x_speech_to_text.md"),
+    Feature("x_reverse_search", "util", "Reverse image search", "M3", Status.DONE,
+            Layer.WORKER, "SocialContent.py:113-142",
+            ("/searchsource", "/buscarfonte", "/buscarfuente"),
+            "v1 handed SauceNAO a Telegram file URL carrying the bot token (D-RS-1); "
+            "v2 uploads the bytes instead"),
     Feature("x_distortion", "fun", "Media distortion", "M3", Status.PLANNED,
             Layer.WORKER, "Distortioner.py:114-156", ("/destroy", "/zoar"),
             "v1 busy-waits on a module global; replace with a worker semaphore"),
     Feature("x_owner_commands", "util", "Owner-only operations", "M3", Status.PLANNED,
             Layer.GATEWAY, "COOKIEBOT.py:83-105",
             ("/grupos", "/broadcast", "/leave", "/blacklist", "/stop", "/restart")),
-    Feature("x_custom_commands", "fun", "Per-group custom commands", "M3", Status.PLANNED,
+    Feature("x_custom_commands", "fun", "Per-group custom commands", "M3", Status.BLOCKED,
             Layer.GATEWAY, "Miscellaneous.py:145-158", (),
-            "the seed of tenant handler packs"),
+            "same GCS blocker as fun_death, and worse: the command *names* are the "
+            "bucket's Custom/ folder names (Miscellaneous.py:23), so without the "
+            "export there is not even a trigger list. Still the seed of tenant "
+            "handler packs once the assets land"),
     Feature("x_webhub_login", "platform", "Telegram-login JWT for the web console", "M4", Status.PLANNED,
             Layer.API, "Server.py:25-52", (),
             "v1 regenerates the signing key on every restart (D7) - persist it"),

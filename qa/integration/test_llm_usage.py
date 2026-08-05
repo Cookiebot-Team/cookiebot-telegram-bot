@@ -65,6 +65,20 @@ def _router(completion: Completion) -> LLMRouter:
     )
 
 
+def _rollup_day() -> dt.date:
+    """The day `cb_rollup_llm_day` will actually match, not the runner's.
+
+    `llm_usage.created_at` is stamped by `now()` and the rollup's window is
+    `created_at >= target AND created_at < target + 1`, so the boundary is the
+    Postgres session's timezone — UTC. `dt.date.today()` is the *client's* local
+    date, and for any host behind UTC the two disagree between UTC midnight and
+    local midnight (this suite ran red at 00:20 UTC on a UTC-3 machine: the rows
+    landed on the 5th, the rollup was asked for the 4th, and it aggregated
+    nothing).
+    """
+    return dt.datetime.now(dt.UTC).date()
+
+
 def _completion(**kw: object) -> Completion:
     base: dict[str, object] = {
         "text": "hello",
@@ -162,7 +176,7 @@ class TestRollup:
                 )
             )
 
-        today = dt.date.today()
+        today = _rollup_day()
         run(pg.execute("SELECT cb_rollup_llm_day($1)", today))
 
         row = run(
@@ -186,7 +200,7 @@ class TestRollup:
                 "chat", [Message(role="user", content="hi")], group_id=world.group_id
             )
         )
-        today = dt.date.today()
+        today = _rollup_day()
         run(pg.execute("SELECT cb_rollup_llm_day($1)", today))
         run(pg.execute("SELECT cb_rollup_llm_day($1)", today))
         row = run(

@@ -11,10 +11,13 @@ the rules in AGENTS.md §4. They skip on a plain Postgres without Citus.
 from __future__ import annotations
 
 from collections.abc import Callable, Coroutine
+from datetime import UTC, datetime
 from types import ModuleType
 from typing import TYPE_CHECKING, Any
 
 import pytest
+
+from cb_core.llm.budget import _ROLLED_UP_SQL, _TODAY_LIVE_SQL, _query_month_to_date_usd
 
 if TYPE_CHECKING:
     from qa.integration.factories import World
@@ -104,29 +107,29 @@ class TestDistribution:
             )
 
 
+def _task_count(
+    citus: ModuleType,
+    run: Callable[[Coroutine[Any, Any, Any]], Any],
+    sql: str,
+    *args: object,
+) -> int:
+    plan = run(citus.fetch(f"EXPLAIN (COSTS OFF) {sql}", *args))
+    for row in plan:
+        line = str(row[0]).strip()
+        if line.startswith("Task Count:"):
+            return int(line.split(":")[1])
+    # A plan with no Task Count line never reached the Citus planner —
+    # that means the table was not distributed at all.
+    raise AssertionError("no Task Count in plan:\n" + "\n".join(str(r[0]) for r in plan))
+
+
 class TestRouterQueries:
     """Queries on the reply path must touch exactly one shard."""
-
-    def _task_count(
-        self,
-        citus: ModuleType,
-        run: Callable[[Coroutine[Any, Any, Any]], Any],
-        sql: str,
-        *args: object,
-    ) -> int:
-        plan = run(citus.fetch(f"EXPLAIN (COSTS OFF) {sql}", *args))
-        for row in plan:
-            line = str(row[0]).strip()
-            if line.startswith("Task Count:"):
-                return int(line.split(":")[1])
-        # A plan with no Task Count line never reached the Citus planner —
-        # that means the table was not distributed at all.
-        raise AssertionError("no Task Count in plan:\n" + "\n".join(str(r[0]) for r in plan))
 
     def test_config_lookup_is_single_shard(
         self, citus: ModuleType, run: Callable[[Coroutine[Any, Any, Any]], Any], world: World
     ) -> None:
-        n = self._task_count(
+        n = _task_count(
             citus, run, "SELECT * FROM group_configs WHERE group_id = $1", world.group_id
         )
         assert n == 1
@@ -134,7 +137,7 @@ class TestRouterQueries:
     def test_random_media_is_single_shard(
         self, citus: ModuleType, run: Callable[[Coroutine[Any, Any, Any]], Any], world: World
     ) -> None:
-        n = self._task_count(
+        n = _task_count(
             citus,
             run,
             "SELECT * FROM media_objects WHERE group_id = $1 AND kind = ANY($2::text[]) "
@@ -148,7 +151,7 @@ class TestRouterQueries:
         self, citus: ModuleType, run: Callable[[Coroutine[Any, Any, Any]], Any], world: World
     ) -> None:
         """Distributed ⋈ reference stays local — no exchange."""
-        n = self._task_count(
+        n = _task_count(
             citus,
             run,
             """
@@ -163,7 +166,7 @@ class TestRouterQueries:
     def test_colocated_join_is_single_shard(
         self, citus: ModuleType, run: Callable[[Coroutine[Any, Any, Any]], Any], world: World
     ) -> None:
-        n = self._task_count(
+        n = _task_count(
             citus,
             run,
             """
@@ -178,13 +181,85 @@ class TestRouterQueries:
     def test_usage_lookup_is_single_shard(
         self, citus: ModuleType, run: Callable[[Coroutine[Any, Any, Any]], Any], world: World
     ) -> None:
-        n = self._task_count(
+        n = _task_count(
             citus,
             run,
             "SELECT sum(cost_usd) FROM llm_usage WHERE group_id = $1",
             world.group_id,
         )
         assert n == 1
+
+
+class TestTenantBudgetFanOut:
+    """`cb_core.llm.budget._query_month_to_date_usd` is a deliberate, documented
+    exception to AGENTS.md §4 rule 1 ("every hot query filters on `group_id`").
+
+    It filters only on `groups.tenant_id` — a tenant-scoped total has no other
+    shape over a table sharded on `group_id` — so Citus fans it out to every
+    shard instead of routing to one (see the module docstring and
+    `_query_month_to_date_usd`'s own). That is tolerated only because the
+    query is never on the reply path: `budget.month_to_date_usd` serves a
+    cached total and refreshes it in the background, blocking synchronously
+    only on a tenant's genuinely first-ever check. The long-term fix is a
+    worker rollup into `tenant_monthly_cost`
+    (`packages/cb-api/migrations/versions/0003_tenants.py:78-92`, unpopulated
+    since it was added) that would turn this back into a single-shard read.
+
+    This class does not check *when* the query runs — it has no way to. What
+    it pins is (a) both queries still execute cleanly against real Citus, so
+    no one "fixes" the fan-out with a correlated subquery Citus can't plan
+    (the class of failure that has bitten this repo before: "correlated
+    subqueries are not supported when the FROM clause contains a reference
+    table"), and (b) the aggregate is still the multi-shard fan-out it was
+    measured to be, so if this ever gets put back on the reply path, the
+    reason it was moved off is sitting right next to the proof.
+    """
+
+    def test_both_queries_execute_on_real_citus(
+        self, citus: ModuleType, run: Callable[[Coroutine[Any, Any, Any]], Any], world: World
+    ) -> None:
+        """Calling `_query_month_to_date_usd` runs both of budget.py's queries
+        (the `llm_daily_cost` rollup and the `llm_usage` today-live sum) in
+        sequence against the real Citus container — not EXPLAIN, an actual
+        execution — so a planner-level failure that only shows up against
+        real Citus (and never against plain Postgres) fails this test instead
+        of shipping.
+        """
+        # `world` is unused directly but its group (tenant 'cookiebot', the
+        # default — see qa/integration/test_group_config.py:79-81) gives the
+        # join something real to scan instead of an empty `groups` table.
+        total = run(_query_month_to_date_usd("cookiebot"))
+        assert total >= 0.0
+
+    def test_month_to_date_aggregate_is_multi_shard(
+        self, citus: ModuleType, run: Callable[[Coroutine[Any, Any, Any]], Any], world: World
+    ) -> None:
+        """Task Count > 1 for both queries, not pinned to a specific number:
+        `CB_CITUS_SHARD_COUNT` is a deploy-time setting
+        (`.env.example`, `packages/cb-api/migrations/env.py`), and hardcoding
+        today's value (8) would make this test break on an unrelated config
+        change instead of on the regression it exists to catch — someone
+        adding a `group_id` predicate that silently turns this back into a
+        router query without anyone noticing the fan-out documented above is
+        gone.
+        """
+        rolled_up_count = _task_count(
+            citus,
+            run,
+            _ROLLED_UP_SQL,
+            "cookiebot",
+            datetime.now(UTC).date().replace(day=1),
+            datetime.now(UTC).date(),
+        )
+        today_live_count = _task_count(
+            citus,
+            run,
+            _TODAY_LIVE_SQL,
+            "cookiebot",
+            datetime.now(UTC),
+        )
+        assert rolled_up_count > 1, "rolled-up aggregate is expected to fan out across shards"
+        assert today_live_count > 1, "today-live aggregate is expected to fan out across shards"
 
 
 class TestConstraints:

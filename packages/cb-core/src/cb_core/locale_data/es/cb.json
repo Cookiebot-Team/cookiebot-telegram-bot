@@ -1,4 +1,23 @@
 {
   "handler_error": "⚠️ Algo salió mal al ejecutar eso.\n<blockquote>%(reason)s</blockquote>\nReferencia: <code>%(trace)s</code>",
-  "config_write_failed": "ERROR: no se pudo guardar la configuración\n<blockquote>%(reason)s</blockquote>\nReferencia: <code>%(trace)s</code>"
+  "config_write_failed": "ERROR: no se pudo guardar la configuración\n<blockquote>%(reason)s</blockquote>\nReferencia: <code>%(trace)s</code>",
+  "ai_unavailable": "La IA no está disponible por ahora. Intenta de nuevo más tarde.",
+  "ai_quota_spent": "El presupuesto de IA de este grupo se acabó este mes. Vuelve el próximo mes.",
+  "ai_rate_limited": "Demasiadas preguntas para la IA en este grupo ahora mismo, intenta de nuevo en un rato.",
+  "transcribe_no_voice": "responde a un mensaje de voz para transcribirlo",
+  "transcribe_too_long": "ese mensaje de voz es muy largo para transcribir (máximo %(max)s segundos)",
+  "transcribe_failed": "no se pudo transcribir ese mensaje de voz",
+  "publish_need_reply": "¡Debes responder un mensaje con el comando para que pueda compartirlo!",
+  "publish_not_channel": "¡Este mensaje no es de un canal!",
+  "publish_needs_media": "¡El anuncio necesita tener una foto, vídeo o GIF!",
+  "publish_sent_for_approval": "Publicación enviada para aprobación, por favor espere",
+  "publish_expired": "Esa publicación ya no está pendiente — pídela de nuevo con /publicar",
+  "publisher_unavailable": "La red de publicación no está configurada en este bot.",
+  "not_group_admin": "¡No eres un administrador del grupo!",
+  "repost_need_reply": "¡Debes responder un mensaje con el comando para que pueda compartirlo en este grupo!",
+  "repost_bad_days": "¡Debes poner un número de días válido!",
+  "repost_scheduled_days": "¡Reposteo programado para el grupo por %(days)s días!",
+  "repost_scheduled_nolimit": "¡Reposteo programado para el grupo! (sin límite de días)",
+  "notify_post_reply_sent": "¡Respuesta enviada al dueño del post!",
+  "deletereposts_done": "¡Publicaciones y reenvíos del grupo cancelados!"
 }

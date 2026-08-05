@@ -122,6 +122,10 @@ llm_requests_total = Counter(
 llm_refusals_total = Counter(
     "cb_llm_refusals_total", "Provider safety refusals", ["provider", "model", "category"]
 )
+llm_budget_check_failed_total = Counter(
+    "cb_llm_budget_check_failed_total",
+    "Tenant budget check failed open on a cache or database error (R2.4)",
+)
 
 # ---- build info ----
 build_info = Gauge("cb_build_info", "Build metadata", ["service", "version", "cython"])

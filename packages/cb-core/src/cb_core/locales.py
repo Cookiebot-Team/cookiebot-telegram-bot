@@ -110,6 +110,17 @@ def _load_lines(text_body: str) -> tuple[str, ...]:
 _CATALOGS: Mapping[str, Mapping[str, str]] = MappingProxyType(
     {lang: _load_catalog(lang) for lang in LANGUAGES}
 )
+#: `lib.json` alone, per language — what `missing_keys()` reports on.
+#: Kept separate because the two files answer different questions: drift in
+#: here is v1's, inherited and outside our control, while a key missing from a
+#: `cb.json` is usually a v2 decision (`publisher_ask_prompt` is deliberately
+#: absent from `es` so an `es` group is prompted in English, exactly as v1 does
+#: — `docs/contracts/util_postgetter.md`, D-PG-3). Reporting them together
+#: turned an assertion about v1's data into one that changes every time this
+#: bot adds a string.
+_LIB_CATALOGS: Mapping[str, Mapping[str, str]] = MappingProxyType(
+    {lang: MappingProxyType(dict(json.loads(_read(lang, "lib.json")))) for lang in LANGUAGES}
+)
 _TEXTS: Mapping[tuple[str, str], str] = MappingProxyType(
     {(lang, name): _read(lang, f"{name}.txt") for lang in LANGUAGES for name in _ALL_TXT_FILES}
 )
@@ -167,10 +178,32 @@ def catalog(lang: str) -> Mapping[str, str]:
 
 
 def missing_keys() -> dict[str, tuple[str, ...]]:
-    """Per-language keys present in `en` but absent there — drift, not an error."""
-    en_keys = set(_CATALOGS[_DEFAULT_LANGUAGE])
+    """Per-language `lib.json` keys present in `en` but absent there.
+
+    v1's own drift, inherited with the files (`docs/contracts/locales.md`) —
+    reported so it is visible, not treated as an error. `cb.json` is
+    deliberately excluded: see `_LIB_CATALOGS`. Use `missing_cb_keys()` for
+    this bot's own catalogs.
+    """
+    en_keys = set(_LIB_CATALOGS[_DEFAULT_LANGUAGE])
     return {
-        lang: tuple(sorted(en_keys - set(_CATALOGS[lang])))
+        lang: tuple(sorted(en_keys - set(_LIB_CATALOGS[lang])))
+        for lang in LANGUAGES
+        if lang != _DEFAULT_LANGUAGE
+    }
+
+
+def missing_cb_keys() -> dict[str, tuple[str, ...]]:
+    """The same, for `cb.json` — every entry is a v2 decision to justify.
+
+    A key here means an `en` string this bot invented that a `pt`/`es` group
+    will be answered in English for. Sometimes that is the port (D-PG-3);
+    otherwise it is a gap. `packages/cb-core/tests/test_locales.py` enumerates
+    the intended ones so an unintended one fails the build.
+    """
+    en_keys = set(json.loads(_read(_DEFAULT_LANGUAGE, "cb.json")))
+    return {
+        lang: tuple(sorted(en_keys - set(json.loads(_read(lang, "cb.json")))))
         for lang in LANGUAGES
         if lang != _DEFAULT_LANGUAGE
     }

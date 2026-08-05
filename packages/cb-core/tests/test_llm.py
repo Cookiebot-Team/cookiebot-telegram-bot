@@ -8,10 +8,13 @@ filtering is tested directly rather than through a live call.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator, Sequence
+from typing import Any
 
 import pytest
 
+from cb_core import db as db_mod
 from cb_core.ids import is_uuid7, timestamp_ms, uuid7
 from cb_core.llm import (
     LLMError,
@@ -286,6 +289,176 @@ class TestRouter:
         router = self._router(_StubProvider(_completion()))
         assert router.fits_context("chat", 100, headroom=10)
         assert not router.fits_context("chat", 990, headroom=10)
+
+
+class _TranscribeStubProvider(_StubProvider):
+    """Like `_StubProvider`, but `transcribe` actually returns something —
+    the base class's raises `NotImplementedError` since no existing test
+    exercised it."""
+
+    def __init__(
+        self,
+        transcript: Transcript,
+        *,
+        delay: float = 0.0,
+        fail_times: int = 0,
+    ) -> None:
+        super().__init__(_completion())
+        self.transcript = transcript
+        self.delay = delay
+        self.fail_times = fail_times
+        self.transcribe_calls: list[dict[str, object]] = []
+
+    async def transcribe(
+        self,
+        audio: bytes,
+        *,
+        model: str,
+        filename: str = "a.ogg",
+        language: str | None = None,
+    ) -> Transcript:
+        self.transcribe_calls.append({"model": model, "filename": filename, "language": language})
+        if self.delay:
+            await asyncio.sleep(self.delay)
+        if len(self.transcribe_calls) <= self.fail_times:
+            raise LLMError("boom")
+        return self.transcript
+
+
+def _transcript(**kw: object) -> Transcript:
+    base: dict[str, object] = {"text": "hello", "model": "stub-model", "provider": "stub"}
+    base.update(kw)
+    return Transcript(**base)
+
+
+class TestRouterTranscribe:
+    """R3.1-R3.4: `transcribe` hardened the same way `complete` already is.
+
+    R3.3 (tenant budget) is covered end-to-end in `test_llm_budget.py`; these
+    tests cover the other three gaps `complete` closed and `transcribe` did not:
+    a timeout, a metered `llm_usage` row, and a shared circuit breaker.
+    """
+
+    def _router(
+        self, provider: _TranscribeStubProvider, *, timeout: float | None = 60.0
+    ) -> LLMRouter:
+        return LLMRouter(
+            {"stub": provider},
+            {"transcribe": TaskConfig(provider="stub", model="stub-model", timeout=timeout)},
+            record_usage=False,
+        )
+
+    async def test_task_config_drives_the_call(self) -> None:
+        provider = _TranscribeStubProvider(_transcript())
+        router = self._router(provider)
+        result = await router.transcribe(b"audio", filename="voice.ogg", language="pt")
+        assert result.text == "hello"
+        assert provider.transcribe_calls[0]["model"] == "stub-model"
+        assert provider.transcribe_calls[0]["filename"] == "voice.ogg"
+        assert provider.transcribe_calls[0]["language"] == "pt"
+
+    async def test_slow_provider_raises_rather_than_hanging(self) -> None:
+        """R3.1 / D-ST-2: v1 set no timeout at all on this call. A provider that
+        never returns must not pin the caller forever."""
+        provider = _TranscribeStubProvider(_transcript(), delay=10.0)
+        router = self._router(provider, timeout=0.05)
+        with pytest.raises(LLMError):
+            await router.transcribe(b"audio")
+
+    async def test_usage_row_written_when_group_id_set(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """R3.2: transcription spend must stop being invisible in `llm_usage` —
+        with a null `cost_usd`, since `Transcript` carries no price and whisper
+        is not in `catalog.py` (HANDOFF §6.3: no number is to be guessed)."""
+        calls: list[tuple[str, tuple[Any, ...]]] = []
+
+        async def fake_execute(stmt: str, *args: Any, name: str = "execute") -> str:
+            calls.append((name, args))
+            return "INSERT 0 1"
+
+        monkeypatch.setattr(db_mod, "execute", fake_execute)
+
+        provider = _TranscribeStubProvider(_transcript(model="whisper-1", provider="openai"))
+        router = LLMRouter(
+            {"stub": provider},
+            {"transcribe": TaskConfig(provider="stub", model="whisper-1")},
+        )
+        await router.transcribe(b"audio", group_id=42, user_id=7)
+
+        assert len(calls) == 1
+        name, args = calls[0]
+        assert name == "llm_usage_insert"
+        (
+            usage_id,
+            group_id,
+            user_id,
+            task,
+            provider_col,
+            model,
+            input_tokens,
+            output_tokens,
+            cache_read_tokens,
+            cost_usd,
+            latency_ms,
+            outcome,
+            _trace_id,
+        ) = args
+        assert is_uuid7(usage_id)
+        assert (group_id, user_id, task) == (42, 7, "transcribe")
+        assert (provider_col, model) == ("openai", "whisper-1")
+        assert (input_tokens, output_tokens, cache_read_tokens) == (0, 0, 0)
+        assert cost_usd is None
+        assert isinstance(latency_ms, int) and latency_ms >= 0
+        assert outcome == "ok"
+
+    async def test_no_usage_row_without_group_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        async def fake_execute(stmt: str, *args: Any, name: str = "execute") -> str:
+            raise AssertionError("no group_id means no persist call")
+
+        monkeypatch.setattr(db_mod, "execute", fake_execute)
+
+        provider = _TranscribeStubProvider(_transcript())
+        router = LLMRouter(
+            {"stub": provider}, {"transcribe": TaskConfig(provider="stub", model="stub-model")}
+        )
+        result = await router.transcribe(b"audio")
+        assert result.text == "hello"
+
+    async def test_circuit_opens_after_repeated_failures(self) -> None:
+        """R3.4: `transcribe` shares `complete`'s per-provider breaker."""
+        provider = _TranscribeStubProvider(_transcript(), fail_times=10)
+        router = self._router(provider)
+        for _ in range(5):
+            with pytest.raises(LLMError):
+                await router.transcribe(b"audio")
+        with pytest.raises(LLMUnavailableError):
+            await router.transcribe(b"audio")
+        # the open breaker short-circuits before the provider is asked again
+        assert len(provider.transcribe_calls) == 5
+
+    async def test_open_breaker_is_shared_with_complete(self) -> None:
+        """`complete` and `transcribe` key `_breakers` by `cfg.provider`, not by
+        task — a provider tripped by one task is unavailable to the other."""
+
+        class Failing(_TranscribeStubProvider):
+            async def complete(self, messages: Sequence[Message], **kwargs: object) -> Completion:
+                raise LLMError("boom")
+
+        provider = Failing(_transcript())
+        router = LLMRouter(
+            {"stub": provider},
+            {
+                "chat": TaskConfig(provider="stub", model="stub-model"),
+                "transcribe": TaskConfig(provider="stub", model="stub-model"),
+            },
+            record_usage=False,
+        )
+        for _ in range(5):
+            with pytest.raises(LLMError):
+                await router.complete("chat", [Message(role="user", content="x")])
+        with pytest.raises(LLMUnavailableError):
+            await router.transcribe(b"audio")
 
 
 class TestUuid7:

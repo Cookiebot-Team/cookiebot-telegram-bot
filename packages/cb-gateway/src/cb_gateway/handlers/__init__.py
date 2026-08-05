@@ -17,8 +17,10 @@ from cb_gateway.handlers import (
     battle,
     birthday,
     calladms,
+    chat_ai,
     complaint,
     config_menu,
+    deletereposts,
     dice,
     doomlist,
     embedder,
@@ -31,11 +33,15 @@ from cb_gateway.handlers import (
     mediarestrict,
     members,
     nextbirthday,
+    postgetter,
     privacy,
+    publisher,
+    reverse_search,
     rules,
     setlang,
     ship,
     stickerspam,
+    transcribe,
     welcome,
     youtube,
 )
@@ -68,6 +74,12 @@ def build_router() -> Router:
     root.include_router(youtube.router)
     root.include_router(birthday.router)
     root.include_router(nextbirthday.router)
+    # /divulgar, /repost and the three publisher callbacks. Disjoint triggers
+    # like the rest of this block; the *reply relay* half of the same feature is
+    # order-dependent and is registered further down, on its own router.
+    root.include_router(publisher.router)
+    root.include_router(deletereposts.router)
+    root.include_router(reverse_search.router)
 
     # ---- join chain: order matters, see the module docstring ----
     # 1. Bookkeeping first. `group_members.joined_at` is recorded even for a
@@ -91,9 +103,38 @@ def build_router() -> Router:
     # more sticker in the flood counter. v1 never faced the overlap: Telegram
     # blocked a restricted member's sticker client-side.
     root.include_router(stickerspam.router)
+    # util_postforwarder's reply relay. v1 runs `check_notify_post_reply` from
+    # an `elif` that sits after the captcha-reply and complaint-reply checks and
+    # *before* the conversational-AI branch (COOKIEBOT.py:302-303) — both of
+    # those are registered above, and `chat_ai` is registered below. Move this
+    # after `chat_ai` and a reply to a published post gets answered by the AI
+    # instead of reaching its author. It yields when the reply is to some other
+    # bot message with buttons.
+    root.include_router(publisher.relay_router)
+    # x_conversational_ai: registered immediately before embedder, on purpose
+    # (design.md R5.2). v1 only runs `check_reply_embed` in the `else` reached
+    # when the AI branch did *not* match (COOKIEBOT.py:309-316), so the embed
+    # rewrite must sit downstream of the AI trigger. Every branch that
+    # intercepts ahead of the AI in v1 (welcome/rules reply prompts, `who`,
+    # the captcha-caption reply, the complaint reply, a reply_markup reply) is
+    # already registered earlier above — do not reorder any of it.
+    root.include_router(chat_ai.router)
+    # x_speech_to_text: F.voice is disjoint from F.text (chat_ai) and from the
+    # command triggers above (F.voice never carries a leading "/"), so its
+    # relative order against either is irrelevant (design.md R1.8) -- it only
+    # has to stay ahead of embedder/fun_random below, and it does.
+    root.include_router(transcribe.router)
     # Link rewriting reacts to ordinary text, which no other handler claims, but
     # it yields like the rest so a message is never consumed on its behalf.
     root.include_router(embedder.router)
+    # util_postgetter, and it must stay *ahead* of fun_random. v1's branch for a
+    # Telegram-auto-forwarded channel ad is an `elif` that precedes the
+    # photo/video branches which pool media into the random library
+    # (COOKIEBOT.py:165-172), so an ad is never also collected. This handler
+    # replies, so it completes without SkipHandler and propagation stops —
+    # which is what reproduces the `elif`. Registered after it, every ad
+    # silently joins the pool and nothing errors.
+    root.include_router(postgetter.router)
     # Pools every photo/video into the per-group random library, then yields — it
     # is ingestion, not a reply, so it must never consume the update.
     root.include_router(fun_random.router)
