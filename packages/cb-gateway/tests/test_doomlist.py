@@ -312,3 +312,64 @@ class TestHttpClientSeam:
         injected = httpx.AsyncClient()
         doomlist.set_http_client(injected)
         assert doomlist._get_client() is injected  # noqa: SLF001
+
+
+# --------------------------------------------------- core_botskins: the flair
+
+
+class _FakeMessage:
+    """Only what `_maybe_post_flair` touches."""
+
+    def __init__(self) -> None:
+        self.photos: list[object] = []
+
+    async def answer_photo(self, photo: object) -> None:
+        self.photos.append(photo)
+
+
+class _Ctx:
+    def __init__(self, *, fun: bool) -> None:
+        self._fun = fun
+
+    def enabled(self, area: str) -> bool:
+        return self._fun
+
+
+class _Roll:
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+    def randint(self, low: int, high: int) -> int:
+        return self.value
+
+
+@pytest.mark.asyncio
+async def test_flair_fires_on_a_winning_roll_when_fun_is_on() -> None:
+    """v1 `COOKIEBOT.py:143-145`, ported by core_botskins."""
+    message = _FakeMessage()
+    await doomlist._maybe_post_flair(  # noqa: SLF001 - the seam this test exists for
+        message, _Ctx(fun=True), "cookiebot", _Roll(1)
+    )
+    assert len(message.photos) == 1
+
+
+@pytest.mark.asyncio
+async def test_flair_does_not_fire_on_a_losing_roll() -> None:
+    message = _FakeMessage()
+    await doomlist._maybe_post_flair(message, _Ctx(fun=True), "cookiebot", _Roll(2))  # noqa: SLF001
+    assert message.photos == []
+
+
+@pytest.mark.asyncio
+async def test_the_flagship_respects_the_fun_switch() -> None:
+    message = _FakeMessage()
+    await doomlist._maybe_post_flair(message, _Ctx(fun=False), "cookiebot", _Roll(1))  # noqa: SLF001
+    assert message.photos == []
+
+
+@pytest.mark.asyncio
+async def test_an_event_skin_ignores_the_fun_switch() -> None:
+    """`funfunctions or is_alternate_bot` — see cb_core/skins.py."""
+    message = _FakeMessage()
+    await doomlist._maybe_post_flair(message, _Ctx(fun=False), "bombot", _Roll(1))  # noqa: SLF001
+    assert len(message.photos) == 1

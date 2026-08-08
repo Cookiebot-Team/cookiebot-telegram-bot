@@ -59,6 +59,25 @@ from qa.mock_telegram import MockTelegram
 scenarios("util_doomlist.feature")
 
 
+@pytest.fixture(autouse=True)
+def _no_flair(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin the join-time flair off for this suite.
+
+    `core_botskins` added v1's one-in-ten "silence scammer" photo to the ban
+    path (`COOKIEBOT.py:143-145`). It is the only non-deterministic thing the
+    handler does, and leaving it live would make one scenario in ten post an
+    extra photo — a flake nobody would debug from the symptom. The flair has
+    its own scenarios in `qa/test_core_botskins.py` and unit coverage in
+    `packages/cb-gateway/tests/test_doomlist.py`.
+    """
+
+    class _Never:
+        def randint(self, low: int, high: int) -> int:
+            return high  # never 1, so the flair never fires
+
+    monkeypatch.setattr(doomlist, "_flair_rng", _Never(), raising=False)
+
+
 # ------------------------------------------------------------------- fixtures
 
 

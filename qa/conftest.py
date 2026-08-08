@@ -557,6 +557,8 @@ def feed(
     dispatcher: Dispatcher,
     bot: Bot,
     payload: dict[str, Any],
+    *,
+    skin: str = "cookiebot",
 ) -> None:
     from aiogram.types import Update
 
@@ -568,4 +570,8 @@ def feed(
     mirror_inbound_update(payload)
 
     update = Update.model_validate(payload, context={"bot": bot})
-    run(dispatcher.feed_update(bot, update, skin="cookiebot", bot_username=BOT_USERNAME))
+    # `skin` is what `cb_gateway.main` injects per update from the webhook path
+    # it arrived on; every handler that behaves differently per brand reads it
+    # as a plain keyword argument (core_botskins). Defaults to the flagship, so
+    # no existing caller changes.
+    run(dispatcher.feed_update(bot, update, skin=skin, bot_username=BOT_USERNAME))

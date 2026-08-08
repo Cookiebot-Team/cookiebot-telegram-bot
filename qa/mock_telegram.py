@@ -113,6 +113,14 @@ class MockTelegram:
 
     def reset(self) -> None:
         self.calls.clear()
+        # Per-scenario, like `calls` and like the admin sets `qa/conftest.py`
+        # clears by hand. Left alone, a scenario that gave someone a profile
+        # photo leaks it into the next one's "and now someone without a photo
+        # tries it", which then passes while asserting the opposite of what it
+        # reads — the same trap `_reset_scenario_state`'s docstring describes.
+        # Every suite that needs a photo sets it in a per-scenario step.
+        self.profile_photos.clear()
+        self.member_counts.clear()
 
     async def start(self) -> None:
         app = web.Application()
@@ -212,6 +220,7 @@ class MockTelegram:
             "sendSticker",
             "sendVideo",
             "sendVoice",
+            "sendAudio",
             "sendDocument",
             "sendPoll",
             "editMessageText",

@@ -19,10 +19,12 @@ Scope decisions, out of this port (full reasoning in the contract doc):
   functions above. It belongs to whichever feature owns
   `core_groupguardian`'s bot-suspicion heuristics.
 - The `funfunctions`-gated 1-in-10 "silence_scammer.jpg" photo
-  (`COOKIEBOT.py:143-145`) is dispatcher-level cosmetic flair shared by all
-  four join-time checks, needs a static asset this task does not own, and has
-  no bearing on whether the listed user was actually blocked. Not ported —
-  the same call `core_welcome.py` made about the pixel-art welcome card.
+  (`COOKIEBOT.py:143-145`) was deferred by this port for want of a static
+  asset it did not own. **`core_botskins` now owns it** — the asset is
+  `cb_core/asset_data/doomlist/silence_scammer.jpg` and the gate is
+  `cb_core.skins.scammer_photo_allowed`, because v1's condition is
+  `funfunctions or is_alternate_bot`: an event skin posts it even in a group
+  that has switched fun features off. Added below, in `on_join`.
 
 Wiring note for whoever owns `handlers/__init__.py` (not this task): `router`
 must be registered **before** `welcome.router` (and before whatever ends up
@@ -36,18 +38,19 @@ own note about this same ordering problem, from the other side.
 from __future__ import annotations
 
 import json
+import random
 import time
 from typing import cast
 
 import httpx
 from aiogram import Bot, F, Router
 from aiogram.dispatcher.event.bases import SkipHandler
-from aiogram.types import Message, User
+from aiogram.types import FSInputFile, Message, User
 
-from cb_core import db, metrics
+from cb_core import db, metrics, skins
 from cb_core.breaker import Breaker
 from cb_core.logging import get_logger
-from cb_gateway.context import context_for, t
+from cb_gateway.context import ChatContext, context_for, t
 
 log = get_logger("cb.doomlist")
 
@@ -276,8 +279,48 @@ async def _evaluate(newcomer: User) -> str | None:
     return None
 
 
+#: v1's `random.randint(1, 10) == 1` (`COOKIEBOT.py:143`).
+FLAIR_ODDS = 10
+
+#: Test seam, same shape as `set_http_client` above. The flair is the only
+#: non-deterministic thing this handler does, and a 1-in-10 extra photo turns
+#: every ban scenario into an occasional surprise — the kind of flapping this
+#: project already refused once (HANDOFF §6.2). Production leaves it `None`
+#: and uses the shared `random` module state.
+_flair_rng: random.Random | None = None
+
+
+def set_flair_rng(rng: random.Random | None) -> None:
+    global _flair_rng
+    _flair_rng = rng
+
+
+async def _maybe_post_flair(
+    message: Message, ctx: ChatContext, skin: str, rng: random.Random | None = None
+) -> None:
+    """v1's one-in-ten "silence scammer" photo (`COOKIEBOT.py:143-145`).
+
+    Gated on `funfunctions or is_alternate_bot` — see
+    `cb_core.skins.scammer_photo_allowed` for why an event skin ignores the
+    group's fun switch here. Best-effort: the ban and the notice have already
+    happened, and a missing asset or a send failure must not turn a successful
+    block into a handler error.
+    """
+    if not skins.scammer_photo_allowed(skin, fun_enabled=ctx.enabled("fun")):
+        return
+    source = rng or _flair_rng
+    roll = source.randint(1, FLAIR_ODDS) if source is not None else random.randint(1, FLAIR_ODDS)
+    if roll != 1:
+        return
+    try:
+        path = skins.asset(skin, "doomlist", "silence_scammer.jpg")
+        await message.answer_photo(FSInputFile(path))
+    except Exception as exc:  # noqa: BLE001 - cosmetic; never worth failing a block over
+        log.warning("doomlist.flair_failed", error=str(exc))
+
+
 @router.message(F.new_chat_members)
-async def on_join(message: Message) -> None:
+async def on_join(message: Message, skin: str = skins.PRIMARY_SKIN) -> None:
     joiners = message.new_chat_members
     if not joiners:
         raise SkipHandler("no joiners in update")
@@ -318,13 +361,16 @@ async def on_join(message: Message) -> None:
     # either. Preserved exactly - not wrapped in a best-effort guard here.
     await bot.ban_chat_member(message.chat.id, newcomer.id)
     await message.answer(t(ctx, hit_key))
+    await _maybe_post_flair(message, ctx, skin)
 
 
 __all__ = [
+    "FLAIR_ODDS",
     "check_burrbot",
     "check_cas",
     "check_local_blacklist",
     "on_join",
     "router",
+    "set_flair_rng",
     "set_http_client",
 ]

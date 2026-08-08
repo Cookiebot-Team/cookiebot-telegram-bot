@@ -109,9 +109,12 @@ FEATURES: tuple[Feature, ...] = (
     Feature("core_setlang", "core", "Language selection", "M1", Status.DONE,
             Layer.GATEWAY, "Configurations.py:242-251", (),
             "QA describes a web settings page; v1 only has the in-chat menu"),
-    Feature("core_botskins", "core", "Per-event bot skins", "M1", Status.PARTIAL,
+    Feature("core_botskins", "core", "Per-event bot skins", "M1", Status.DONE,
             Layer.GATEWAY, "universal_funcs.py:39-52", (),
-            "one process serves every skin; per-event asset packs pending"),
+            "one process serves every skin; cb_core/skins.py adds the two behavioural forks "
+            "v1 keys on is_alternate_bot (intro animation, fun-override flair) plus the "
+            "per-skin asset override tree; all 5 personas configured (0007). Handler packs "
+            "remain platform_tenancy's open item - see docs/contracts/core_botskins.md"),
 
     # --------------------------------------------------------------------- fun
     Feature("fun_dice", "fun", "Roll an n-sided die", "M2", Status.DONE,

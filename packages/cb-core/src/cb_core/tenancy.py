@@ -129,6 +129,16 @@ class TenantRegistry:
             active=row["active"],
         )
 
+    def cached(self, skin: str) -> Tenant | None:
+        """The already-loaded tenant for `skin`, without awaiting anything.
+
+        `cb_core.skins.display_name` needs a brand name in synchronous code
+        that has no business opening a database connection for a label. `None`
+        means "not loaded yet", never "does not exist" — a caller that needs
+        the authoritative answer awaits `by_skin`.
+        """
+        return self._local.get(f"skin:{skin}") or self._local.get(skin)
+
     def forget(self, key: str) -> None:
         self._local.pop(key, None)
         self._local.pop(f"skin:{key}", None)
