@@ -172,9 +172,11 @@ FEATURES: tuple[Feature, ...] = (
     Feature("util_youtube", "util", "YouTube search", "M2", Status.DONE,
             Layer.WORKER, "SocialContent.py:172-189", ("/youtube",),
             "search + reply moved to cb-worker; v1's googleapiclient call had no timeout at all"),
-    Feature("core_musicdetection", "core", "Identify music in voice notes", "M3", Status.PLANNED,
+    Feature("core_musicdetection", "core", "Identify music in voice notes", "M3", Status.DONE,
             Layer.WORKER, "Audio.py:6-20", (),
-            "ShazamAPI is unofficial - feature-flag it behind a breaker"),
+            "passive, off by default, breakered cb-worker job; shazamio-core segfaults on "
+            "py3.14 so the recogniser is AudD's documented API behind a swappable seam - "
+            "see docs/contracts/core_musicdetection.md; QA authored (5 scenarios)"),
     Feature("util_postforwarder", "util", "Cross-group post forwarding", "M3", Status.DONE,
             Layer.WORKER, "Publisher.py:46-92",
             ("/divulgar", "/publish", "/publicar", "/repost", "/repostar", "/reenviar"),

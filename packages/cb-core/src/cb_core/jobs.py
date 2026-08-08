@@ -52,6 +52,12 @@ PUBLISHER_APPROVE = "publisher_approve"
 #: ever constructed (spec D-RS-1).
 REVERSE_SEARCH = "reverse_search"
 
+#: `core_musicdetection`'s Shazam lookup (`cb_worker/jobs/music.py`), enqueued
+#: from `cb_gateway/handlers/musicdetection.py` for every voice note. The
+#: highest-volume outbound call in the bot, against an unofficial endpoint —
+#: hence the breaker and the two independent switches described there.
+IDENTIFY_MUSIC = "identify_music"
+
 #: `fun_meme`'s compositing pass (`cb_worker/jobs/meme.py`), enqueued from
 #: `cb_gateway/handlers/meme.py`. A template fetch from object storage, N
 #: profile-photo downloads and a Pillow paste — `scripts/spec.py`'s row for
@@ -64,6 +70,7 @@ __all__ = [
     "CALLADMS_NOTIFY_ADMINS",
     "COMPOSE_MEME",
     "EVERYONE_FANOUT",
+    "IDENTIFY_MUSIC",
     "NEXT_BIRTHDAYS_FOLLOWUP",
     "PUBLISHER_APPROVE",
     "REVERSE_SEARCH",

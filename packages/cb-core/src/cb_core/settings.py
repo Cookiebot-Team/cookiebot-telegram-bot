@@ -113,6 +113,21 @@ class Settings(BaseSettings):
     saucenao_api_key: str = ""
     saucenao_timeout_seconds: float = 15.0
 
+
+    # core_musicdetection — off by default, and a second switch on top of the
+    # optional `music` extra not being installed either (cb_worker/music.py):
+    # the feature calls Shazam's unofficial endpoint, which a deployment must
+    # opt into rather than out of. v1 called it inline with no timeout at all
+    # (Bot/Audio.py:7-11), on every voice note.
+    music_detection_enabled: bool = False
+    music_detection_timeout_seconds: float = 20.0
+    #: The recogniser's key. v1 called Shazam's unpublished endpoint through an
+    #: unmaintained wrapper whose successor's Rust core segfaults on this
+    #: workspace's Python — see cb_worker/music.py for the whole finding.
+    #: Empty means the feature is inert, exactly like youtube_api_key.
+    audd_api_key: str = ""
+
+
     # util_postforwarder / util_postgetter — v1 hardcoded one deployment's
     # channel ids as module constants (Bot/Publisher.py:20-22). v2 is
     # multi-tenant, so they are configuration, and the publisher is inert until
@@ -166,6 +181,7 @@ class Settings(BaseSettings):
     telegram_ingest: str = "webhook"
     telegram_polling_timeout: int = 30
     owner_id: int = 0
+
 
     @field_validator("trace_sample_ratio")
     @classmethod

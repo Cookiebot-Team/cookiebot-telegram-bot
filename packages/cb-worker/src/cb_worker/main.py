@@ -31,6 +31,7 @@ from cb_worker.jobs.birthday import next_birthdays_followup, post_birthday_colla
 from cb_worker.jobs.calladms import notify_admins_of_call
 from cb_worker.jobs.everyone import everyone_fanout
 from cb_worker.jobs.meme import compose_meme
+from cb_worker.jobs.music import identify_music
 from cb_worker.jobs.publisher import deliver_scheduled_posts, publisher_approve
 from cb_worker.jobs.reverse_search import search_source
 from cb_worker.jobs.youtube import search_youtube
@@ -212,6 +213,7 @@ class WorkerSettings:
         publisher_approve,  # util_postforwarder's render + fan-out
         deliver_scheduled_posts,
         search_source,  # x_reverse_search's SauceNAO lookup
+        identify_music,  # core_musicdetection's recognition lookup
         compose_meme,  # fun_meme's template compositing
         maintain_partitions,
         rollup_yesterday,
