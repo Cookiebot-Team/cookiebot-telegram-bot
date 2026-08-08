@@ -348,22 +348,23 @@
     {
       "id": "fun_ship",
       "title": "Ship two members",
-      "description": null,
-      "status": "planned",
+      "description": "landed the member registry (cb_core/members.py) it needs; QA's single-tagged-user scenario describes behaviour v1 never had - see docs/contracts/fun_ship.md",
+      "status": "done",
       "commands": [
         "/ship",
-        "/shippar"
+        "/shippar",
+        "/shipp"
       ],
       "tags": [
         "ship"
       ],
-      "docs": null
+      "docs": "docs/contracts/fun_ship.md"
     },
     {
       "id": "fun_death",
       "title": "Random cause of death",
-      "description": null,
-      "status": "planned",
+      "description": "image pool only ever lived in v1's private GCS bucket, never checked in - see .specs/features/fun_death/spec.md",
+      "status": "blocked",
       "commands": [
         "/death",
         "/morte",
@@ -377,21 +378,21 @@
     {
       "id": "fun_meme",
       "title": "Meme generator",
-      "description": "image compositing is a worker job, not a reply-path call",
-      "status": "planned",
+      "description": "v1's 97kB metadata CSV ships as package data, its 110MB of templates go to object storage via `cb.py meme-seed`; Pillow compositing in cb-worker; v1's roster fallback was dead code and its empty-pool branch a NameError, both fixed - see docs/contracts/fun_meme.md; QA authored (4 scenarios)",
+      "status": "done",
       "commands": [
         "/meme"
       ],
       "tags": [
         "meme"
       ],
-      "docs": null
+      "docs": "docs/contracts/fun_meme.md"
     },
     {
       "id": "fun_battle",
       "title": "Battle poll",
-      "description": "v1 scrapes telegram.me HTML for avatars; replace with getUserProfilePhotos",
-      "status": "planned",
+      "description": "two-people shape ships (roster + getUserProfilePhotos, no scrape); one-tag/self shapes blocked on the Fight/ GCS export, same as fun_death",
+      "status": "partial",
       "commands": [
         "/battle",
         "/batalha",
@@ -400,7 +401,7 @@
       "tags": [
         "battle"
       ],
-      "docs": null
+      "docs": "docs/contracts/fun_battle.md"
     },
     {
       "id": "fun_random",
@@ -420,7 +421,7 @@
       "id": "fun_firecracker",
       "title": "Firecracker sequence",
       "description": null,
-      "status": "planned",
+      "status": "done",
       "commands": [
         "/firecracker",
         "/rojao",
@@ -429,28 +430,30 @@
       "tags": [
         "firecracker"
       ],
-      "docs": null
+      "docs": "docs/contracts/fun_firecracker.md"
     },
     {
       "id": "fun_complaint",
       "title": "Complaint bit",
       "description": null,
-      "status": "planned",
+      "status": "done",
       "commands": [
         "/complaint",
         "/milton",
+        "/reclamacao",
+        "/reclamação",
         "/queja"
       ],
       "tags": [
         "complaint"
       ],
-      "docs": null
+      "docs": "docs/contracts/fun_complaint.md"
     },
     {
       "id": "fun_partneredcons",
       "title": "Partnered convention posters",
-      "description": "/trex is spec'd in QA but missing from v1 - net-new",
-      "status": "planned",
+      "description": "same GCS blocker as fun_death: every branch reads a Countdown/* prefix (Miscellaneous.py:18-22) and the single send_photo is unconditional. /trex is spec'd in QA but missing from v1 - net-new",
+      "status": "blocked",
       "commands": [
         "/bff",
         "/patas",
@@ -467,22 +470,23 @@
     {
       "id": "util_birthday",
       "title": "Today's birthdays",
-      "description": "generated birth_month/birth_day columns replace v1's unindexable $expr scan",
-      "status": "planned",
+      "description": "manual command only - the daily every-group broadcast is an unverified, unresolved parity gap, see docs/contracts/util_birthday.md",
+      "status": "partial",
       "commands": [
         "/birthday",
-        "/aniversario"
+        "/aniversario",
+        "/cumpleanos"
       ],
       "tags": [
         "birthday"
       ],
-      "docs": null
+      "docs": "docs/contracts/util_birthday.md"
     },
     {
       "id": "util_nextbirthday",
       "title": "Upcoming birthdays",
-      "description": null,
-      "status": "planned",
+      "description": "not group-scoped, matching v1 exactly - see docs/contracts/util_nextbirthday.md",
+      "status": "done",
       "commands": [
         "/nextbirthday",
         "/proximosaniversarios"
@@ -490,13 +494,13 @@
       "tags": [
         "nextbirthday"
       ],
-      "docs": null
+      "docs": "docs/contracts/util_nextbirthday.md"
     },
     {
       "id": "util_everyone",
       "title": "Ping every member",
-      "description": "v1 does one backend call per user; batch it",
-      "status": "planned",
+      "description": "batched roster read replaces v1's per-user backend call; fan-out moved to cb-worker",
+      "status": "done",
       "commands": [
         "/everyone",
         "@everyone"
@@ -504,13 +508,13 @@
       "tags": [
         "everyone"
       ],
-      "docs": null
+      "docs": "docs/contracts/util_everyone.md"
     },
     {
       "id": "util_calladms",
       "title": "Call the admins",
-      "description": "group ping done; v1 also DMs each admin - needs a cb-worker fan-out job",
-      "status": "partial",
+      "description": "group ping on the reply path; DM fan-out to every admin in cb-worker",
+      "status": "done",
       "commands": [
         "/adm",
         "@admin",
@@ -535,54 +539,61 @@
     {
       "id": "util_youtube",
       "title": "YouTube search",
-      "description": null,
-      "status": "planned",
+      "description": "search + reply moved to cb-worker; v1's googleapiclient call had no timeout at all",
+      "status": "done",
       "commands": [
         "/youtube"
       ],
       "tags": [
         "youtube"
       ],
-      "docs": null
+      "docs": "docs/contracts/util_youtube.md"
     },
     {
       "id": "core_musicdetection",
       "title": "Identify music in voice notes",
-      "description": "ShazamAPI is unofficial - feature-flag it behind a breaker",
-      "status": "planned",
+      "description": "passive, off by default, breakered cb-worker job; shazamio-core segfaults on py3.14 so the recogniser is AudD's documented API behind a swappable seam - see docs/contracts/core_musicdetection.md; QA authored (5 scenarios)",
+      "status": "done",
       "commands": [],
       "tags": [
         "musicdetection"
       ],
-      "docs": null
+      "docs": "docs/contracts/core_musicdetection.md"
     },
     {
       "id": "util_postforwarder",
       "title": "Cross-group post forwarding",
-      "description": null,
-      "status": "planned",
-      "commands": [],
+      "description": "scheduled_posts replaces Publisher.db; approve press now authorised by chat",
+      "status": "done",
+      "commands": [
+        "/divulgar",
+        "/publish",
+        "/publicar",
+        "/repost",
+        "/repostar",
+        "/reenviar"
+      ],
       "tags": [
         "postforwarder"
       ],
-      "docs": null
+      "docs": "docs/contracts/util_postforwarder.md"
     },
     {
       "id": "util_postgetter",
       "title": "Receive forwarded posts",
-      "description": null,
-      "status": "planned",
+      "description": "auto-forward prompt; must stay registered ahead of fun_random",
+      "status": "done",
       "commands": [],
       "tags": [
         "postgetter"
       ],
-      "docs": null
+      "docs": "docs/contracts/util_postgetter.md"
     },
     {
       "id": "util_deletereposts",
       "title": "Delete scheduled reposts",
       "description": "QA says /deletereposts, v1 ships /deleteposts",
-      "status": "planned",
+      "status": "done",
       "commands": [
         "/deletereposts",
         "/deleteposts",
@@ -591,70 +602,72 @@
       "tags": [
         "deletereposts"
       ],
-      "docs": null
+      "docs": "docs/contracts/util_deletereposts.md"
     },
     {
       "id": "x_giveaways",
       "title": "Giveaways",
-      "description": "no QA scenario exists - write one",
-      "status": "planned",
+      "description": "two distributed tables replace Giveaways.db; v1's /giveaway never completed (json.loads on a de-quoted callback payload) and its enter button was admin-only - both fixed, see docs/contracts/x_giveaways.md; QA authored, not ported (10 scenarios)",
+      "status": "done",
       "commands": [
         "/giveaway"
       ],
       "tags": [
         "giveaways"
       ],
-      "docs": null
+      "docs": "docs/contracts/x_giveaways.md"
     },
     {
       "id": "x_conversational_ai",
       "title": "Conversational AI replies",
-      "description": "LLM router + cost metering done; handler and quota not written",
-      "status": "partial",
+      "description": "langchain provider behind the router, tenant budget cap, v1's per-user streak on a new cache.bump_clamped primitive, per-group rate limit; QA authored, not ported (7 scenarios) - see docs/contracts/x_conversational_ai.md",
+      "status": "done",
       "commands": [],
       "tags": [
         "conversational_ai"
       ],
-      "docs": null
+      "docs": "docs/contracts/x_conversational_ai.md"
     },
     {
       "id": "x_speech_to_text",
       "title": "Voice transcription",
-      "description": "transcribe task routed to the openai provider; handler not written",
-      "status": "partial",
+      "description": "shape (a) ports the voice-to-AI sub-step; shape (b) is a net-new /transcribe command with no v1 equivalent; QA authored, not ported (5 scenarios) - see docs/contracts/x_speech_to_text.md",
+      "status": "done",
       "commands": [],
       "tags": [
         "speech_to_text"
       ],
-      "docs": null
+      "docs": "docs/contracts/x_speech_to_text.md"
     },
     {
       "id": "x_reverse_search",
       "title": "Reverse image search",
-      "description": null,
-      "status": "planned",
+      "description": "v1 handed SauceNAO a Telegram file URL carrying the bot token (D-RS-1); v2 uploads the bytes instead",
+      "status": "done",
       "commands": [
         "/searchsource",
-        "/buscarfonte"
+        "/buscarfonte",
+        "/buscarfuente"
       ],
       "tags": [
         "reverse_search"
       ],
-      "docs": null
+      "docs": "docs/contracts/x_reverse_search.md"
     },
     {
       "id": "x_distortion",
       "title": "Media distortion",
-      "description": "v1 busy-waits on a module global; replace with a worker semaphore",
-      "status": "planned",
+      "description": "branch chain on the reply path, carve + ffmpeg in cb-worker behind a real semaphore (D3) with per-call temp dirs (D4); v1's video/GIF arms are unreachable and stay disabled; seam carving over numpy replaces ImageMagick liquid_rescale - see docs/contracts/x_distortion.md; QA authored (12 scenarios)",
+      "status": "done",
       "commands": [
         "/destroy",
-        "/zoar"
+        "/zoar",
+        "/destruir"
       ],
       "tags": [
         "distortion"
       ],
-      "docs": null
+      "docs": "docs/contracts/x_distortion.md"
     },
     {
       "id": "x_owner_commands",
@@ -677,8 +690,8 @@
     {
       "id": "x_custom_commands",
       "title": "Per-group custom commands",
-      "description": "the seed of tenant handler packs",
-      "status": "planned",
+      "description": "same GCS blocker as fun_death, and worse: the command *names* are the bucket's Custom/ folder names (Miscellaneous.py:23), so without the export there is not even a trigger list. Still the seed of tenant handler packs once the assets land",
+      "status": "blocked",
       "commands": [],
       "tags": [
         "custom_commands"
@@ -696,7 +709,7 @@
       ],
       "feature_id": "fun_battle",
       "title": "Battle poll",
-      "status": "planned",
+      "status": "partial",
       "hint": null
     },
     {
@@ -710,7 +723,7 @@
       ],
       "feature_id": "util_birthday",
       "title": "Today's birthdays",
-      "status": "planned",
+      "status": "partial",
       "hint": null
     },
     {
@@ -722,7 +735,7 @@
       ],
       "feature_id": "util_calladms",
       "title": "Call the admins",
-      "status": "partial",
+      "status": "done",
       "hint": "Pings every admin in the chat — compare the reply as a member vs. as an admin."
     },
     {
@@ -747,7 +760,7 @@
       ],
       "feature_id": "fun_complaint",
       "title": "Complaint bit",
-      "status": "planned",
+      "status": "done",
       "hint": null
     },
     {
@@ -756,7 +769,7 @@
       "aliases": [],
       "feature_id": "fun_partneredcons",
       "title": "Partnered convention posters",
-      "status": "planned",
+      "status": "blocked",
       "hint": null
     },
     {
@@ -765,7 +778,7 @@
       "aliases": [],
       "feature_id": "fun_partneredcons",
       "title": "Partnered convention posters",
-      "status": "planned",
+      "status": "blocked",
       "hint": null
     },
     {
@@ -774,7 +787,7 @@
       "aliases": [],
       "feature_id": "fun_partneredcons",
       "title": "Partnered convention posters",
-      "status": "planned",
+      "status": "blocked",
       "hint": null
     },
     {
@@ -783,7 +796,7 @@
       "aliases": [],
       "feature_id": "fun_partneredcons",
       "title": "Partnered convention posters",
-      "status": "planned",
+      "status": "blocked",
       "hint": null
     },
     {
@@ -792,7 +805,7 @@
       "aliases": [],
       "feature_id": "fun_partneredcons",
       "title": "Partnered convention posters",
-      "status": "planned",
+      "status": "blocked",
       "hint": null
     },
     {
@@ -801,7 +814,7 @@
       "aliases": [],
       "feature_id": "fun_partneredcons",
       "title": "Partnered convention posters",
-      "status": "planned",
+      "status": "blocked",
       "hint": null
     },
     {
@@ -825,7 +838,7 @@
       ],
       "feature_id": "fun_death",
       "title": "Random cause of death",
-      "status": "planned",
+      "status": "blocked",
       "hint": null
     },
     {
@@ -837,7 +850,19 @@
       ],
       "feature_id": "util_deletereposts",
       "title": "Delete scheduled reposts",
-      "status": "planned",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "destroy",
+      "primary": "/destroy",
+      "aliases": [
+        "/destruir",
+        "/zoar"
+      ],
+      "feature_id": "x_distortion",
+      "title": "Media distortion",
+      "status": "done",
       "hint": null
     },
     {
@@ -858,7 +883,7 @@
       "aliases": [],
       "feature_id": "util_everyone",
       "title": "Ping every member",
-      "status": "planned",
+      "status": "done",
       "hint": null
     },
     {
@@ -872,7 +897,16 @@
       ],
       "feature_id": "fun_firecracker",
       "title": "Firecracker sequence",
-      "status": "planned",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "giveaway",
+      "primary": "/giveaway",
+      "aliases": [],
+      "feature_id": "x_giveaways",
+      "title": "Giveaways",
+      "status": "done",
       "hint": null
     },
     {
@@ -892,7 +926,7 @@
       "aliases": [],
       "feature_id": "fun_meme",
       "title": "Meme generator",
-      "status": "planned",
+      "status": "done",
       "hint": null
     },
     {
@@ -924,11 +958,12 @@
       "primary": "/nextbirthday",
       "aliases": [
         "/nextbirthdays",
-        "/proximosaniversarios"
+        "/proximosaniversarios",
+        "/proximoscumpleanos"
       ],
       "feature_id": "util_nextbirthday",
       "title": "Upcoming birthdays",
-      "status": "planned",
+      "status": "done",
       "hint": null
     },
     {
@@ -950,9 +985,9 @@
         "/divulgar",
         "/publicar"
       ],
-      "feature_id": null,
-      "title": null,
-      "status": "unknown",
+      "feature_id": "util_postforwarder",
+      "title": "Cross-group post forwarding",
+      "status": "done",
       "hint": null
     },
     {
@@ -974,9 +1009,9 @@
         "/reenviar",
         "/repostar"
       ],
-      "feature_id": null,
-      "title": null,
-      "status": "unknown",
+      "feature_id": "util_postforwarder",
+      "title": "Cross-group post forwarding",
+      "status": "done",
       "hint": null
     },
     {
@@ -992,6 +1027,18 @@
       "hint": null
     },
     {
+      "canonical": "searchsource",
+      "primary": "/searchsource",
+      "aliases": [
+        "/buscarfonte",
+        "/buscarfuente"
+      ],
+      "feature_id": "x_reverse_search",
+      "title": "Reverse image search",
+      "status": "done",
+      "hint": null
+    },
+    {
       "canonical": "ship",
       "primary": "/ship",
       "aliases": [
@@ -1000,7 +1047,19 @@
       ],
       "feature_id": "fun_ship",
       "title": "Ship two members",
-      "status": "planned",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "transcribe",
+      "primary": "/transcribe",
+      "aliases": [
+        "/transcrever",
+        "/transcribir"
+      ],
+      "feature_id": null,
+      "title": null,
+      "status": "unknown",
       "hint": null
     },
     {
@@ -1009,7 +1068,7 @@
       "aliases": [],
       "feature_id": "util_youtube",
       "title": "YouTube search",
-      "status": "planned",
+      "status": "done",
       "hint": null
     }
   ]

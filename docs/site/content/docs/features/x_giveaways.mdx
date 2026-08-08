@@ -3,13 +3,14 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Giveaways"
-description: "no QA scenario exists - write one"
-status: planned
+description: "two distributed tables replace Giveaways.db; v1's /giveaway never completed (json.loads on a de-quoted callback payload) and its enter button was admin-only - both fixed, see docs/contracts/x_giveaways.md; QA authored, not ported (10 scenarios)"
+status: done
 milestone: M3
 area: util
 layer: gateway
 triggers: ["/giveaway"]
 v1_source: "Giveaways.py:25-173"
+contract: "docs/contracts/x_giveaways.md"
 ---
 <FeatureHeader id="x_giveaways" />
 
