@@ -32,6 +32,7 @@ from cb_worker.jobs.birthday import (
     next_birthdays_followup,
     post_birthday_collage,
 )
+from cb_worker.jobs.broadcast import broadcast_to_groups, deliver_broadcast
 from cb_worker.jobs.calladms import notify_admins_of_call
 from cb_worker.jobs.distortion import distort_media
 from cb_worker.jobs.everyone import everyone_fanout
@@ -222,6 +223,8 @@ class WorkerSettings:
         distort_media,  # x_distortion's seam carve / vibrato pass
         identify_music,  # core_musicdetection's recognition lookup
         compose_meme,  # fun_meme's template compositing
+        broadcast_to_groups,  # x_owner_commands' /broadcast fan-out
+        deliver_broadcast,
         maintain_partitions,
         rollup_yesterday,
         rollup_llm_costs,

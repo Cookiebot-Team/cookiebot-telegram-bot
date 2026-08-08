@@ -72,6 +72,14 @@ COMMAND_ALIASES: dict[str, str] = {
     # Portuguese spelling is the one its own users type.
     "searchsource": "searchsource", "buscarfonte": "searchsource",
     "buscarfuente": "searchsource",
+    # x_owner_commands. v1 dispatches /grupos and /groups (COOKIEBOT.py:83)
+    # and the rest in one spelling each (:97-105). Owner-gated and
+    # private-chat only, so these never collide with a group command.
+    "grupos": "groups", "groups": "groups",
+    "leave": "leave",
+    "blacklist": "blacklist", "unblacklist": "unblacklist",
+    "broadcast": "broadcast",
+    "stop": "stop", "restart": "restart",
     # partnered conventions (fun_partneredcons) — /trex was spec'd but missing in v1.
     "bff": "con_bff", "patas": "con_patas", "fursmeet": "con_fursmeet",
     "trex": "con_trex", "furcamp": "con_furcamp", "pawstral": "con_pawstral",

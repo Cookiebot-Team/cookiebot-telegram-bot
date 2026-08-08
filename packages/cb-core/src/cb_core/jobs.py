@@ -72,8 +72,17 @@ IDENTIFY_MUSIC = "identify_music"
 #: reply-path call".
 COMPOSE_MEME = "compose_meme"
 
+#: `x_owner_commands`' `/broadcast` fan-out and its per-group delivery
+#: (`cb_worker/jobs/broadcast.py`). v1 looped over every group inline with
+#: `time.sleep(0.5)` between sends (FEATURE-MAP D8) and told the owner
+#: nothing; the sweep enqueues one deferred send per group and reports a count.
+BROADCAST_TO_GROUPS = "broadcast_to_groups"
+BROADCAST_DELIVER = "broadcast_deliver"
+
 __all__ = [
     "BIRTHDAY_COLLAGE",
+    "BROADCAST_DELIVER",
+    "BROADCAST_TO_GROUPS",
     "CALLADMS_NOTIFY_ADMINS",
     "COMPOSE_MEME",
     "DISTORT_MEDIA",

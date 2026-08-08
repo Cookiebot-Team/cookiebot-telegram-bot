@@ -218,9 +218,16 @@ FEATURES: tuple[Feature, ...] = (
             "semaphore (D3) with per-call temp dirs (D4); v1's video/GIF arms are "
             "unreachable and stay disabled; seam carving over numpy replaces ImageMagick "
             "liquid_rescale - see docs/contracts/x_distortion.md; QA authored (12 scenarios)"),
-    Feature("x_owner_commands", "util", "Owner-only operations", "M3", Status.PLANNED,
+    Feature("x_owner_commands", "util", "Owner-only operations", "M3", Status.DONE,
             Layer.GATEWAY, "COOKIEBOT.py:83-105",
-            ("/grupos", "/broadcast", "/leave", "/blacklist", "/stop", "/restart")),
+            ("/grupos", "/groups", "/broadcast", "/leave", "/blacklist", "/unblacklist",
+             "/stop", "/restart"),
+            "private-chat only and gated on CB_OWNER_ID; /grupos is one paged message "
+            "instead of v1's one getChat + one sendMessage per group (D11) and "
+            "/broadcast is a cb-worker fan-out instead of a sleep(0.5) loop on the "
+            "handler thread (D8); /stop and /restart answer a refusal rather than "
+            "os._exit-ing one of N replicas - see docs/contracts/x_owner_commands.md; "
+            "QA authored (9 scenarios)"),
     Feature("x_custom_commands", "fun", "Per-group custom commands", "M3", Status.BLOCKED,
             Layer.GATEWAY, "Miscellaneous.py:145-158", (),
             "same GCS blocker as fun_death, and worse: the command *names* are the "
