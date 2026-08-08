@@ -254,6 +254,9 @@ clean_rules = _table_cleaner("group_rules")
 clean_welcomes = _table_cleaner("group_welcomes")
 clean_captcha = _table_cleaner("captcha_challenges")
 clean_members = _table_cleaner("group_members")
+# `giveaway_participants` has an ON DELETE CASCADE foreign key to this table and
+# is colocated with it, so one delete clears both.
+clean_giveaways = _table_cleaner("giveaways")
 
 
 @pytest.fixture(autouse=True)
@@ -557,6 +560,8 @@ def feed(
     dispatcher: Dispatcher,
     bot: Bot,
     payload: dict[str, Any],
+    *,
+    skin: str = "cookiebot",
 ) -> None:
     from aiogram.types import Update
 
@@ -568,4 +573,8 @@ def feed(
     mirror_inbound_update(payload)
 
     update = Update.model_validate(payload, context={"bot": bot})
-    run(dispatcher.feed_update(bot, update, skin="cookiebot", bot_username=BOT_USERNAME))
+    # `skin` is what `cb_gateway.main` injects per update from the webhook path
+    # it arrived on; every handler that behaves differently per brand reads it
+    # as a plain keyword argument (core_botskins). Defaults to the flagship, so
+    # no existing caller changes.
+    run(dispatcher.feed_update(bot, update, skin=skin, bot_username=BOT_USERNAME))

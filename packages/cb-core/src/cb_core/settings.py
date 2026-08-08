@@ -113,6 +113,34 @@ class Settings(BaseSettings):
     saucenao_api_key: str = ""
     saucenao_timeout_seconds: float = 15.0
 
+    # util_birthday — the daily every-group broadcast (v1's `manual_chat_id=None`
+    # shape). On by default because v1 does it: `COOKIEBOT.py:333-339` calls
+    # `birthday()` unattended from the message handler's `finally` on the first
+    # message of a new UTC day, so live groups receive it today and switching it
+    # off silently would be the regression, not the safe choice. The switch
+    # exists for a deployment that does not want it.
+    birthday_broadcast_enabled: bool = True
+
+    # core_musicdetection — off by default, and a second switch on top of the
+    # optional `music` extra not being installed either (cb_worker/music.py):
+    # the feature calls Shazam's unofficial endpoint, which a deployment must
+    # opt into rather than out of. v1 called it inline with no timeout at all
+    # (Bot/Audio.py:7-11), on every voice note.
+    music_detection_enabled: bool = False
+    music_detection_timeout_seconds: float = 20.0
+    #: The recogniser's key. v1 called Shazam's unpublished endpoint through an
+    #: unmaintained wrapper whose successor's Rust core segfaults on this
+    #: workspace's Python — see cb_worker/music.py for the whole finding.
+    #: Empty means the feature is inert, exactly like youtube_api_key.
+    audd_api_key: str = ""
+
+    # x_distortion — how many /destroy jobs one worker runs at once. v1 had a
+    # hard bound of exactly one per media class, enforced by spinning on a
+    # module global (FEATURE-MAP D3); this is the same bound as a real
+    # semaphore, defaulted to 2 because the carve now runs off the event loop
+    # and no longer burns a core while it waits.
+    distortion_concurrency: int = 2
+
     # util_postforwarder / util_postgetter — v1 hardcoded one deployment's
     # channel ids as module constants (Bot/Publisher.py:20-22). v2 is
     # multi-tenant, so they are configuration, and the publisher is inert until
@@ -166,6 +194,33 @@ class Settings(BaseSettings):
     telegram_ingest: str = "webhook"
     telegram_polling_timeout: int = 30
     owner_id: int = 0
+
+    # x_webhub_login — the web console's Telegram-login token exchange.
+    #: PEM of the RSA private key that signs the console's JWTs. Unset means
+    #: cb-api generates one **once** and persists it (`signing_keys`), which is
+    #: what fixes v1's D7: v1 regenerated a key per process on every start, so
+    #: with gunicorn's two workers half of all issued tokens failed to verify
+    #: against the published JWKS at any moment. Set this and the table is
+    #: never read — for a deployment that would rather no private key lived in
+    #: its application database.
+    webhub_jwt_private_key_pem: str = ""
+    #: v1's literal (`Server.py:23`). A resource server that pinned the key id
+    #: keeps working.
+    webhub_jwt_kid: str = "cookiebot-2025"
+    #: v1's 30 minutes (`Server.py:43`).
+    webhub_token_ttl_seconds: int = 1800
+    #: `iss`, and the base of the discovery document. Unset reproduces v1's
+    #: `request.url_root` — which behind a proxy is whatever `X-Forwarded-Host`
+    #: says, so anyone who can reach the service chooses the issuer. Set it.
+    webhub_issuer: str = ""
+    #: How old Telegram's `auth_date` may be. **0 reproduces v1**, which never
+    #: checked it at all, so a captured widget payload mints tokens forever.
+    #: Non-zero is the fix — but the shipped WebHub renews by re-posting the
+    #: payload it stored at first login, so any real value logs those sessions
+    #: out when their token expires. See `.specs/features/x_webhub_login/spec.md`.
+    webhub_auth_max_age_seconds: int = 0
+    #: Browser origins allowed to call `/login`. v1 shipped `origins: "*"`.
+    webhub_allowed_origins: list[str] = Field(default_factory=list)
 
     @field_validator("trace_sample_ratio")
     @classmethod

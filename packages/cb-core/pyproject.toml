@@ -72,3 +72,13 @@ where = ["src"]
 # locale_data above — importlib.resources needs it inside the wheel.
 "cb_core.asset_data.complaint" = ["*.jpg", "*.wav"]
 "cb_core.asset_data.birthday" = ["*.jpg", "*.png"]
+# fun_meme's template *metadata* only (97 kB of CSV). The 110 MB of templates
+# it describes live in cb_core.storage, seeded by `cb.py meme-seed` — see
+# cb_core/meme_templates.py for why the split is where it is.
+"cb_core.asset_data.meme" = ["*.csv"]
+# core_botskins: v1's join-time flair, and the per-skin override tree that
+# rebrands it (cb_core/skins.py). The `skins.*` glob covers a skin pack's own
+# subdirectories, which is what makes adding a brand a directory rather than
+# a packaging change.
+"cb_core.asset_data.doomlist" = ["*.jpg"]
+"cb_core.asset_data.skins" = ["*/*", "*/*/*"]

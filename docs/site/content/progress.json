@@ -1,19 +1,19 @@
 {
-  "generated_at": "2026-08-05",
-  "commit": "2c6a66e",
-  "test_summary": "2564 passed, 45 skipped, 159 deselected, 1 warning in 20.61s",
+  "generated_at": "2026-08-07",
+  "commit": "c78031f",
+  "test_summary": "2797 passed, 45 skipped, 180 deselected, 2 warnings in 22.30s",
   "totals": {
     "features": 53,
-    "done": 38,
-    "partial": 5,
-    "planned": 7,
+    "done": 46,
+    "partial": 3,
+    "planned": 1,
     "blocked": 3,
     "spec_scenarios": 63,
-    "ported": 139,
+    "ported": 153,
     "spec_files": 31,
-    "spec_files_covered": 26,
-    "new_specs": 36,
-    "green": 238,
+    "spec_files_covered": 29,
+    "new_specs": 64,
+    "green": 283,
     "failing": 0
   },
   "milestones": [
@@ -26,25 +26,25 @@
     {
       "id": "M1",
       "title": "Survival core \u2014 moderation, config, captcha, tenancy",
-      "done": 13,
+      "done": 14,
       "total": 15
     },
     {
       "id": "M2",
       "title": "Fun and utility commands",
-      "done": 10,
+      "done": 12,
       "total": 15
     },
     {
       "id": "M3",
       "title": "Publisher, AI, giveaways, owner tooling",
-      "done": 6,
+      "done": 10,
       "total": 11
     },
     {
       "id": "M4",
       "title": "Analytics surface, web console, data migration",
-      "done": 0,
+      "done": 1,
       "total": 3
     }
   ],
@@ -533,15 +533,15 @@
       "area": "core",
       "layer": "gateway",
       "milestone": "M1",
-      "status": "partial",
+      "status": "done",
       "triggers": [],
       "v1_source": "universal_funcs.py:39-52",
-      "notes": "one process serves every skin; per-event asset packs pending",
-      "contract": null,
+      "notes": "one process serves every skin; cb_core/skins.py adds the two behavioural forks v1 keys on is_alternate_bot (intro animation, fun-override flair) plus the per-skin asset override tree; all 5 personas configured (0007). Handler packs remain platform_tenancy's open item - see docs/contracts/core_botskins.md",
+      "contract": "docs/contracts/core_botskins.md",
       "scenarios": {
         "spec": 3,
-        "ported": 0,
-        "green": 0,
+        "ported": 5,
+        "green": 5,
         "failing": 0
       },
       "url": "/docs/features/core_botskins"
@@ -621,17 +621,17 @@
       "area": "fun",
       "layer": "worker",
       "milestone": "M2",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/meme"
       ],
       "v1_source": "SocialContent.py:224-277",
-      "notes": "image compositing is a worker job, not a reply-path call",
-      "contract": null,
+      "notes": "v1's 97kB metadata CSV ships as package data, its 110MB of templates go to object storage via `cb.py meme-seed`; Pillow compositing in cb-worker; v1's roster fallback was dead code and its empty-pool branch a NameError, both fixed - see docs/contracts/fun_meme.md; QA authored (4 scenarios)",
+      "contract": "docs/contracts/fun_meme.md",
       "scenarios": {
         "spec": 2,
-        "ported": 0,
-        "green": 0,
+        "ported": 4,
+        "green": 4,
         "failing": 0
       },
       "url": "/docs/features/fun_meme"
@@ -761,14 +761,14 @@
       "area": "util",
       "layer": "worker",
       "milestone": "M2",
-      "status": "partial",
+      "status": "done",
       "triggers": [
         "/birthday",
         "/aniversario",
         "/cumpleanos"
       ],
       "v1_source": "Birthdays.py:14-61",
-      "notes": "manual command only - the daily every-group broadcast is an unverified, unresolved parity gap, see docs/contracts/util_birthday.md",
+      "notes": "both v1 shapes: the manual command, and the daily every-group broadcast - whose caller turned out to be COOKIEBOT.py:333-339 (the message handler's finally, on the first update of a new UTC day), not a scheduler. v2 runs it as a cron with one deferred job per group instead of v1's sleep(3) loop (D8)",
       "contract": "docs/contracts/util_birthday.md",
       "scenarios": {
         "spec": 1,
@@ -891,15 +891,15 @@
       "area": "core",
       "layer": "worker",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [],
       "v1_source": "Audio.py:6-20",
-      "notes": "ShazamAPI is unofficial - feature-flag it behind a breaker",
-      "contract": null,
+      "notes": "passive, off by default, breakered cb-worker job; shazamio-core segfaults on py3.14 so the recogniser is AudD's documented API behind a swappable seam - see docs/contracts/core_musicdetection.md; QA authored (5 scenarios)",
+      "contract": "docs/contracts/core_musicdetection.md",
       "scenarios": {
         "spec": 1,
-        "ported": 0,
-        "green": 0,
+        "ported": 5,
+        "green": 5,
         "failing": 0
       },
       "url": "/docs/features/core_musicdetection"
@@ -978,17 +978,17 @@
       "area": "util",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/giveaway"
       ],
       "v1_source": "Giveaways.py:25-173",
-      "notes": "no QA scenario exists - write one",
-      "contract": null,
+      "notes": "two distributed tables replace Giveaways.db; v1's /giveaway never completed (json.loads on a de-quoted callback payload) and its enter button was admin-only - both fixed, see docs/contracts/x_giveaways.md; QA authored, not ported (10 scenarios)",
+      "contract": "docs/contracts/x_giveaways.md",
       "scenarios": {
         "spec": 0,
-        "ported": 0,
-        "green": 0,
+        "ported": 10,
+        "green": 10,
         "failing": 0
       },
       "url": "/docs/features/x_giveaways"
@@ -1060,18 +1060,19 @@
       "area": "fun",
       "layer": "worker",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/destroy",
-        "/zoar"
+        "/zoar",
+        "/destruir"
       ],
       "v1_source": "Distortioner.py:114-156",
-      "notes": "v1 busy-waits on a module global; replace with a worker semaphore",
-      "contract": null,
+      "notes": "branch chain on the reply path, carve + ffmpeg in cb-worker behind a real semaphore (D3) with per-call temp dirs (D4); v1's video/GIF arms are unreachable and stay disabled; seam carving over numpy replaces ImageMagick liquid_rescale - see docs/contracts/x_distortion.md; QA authored (12 scenarios)",
+      "contract": "docs/contracts/x_distortion.md",
       "scenarios": {
         "spec": 0,
-        "ported": 0,
-        "green": 0,
+        "ported": 10,
+        "green": 12,
         "failing": 0
       },
       "url": "/docs/features/x_distortion"
@@ -1082,22 +1083,24 @@
       "area": "util",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/grupos",
+        "/groups",
         "/broadcast",
         "/leave",
         "/blacklist",
+        "/unblacklist",
         "/stop",
         "/restart"
       ],
       "v1_source": "COOKIEBOT.py:83-105",
-      "notes": "",
-      "contract": null,
+      "notes": "private-chat only and gated on CB_OWNER_ID; /grupos is one paged message instead of v1's one getChat + one sendMessage per group (D11) and /broadcast is a cb-worker fan-out instead of a sleep(0.5) loop on the handler thread (D8); /stop and /restart answer a refusal rather than os._exit-ing one of N replicas - see docs/contracts/x_owner_commands.md; QA authored (9 scenarios)",
+      "contract": "docs/contracts/x_owner_commands.md",
       "scenarios": {
         "spec": 0,
-        "ported": 0,
-        "green": 0,
+        "ported": 8,
+        "green": 9,
         "failing": 0
       },
       "url": "/docs/features/x_owner_commands"
@@ -1127,11 +1130,11 @@
       "area": "platform",
       "layer": "api",
       "milestone": "M4",
-      "status": "planned",
+      "status": "done",
       "triggers": [],
       "v1_source": "Server.py:25-52",
-      "notes": "v1 regenerates the signing key on every restart (D7) - persist it",
-      "contract": null,
+      "notes": "D7 fixed: the RSA key is configured or generated once into signing_keys (migration 0008), so it survives a restart and every replica shares it - v1 generated one per gunicorn worker per start and published only the answering worker's in its JWKS. Also D-WL-2: v1's pop('hash') meant only the first of its five bot tokens could ever sign anyone in. auth_date enforcement is written but off by default (the WebHub renews by replaying the payload) - see docs/contracts/x_webhub_login.md. No QA scenario: the feature has no Telegram surface",
+      "contract": "docs/contracts/x_webhub_login.md",
       "scenarios": {
         "spec": 0,
         "ported": 0,
@@ -1171,7 +1174,7 @@
       "area": "util",
       "title": "Call the admins",
       "hint": "Pings every admin in the chat \u2014 compare the reply as a member vs. as an admin.",
-      "status": "partial",
+      "status": "done",
       "url": "/docs/features/util_calladms"
     },
     {
@@ -1184,7 +1187,7 @@
       "area": "fun",
       "title": "Battle poll",
       "hint": "",
-      "status": "planned",
+      "status": "partial",
       "url": "/docs/features/fun_battle"
     },
     {
@@ -1194,7 +1197,7 @@
       "area": "fun",
       "title": "Partnered convention posters",
       "hint": "",
-      "status": "planned",
+      "status": "blocked",
       "url": "/docs/features/fun_partneredcons"
     },
     {
@@ -1209,7 +1212,7 @@
       "area": "util",
       "title": "Today's birthdays",
       "hint": "",
-      "status": "planned",
+      "status": "partial",
       "url": "/docs/features/util_birthday"
     },
     {
@@ -1236,7 +1239,7 @@
       "area": "fun",
       "title": "Complaint bit",
       "hint": "",
-      "status": "planned",
+      "status": "done",
       "url": "/docs/features/fun_complaint"
     },
     {
@@ -1262,7 +1265,7 @@
       "area": "fun",
       "title": "Random cause of death",
       "hint": "",
-      "status": "planned",
+      "status": "blocked",
       "url": "/docs/features/fun_death"
     },
     {
@@ -1275,8 +1278,21 @@
       "area": "util",
       "title": "Delete scheduled reposts",
       "hint": "",
-      "status": "planned",
+      "status": "done",
       "url": "/docs/features/util_deletereposts"
+    },
+    {
+      "primary": "/destroy",
+      "aliases": [
+        "/destruir",
+        "/zoar"
+      ],
+      "feature_id": "x_distortion",
+      "area": "fun",
+      "title": "Media distortion",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_distortion"
     },
     {
       "primary": "/dice",
@@ -1298,7 +1314,7 @@
       "area": "util",
       "title": "Ping every member",
       "hint": "",
-      "status": "planned",
+      "status": "done",
       "url": "/docs/features/util_everyone"
     },
     {
@@ -1313,7 +1329,7 @@
       "area": "fun",
       "title": "Firecracker sequence",
       "hint": "",
-      "status": "planned",
+      "status": "done",
       "url": "/docs/features/fun_firecracker"
     },
     {
@@ -1323,7 +1339,7 @@
       "area": "fun",
       "title": "Partnered convention posters",
       "hint": "",
-      "status": "planned",
+      "status": "blocked",
       "url": "/docs/features/fun_partneredcons"
     },
     {
@@ -1333,8 +1349,18 @@
       "area": "fun",
       "title": "Partnered convention posters",
       "hint": "",
-      "status": "planned",
+      "status": "blocked",
       "url": "/docs/features/fun_partneredcons"
+    },
+    {
+      "primary": "/giveaway",
+      "aliases": [],
+      "feature_id": "x_giveaways",
+      "area": "util",
+      "title": "Giveaways",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_giveaways"
     },
     {
       "primary": "/isalive",
@@ -1355,7 +1381,7 @@
       "area": "fun",
       "title": "Meme generator",
       "hint": "",
-      "status": "planned",
+      "status": "done",
       "url": "/docs/features/fun_meme"
     },
     {
@@ -1388,13 +1414,14 @@
       "primary": "/nextbirthday",
       "aliases": [
         "/nextbirthdays",
-        "/proximosaniversarios"
+        "/proximosaniversarios",
+        "/proximoscumpleanos"
       ],
       "feature_id": "util_nextbirthday",
       "area": "util",
       "title": "Upcoming birthdays",
       "hint": "",
-      "status": "planned",
+      "status": "done",
       "url": "/docs/features/util_nextbirthday"
     },
     {
@@ -1404,7 +1431,7 @@
       "area": "fun",
       "title": "Partnered convention posters",
       "hint": "",
-      "status": "planned",
+      "status": "blocked",
       "url": "/docs/features/fun_partneredcons"
     },
     {
@@ -1414,7 +1441,7 @@
       "area": "fun",
       "title": "Partnered convention posters",
       "hint": "",
-      "status": "planned",
+      "status": "blocked",
       "url": "/docs/features/fun_partneredcons"
     },
     {
@@ -1436,12 +1463,12 @@
         "/divulgar",
         "/publicar"
       ],
-      "feature_id": null,
-      "area": "other",
-      "title": "",
+      "feature_id": "util_postforwarder",
+      "area": "util",
+      "title": "Cross-group post forwarding",
       "hint": "",
-      "status": "unknown",
-      "url": null
+      "status": "done",
+      "url": "/docs/features/util_postforwarder"
     },
     {
       "primary": "/random",
@@ -1462,12 +1489,12 @@
         "/reenviar",
         "/repostar"
       ],
-      "feature_id": null,
-      "area": "other",
-      "title": "",
+      "feature_id": "util_postforwarder",
+      "area": "util",
+      "title": "Cross-group post forwarding",
       "hint": "",
-      "status": "unknown",
-      "url": null
+      "status": "done",
+      "url": "/docs/features/util_postforwarder"
     },
     {
       "primary": "/rules",
@@ -1483,6 +1510,19 @@
       "url": "/docs/features/core_rules"
     },
     {
+      "primary": "/searchsource",
+      "aliases": [
+        "/buscarfonte",
+        "/buscarfuente"
+      ],
+      "feature_id": "x_reverse_search",
+      "area": "util",
+      "title": "Reverse image search",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_reverse_search"
+    },
+    {
       "primary": "/ship",
       "aliases": [
         "/shipp",
@@ -1492,8 +1532,21 @@
       "area": "fun",
       "title": "Ship two members",
       "hint": "",
-      "status": "planned",
+      "status": "done",
       "url": "/docs/features/fun_ship"
+    },
+    {
+      "primary": "/transcribe",
+      "aliases": [
+        "/transcrever",
+        "/transcribir"
+      ],
+      "feature_id": null,
+      "area": "other",
+      "title": "",
+      "hint": "",
+      "status": "unknown",
+      "url": null
     },
     {
       "primary": "/trex",
@@ -1502,7 +1555,7 @@
       "area": "fun",
       "title": "Partnered convention posters",
       "hint": "",
-      "status": "planned",
+      "status": "blocked",
       "url": "/docs/features/fun_partneredcons"
     },
     {
@@ -1512,7 +1565,7 @@
       "area": "util",
       "title": "YouTube search",
       "hint": "",
-      "status": "planned",
+      "status": "done",
       "url": "/docs/features/util_youtube"
     }
   ],
@@ -1520,10 +1573,10 @@
     {
       "stem": "core_botskins",
       "spec": 3,
-      "ported": 0,
-      "green": 0,
+      "ported": 5,
+      "green": 5,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "core_groupguardian",
@@ -1568,10 +1621,10 @@
     {
       "stem": "core_musicdetection",
       "spec": 1,
-      "ported": 0,
-      "green": 0,
+      "ported": 5,
+      "green": 5,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "core_privacy",
@@ -1656,10 +1709,10 @@
     {
       "stem": "fun_meme",
       "spec": 2,
-      "ported": 0,
-      "green": 0,
+      "ported": 4,
+      "green": 4,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "fun_partneredcons",
@@ -1786,6 +1839,30 @@
       "spec": 0,
       "ported": 7,
       "green": 7,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "x_distortion",
+      "spec": 0,
+      "ported": 10,
+      "green": 12,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "x_giveaways",
+      "spec": 0,
+      "ported": 10,
+      "green": 10,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "x_owner_commands",
+      "spec": 0,
+      "ported": 8,
+      "green": 9,
       "failing": 0,
       "state": "v2-only spec"
     },

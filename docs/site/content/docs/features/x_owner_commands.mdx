@@ -3,25 +3,58 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Owner-only operations"
-description: "util · M3"
-status: planned
+description: "private-chat only and gated on CB_OWNER_ID; /grupos is one paged message instead of v1's one getChat + one sendMessage per group (D11) and /broadcast is a cb-worker fan-out instead of a sleep(0.5) loop on the handler thread (D8); /stop and /restart answer a refusal rather than os._exit-ing one of N replicas - see docs/contracts/x_owner_commands.md; QA authored (9 scenarios)"
+status: done
 milestone: M3
 area: util
 layer: gateway
-triggers: ["/grupos", "/broadcast", "/leave", "/blacklist", "/stop", "/restart"]
+triggers: ["/grupos", "/groups", "/broadcast", "/leave", "/blacklist", "/unblacklist", "/stop", "/restart"]
 v1_source: "COOKIEBOT.py:83-105"
+contract: "docs/contracts/x_owner_commands.md"
 ---
 <FeatureHeader id="x_owner_commands" />
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+In the bot's private chat, and only for whoever holds `CB_OWNER_ID`:
+`/grupos` (or `/groups`) prints every group the deployment is in, with a
+total; `/broadcast <message>` sends a message to all of them; `/leave <chat_id>`
+leaves a group, blacklists it and forgets everything the bot stored about it;
+`/blacklist <user_id>` and `/unblacklist <user_id>` add and remove a user from
+the global blacklist the join guard reads. Anyone who is not the owner gets no
+answer at all, in a DM or in a group.
+
+`/stop` and `/restart` reply with an explanation instead of doing anything.
+v1 ran one process on one host, so they meant something; here they would kill
+one of several interchangeable replicas that the orchestrator would replace
+seconds later. Restarting the deployment is the orchestrator's verb, not the
+bot's.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+- **The owner gate is every command's first condition.** v1 re-tested
+  `msg['from']['id'] == ownerID` on each branch, and an unset owner id means
+  *nobody* — never everybody.
+- **Private chat only.** None of these work in a group, in either version.
+- **The wording is v1's**: `Auto-left\n<id>`, `Blacklisted user with ID <id>`,
+  `Unblacklisted user with ID <id>`. They were hardcoded English in v1 and are
+  not translated here.
+- **`@123` and `123` are the same argument** — v1 stripped a leading `@` and
+  never actually resolved a username, and neither does this.
+- **`/leave` still forgets the group even if leaving the chat fails.** v1 only
+  printed that error; the blacklist row and the deletion happen either way.
+
+Three things deliberately differ, all in `docs/contracts/x_owner_commands.md`:
+`/grupos` answers in one paged message rather than one message per group,
+`/broadcast` is queued to `cb-worker` instead of sleeping on the handler
+thread, and `/leave` takes the group's other rows with it instead of orphaning
+them.
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/features/x_owner_commands.feature` (nine scenarios) drives the real
+dispatcher against a real `groups` and `blacklist`. By hand in the sandbox: set
+`CB_OWNER_ID` to your own Telegram id, DM the bot `/grupos`, then `/blacklist
+424243` followed by `/unblacklist 424243` and again to see the "was not
+blacklisted" answer. `/broadcast hi` should answer immediately and the worker
+log should show one `broadcast.queued` line with the group count.

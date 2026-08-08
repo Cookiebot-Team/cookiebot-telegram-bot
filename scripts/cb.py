@@ -281,6 +281,22 @@ def bucket_export(extra: list[str]) -> int:
     return run("uv", "run", "python", "-m", "cb_worker.bucket_export", *extra)
 
 
+@task("meme-seed", "copy v1's meme templates into v2 object storage")
+def meme_seed(extra: list[str]) -> int:
+    """fun_meme's 110 MB of templates, out of the v1 checkout and into
+    `CB_STORAGE_URI`.
+
+    Separate from `bucket-export` because the source is: these are checked
+    into `../COOKIEBOT-Telegram-Group-Bot`, not in v1's private GCS bucket, so
+    this is a directory copy with no credential involved. Idempotent by key —
+    a re-run skips what is already there; `--force` overwrites. `--verify`
+    reads nothing from v1 and reports keys the store is missing. The metadata
+    that describes these files ships as package data
+    (`cb_core/meme_templates.py`); only the bytes are moved here.
+    """
+    return run("uv", "run", "python", "-m", "cb_worker.meme_seed", *extra)
+
+
 @task("migrate-check", "upgrade, downgrade to base, upgrade again")
 def migrate_check(_: list[str]) -> int:
     return chain(

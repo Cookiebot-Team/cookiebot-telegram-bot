@@ -66,6 +66,13 @@ ignore = [
 # timeout, which is what also bounds the SDK's internal retries. An asyncio
 # timeout at the call site would cancel mid-retry instead.
 "packages/cb-core/src/cb_core/llm/*.py" = ["ASYNC109"]
+# ASYNC109, same reason as the LLM providers above: `timeout` is handed to
+# httpx's own per-request timeout, which is what also bounds its connect and
+# read phases. An `asyncio.timeout` at the call site would cancel the request
+# without the client ever learning it was abandoned. The `Recogniser` protocol
+# and its test double carry the same parameter because they implement it.
+"packages/cb-worker/src/cb_worker/music.py" = ["ASYNC109"]
+"packages/cb-worker/tests/test_music_job.py" = ["ASYNC109"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -31,6 +31,12 @@ dependencies = [
     # much smaller surface than OpenCV — is the new dependency, not a
     # duplicate of one already present (AGENTS.md §5).
     "Pillow>=11.0",
+    # x_distortion's seam carve (cb_worker/distort.py). v1 reached ImageMagick's
+    # `liquid_rescale` through `wand`, which would mean a liblqr-enabled
+    # ImageMagick in the runtime image; the same algorithm over numpy needs
+    # nothing outside the wheel and is the C-backed option AGENTS.md §5 asks
+    # for. Pairs with the Pillow above rather than duplicating it.
+    "numpy>=2.0",
 ]
 
 [tool.setuptools.packages.find]

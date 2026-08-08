@@ -3,24 +3,62 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Telegram-login JWT for the web console"
-description: "v1 regenerates the signing key on every restart (D7) - persist it"
-status: planned
+description: "D7 fixed: the RSA key is configured or generated once into signing_keys (migration 0008), so it survives a restart and every replica shares it - v1 generated one per gunicorn worker per start and published only the answering worker's in its JWKS. Also D-WL-2: v1's pop('hash') meant only the first of its five bot tokens could ever sign anyone in. auth_date enforcement is written but off by default (the WebHub renews by replaying the payload) - see docs/contracts/x_webhub_login.md. No QA scenario: the feature has no Telegram surface"
+status: done
 milestone: M4
 area: platform
 layer: api
 v1_source: "Server.py:25-52"
+contract: "docs/contracts/x_webhub_login.md"
 ---
 <FeatureHeader id="x_webhub_login" />
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+`COOKIEBOT-WebHub` signs a user in with Telegram's login widget and posts the
+widget's payload to `POST /login`. `cb-api` checks the payload's HMAC against
+every configured bot token, and answers with a 30-minute RS256 JWT whose `sub`
+is the Telegram user id. `/.well-known/jwks.json` and
+`/.well-known/openid-configuration` let a resource server verify that token
+without calling back. `GET /` reports that the bot is online and how many
+groups it is in.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+- **The response shapes.** `{"status": "Token generated", "accessToken": …}`,
+  `400 {"error": "Missing data"}`, `401 {"error": "Invalid bot token"}`. The
+  shipped client reads `accessToken` by name and branches on the codes.
+- **The claim set** — `exp`, `iat`, `kid`, `sub`, `iss` — and `kid` appearing
+  as a payload claim as well as a header, which is v1's own doing.
+- **`kid` defaults to `cookiebot-2025`** and the algorithm is RS256.
+- **The discovery document's fields**, unchanged from v1.
+
+Four v1 behaviours are deliberately *not* preserved, all argued in
+`docs/contracts/x_webhub_login.md`: the signing key now survives a restart and
+is shared by every replica (D7); every configured bot's token can sign a user
+in, where v1 could only ever match the first of its five; `iat` is floored so it
+is never a second in the future; and `/login`'s CORS is an allowlist rather than
+`*`.
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+No Gherkin scenario — the feature has no Telegram surface.
+`packages/cb-api/tests/test_login_endpoints.py` drives all four endpoints over
+HTTP, and `qa/integration/test_webhub_login.py` is the D7 regression against a
+real database: issue a token, drop the process cache, and verify it against the
+JWKS the "restarted" process publishes.
+
+By hand: `python scripts/cb.py api`, then
+`curl localhost:8000/.well-known/openid-configuration`. A login needs a real
+widget payload, so the quickest check is to point a local WebHub at it with
+`CB_WEBHUB_ALLOWED_ORIGINS=["http://localhost:3000"]`.
+
+## Two things to set before this goes live
+
+- **`CB_WEBHUB_ISSUER`.** Unset, the issuer is the request's own base URL —
+  v1's behaviour, and behind a proxy that is the `X-Forwarded-Host` header, so
+  a caller chooses the `iss` of the tokens this service mints.
+- **`CB_WEBHUB_AUTH_MAX_AGE_SECONDS`**, which is `0` — v1's replay window,
+  which is forever. It ships off because the WebHub renews a session by
+  re-posting the login payload it stored the first time, so any real value logs
+  those sessions out. Closing it is a client change first.

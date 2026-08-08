@@ -27,9 +27,17 @@ from cb_core.logging import configure_logging, get_logger
 from cb_core.migrations import ensure_schema
 from cb_core.settings import Settings, get_settings
 from cb_core.telemetry import context_from_carrier, setup_tracing, span
-from cb_worker.jobs.birthday import next_birthdays_followup, post_birthday_collage
+from cb_worker.jobs.birthday import (
+    broadcast_birthdays,
+    next_birthdays_followup,
+    post_birthday_collage,
+)
+from cb_worker.jobs.broadcast import broadcast_to_groups, deliver_broadcast
 from cb_worker.jobs.calladms import notify_admins_of_call
+from cb_worker.jobs.distortion import distort_media
 from cb_worker.jobs.everyone import everyone_fanout
+from cb_worker.jobs.meme import compose_meme
+from cb_worker.jobs.music import identify_music
 from cb_worker.jobs.publisher import deliver_scheduled_posts, publisher_approve
 from cb_worker.jobs.reverse_search import search_source
 from cb_worker.jobs.youtube import search_youtube
@@ -208,9 +216,15 @@ class WorkerSettings:
         search_youtube,  # util_youtube's search + reply (.specs/features/util_youtube)
         post_birthday_collage,  # util_birthday's collage (.specs/features/util_birthday)
         next_birthdays_followup,  # the durable replacement for v1's threading.Timer
+        broadcast_birthdays,  # util_birthday's daily every-group sweep
         publisher_approve,  # util_postforwarder's render + fan-out
         deliver_scheduled_posts,
         search_source,  # x_reverse_search's SauceNAO lookup
+        distort_media,  # x_distortion's seam carve / vibrato pass
+        identify_music,  # core_musicdetection's recognition lookup
+        compose_meme,  # fun_meme's template compositing
+        broadcast_to_groups,  # x_owner_commands' /broadcast fan-out
+        deliver_broadcast,
         maintain_partitions,
         rollup_yesterday,
         rollup_llm_costs,
@@ -222,6 +236,12 @@ class WorkerSettings:
         cron(rollup_yesterday, hour=0, minute=20),  # daily, after midnight
         cron(rollup_llm_costs, hour=0, minute=25),
         cron(collect_media_garbage, hour=3, minute=40),  # off-peak
+        # util_birthday's daily broadcast. v1 fired it opportunistically from
+        # the message handler on the first update of a new UTC day
+        # (COOKIEBOT.py:333-339) — late in a quiet group, twice if two
+        # replicas raced, never at all in a group whose day started with
+        # silence. A cron just after midnight UTC is the same intent, on time.
+        cron(broadcast_birthdays, hour=0, minute=10),
         cron(expire_captchas, minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}),
         # v1's `scheduler_check` re-armed a `threading.Timer(300, ...)` in the
         # primary bot process only (COOKIEBOT.py:448-455) — a crash between

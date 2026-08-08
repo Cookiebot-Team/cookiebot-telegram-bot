@@ -76,7 +76,7 @@ from aiogram.dispatcher.event.bases import SkipHandler
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import BotCommand, BotCommandScopeChat, Message
 
-from cb_core import group_config, locales
+from cb_core import group_config, locales, skins
 from cb_core.logging import get_logger
 
 log = get_logger("cb.setlang")
@@ -263,12 +263,17 @@ async def apply_join_language(
 
 
 @router.message(F.new_chat_members)
-async def on_bot_added_to_group(message: Message) -> None:
-    """The bot's own join. v1: `COOKIEBOT.py:121-135`, narrowed to the
-    language-derivation slice only — see the module docstring's "Boundary"
-    section for what is deliberately not reproduced (the blacklist/short-title
-    auto-leave gate, the celebratory animation, the owner DM), and for the
-    router-ordering dependency this handler has on `welcome.router`.
+async def on_bot_added_to_group(message: Message, skin: str = skins.PRIMARY_SKIN) -> None:
+    """The bot's own join. v1: `COOKIEBOT.py:121-135`.
+
+    Two of the three things the module docstring listed as deliberately not
+    reproduced are still not reproduced (the blacklist/short-title auto-leave
+    gate, the owner DM). The third — **the celebratory animation** — is
+    ported here, because it turned out to be one of only two per-skin
+    behaviours v1 has: `COOKIEBOT.py:130` guards it with
+    `if not is_alternate_bot`, so an event skin joins quietly. That gate is
+    `cb_core.skins.posts_intro_animation`, and owning it is what
+    `core_botskins` was missing.
     """
     joiners = message.new_chat_members
     if not joiners:
@@ -284,9 +289,31 @@ async def on_bot_added_to_group(message: Message) -> None:
 
     language_code = message.from_user.language_code if message.from_user else None
     try:
-        await apply_join_language(bot, message.chat.id, language_code)
+        language = await apply_join_language(bot, message.chat.id, language_code)
     except Exception as exc:  # noqa: BLE001 - a first-contact hiccup must not crash the join event
         log.warning("setlang.join_derivation_failed", group_id=message.chat.id, error=str(exc))
+        language = None
+
+    await post_intro_animation(message, skin, language)
+
+
+async def post_intro_animation(message: Message, skin: str, language: str | None) -> None:
+    """v1 `COOKIEBOT.py:130-132` — the flagship announces itself, an event skin
+    does not.
+
+    Best-effort: the language derivation above is the part of this join that
+    matters, and a CDN that is unreachable (or a group that forbids animations)
+    must not make the bot look like it failed to join.
+    """
+    if not skins.posts_intro_animation(skin):
+        return
+    try:
+        await message.answer_animation(
+            skins.INTRO_ANIMATION_URL,
+            caption=locales.get("caption", locales.resolve_language(language)),
+        )
+    except Exception as exc:  # noqa: BLE001 - see docstring
+        log.warning("setlang.intro_animation_failed", group_id=message.chat.id, error=str(exc))
 
 
 __all__ = [
@@ -294,6 +321,7 @@ __all__ = [
     "derive_join_language",
     "on_bot_added_to_group",
     "parse_manual_commands",
+    "post_intro_animation",
     "router",
     "set_group_commands",
 ]

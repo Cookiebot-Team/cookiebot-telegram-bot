@@ -48,6 +48,8 @@ COMMAND_ALIASES: dict[str, str] = {
     "acende": "firecracker", "fogos": "firecracker",
     "complaint": "complaint", "milton": "complaint", "reclamacao": "complaint",
     "reclamação": "complaint", "queja": "complaint",
+    # x_distortion. v1 dispatches all three spellings (COOKIEBOT.py:217,242).
+    "destroy": "destroy", "zoar": "destroy", "destruir": "destroy",
     # util
     "birthday": "birthday", "aniversario": "birthday", "aniversário": "birthday",
     "cumpleanos": "birthday", "cumpleaños": "birthday",
@@ -56,6 +58,10 @@ COMMAND_ALIASES: dict[str, str] = {
     "everyone": "everyone",
     "adm": "calladms", "admin": "calladms", "report": "calladms",
     "youtube": "youtube",
+    # x_giveaways. v1 has exactly one spelling (COOKIEBOT.py:249,262) — no
+    # PT/ES alias was ever shipped, so inventing one here would be a new
+    # trigger, not a preserved one.
+    "giveaway": "giveaway",
     "transcribe": "transcribe", "transcrever": "transcribe", "transcribir": "transcribe",
     # QA spells this /deletereposts; v1 shipped /deleteposts — accept both.
     "deletereposts": "deletereposts", "deleteposts": "deletereposts",
@@ -66,6 +72,14 @@ COMMAND_ALIASES: dict[str, str] = {
     # Portuguese spelling is the one its own users type.
     "searchsource": "searchsource", "buscarfonte": "searchsource",
     "buscarfuente": "searchsource",
+    # x_owner_commands. v1 dispatches /grupos and /groups (COOKIEBOT.py:83)
+    # and the rest in one spelling each (:97-105). Owner-gated and
+    # private-chat only, so these never collide with a group command.
+    "grupos": "groups", "groups": "groups",
+    "leave": "leave",
+    "blacklist": "blacklist", "unblacklist": "unblacklist",
+    "broadcast": "broadcast",
+    "stop": "stop", "restart": "restart",
     # partnered conventions (fun_partneredcons) — /trex was spec'd but missing in v1.
     "bff": "con_bff", "patas": "con_patas", "fursmeet": "con_fursmeet",
     "trex": "con_trex", "furcamp": "con_furcamp", "pawstral": "con_pawstral",

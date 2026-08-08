@@ -1,5 +1,11 @@
 # util_birthday — Specify
 
+> **Update (this slice): the missing caller was found.** The daily broadcast's
+> trigger is `COOKIEBOT.py:333-339` — the message handler's `finally`, on the
+> first update of a new UTC day — not a scheduler, which is why searching for
+> one found nothing. The broadcast is built and the gap is closed; see
+> `docs/contracts/util_birthday.md` §"The daily broadcast — the caller, found".
+
 **Feature id:** `util_birthday` · **Milestone:** M2 · **Kind:** v1 port,
 narrowed — see "Recommended scope" below
 **v1 source:** `Bot/Birthdays.py:14-61` (`birthday`), dispatched

@@ -3,13 +3,14 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Media distortion"
-description: "v1 busy-waits on a module global; replace with a worker semaphore"
-status: planned
+description: "branch chain on the reply path, carve + ffmpeg in cb-worker behind a real semaphore (D3) with per-call temp dirs (D4); v1's video/GIF arms are unreachable and stay disabled; seam carving over numpy replaces ImageMagick liquid_rescale - see docs/contracts/x_distortion.md; QA authored (12 scenarios)"
+status: done
 milestone: M3
 area: fun
 layer: worker
-triggers: ["/destroy", "/zoar"]
+triggers: ["/destroy", "/zoar", "/destruir"]
 v1_source: "Distortioner.py:114-156"
+contract: "docs/contracts/x_distortion.md"
 ---
 <FeatureHeader id="x_distortion" />
 

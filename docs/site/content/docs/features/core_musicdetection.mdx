@@ -3,12 +3,13 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Identify music in voice notes"
-description: "ShazamAPI is unofficial - feature-flag it behind a breaker"
-status: planned
+description: "passive, off by default, breakered cb-worker job; shazamio-core segfaults on py3.14 so the recogniser is AudD's documented API behind a swappable seam - see docs/contracts/core_musicdetection.md; QA authored (5 scenarios)"
+status: done
 milestone: M3
 area: core
 layer: worker
 v1_source: "Audio.py:6-20"
+contract: "docs/contracts/core_musicdetection.md"
 ---
 <FeatureHeader id="core_musicdetection" />
 

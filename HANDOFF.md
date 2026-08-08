@@ -6,7 +6,123 @@ what to do first.
 
 ---
 
-## 0a. Most recent session (read before §0)
+## 0a. Most recent session (read before §0b)
+
+Two features closed out and the database profiled end to end.
+**46/53 done, 3 partial, 3 blocked, 1 planned.** Gate green:
+`cb.py check` exit 0 (2 797 unit+acceptance), `test-integration` 179 passed,
+`migrate-check` clean through the new `0008`.
+
+### The state you inherit, before the two features
+
+A large slice was already **uncommitted on disk** when this session started —
+`core_botskins`, `core_musicdetection`, `fun_meme`, `x_distortion`,
+`x_giveaways`, `util_birthday`'s daily broadcast, and all of
+`x_owner_commands`' code. `scripts/spec.py` had been flipped for most of them
+but `progress.json` had not been regenerated, so the board understated reality
+by four features. If you are reading this before committing: that work is
+still uncommitted, and it is now joined by this session's.
+
+### `x_owner_commands` — the code was there, the paperwork was not
+
+`handlers/owner.py`, `cb_core/ops.py`, `cb_worker/jobs/broadcast.py` and their
+tests all existed and passed; the row said `PLANNED` and the contract the
+handler's own docstring pointed at did not exist. Written:
+`.specs/features/x_owner_commands/spec.md`,
+`docs/contracts/x_owner_commands.md`, the feature page's prose, and the row
+(now `DONE`, with `/groups` and `/unblacklist` added to its trigger list —
+both dispatch in v1 and neither was listed).
+
+Reading v1 for the contract turned up one defect the port had already fixed
+without saying so, and one it had not noticed: `/leave`'s confirmation
+(`COOKIEBOT.py:103`) interpolates `chat_id`, which in that branch is the
+**owner's own private chat**, not the group being left — the one number the
+message exists to report is the one it never contained. Both are D-OC-1/2 in
+the contract.
+
+### `x_webhub_login` — v1's login server, and D7 finally closed
+
+New: `cb_api/auth.py` (Telegram's widget HMAC, the claim set),
+`cb_api/keys.py` (the signing key), `cb_api/routers/login.py` (`/`, `/login`,
+both `.well-known` documents), migration `0008` (`signing_keys`, a reference
+table), the `webhub_*` settings block, `pyjwt[crypto]` on `cb-api`.
+Contract: `docs/contracts/x_webhub_login.md`. **This is `cb-api`'s first real
+endpoint** — the service was a health-check shell until now.
+
+Four things worth knowing before touching it:
+
+1. **D7 was worse than "the key resets on restart".** v1 generated the RSA key
+   at module import and `run_api_server` starts **two gunicorn workers**
+   (`Server.py:23-24,112`), so two keys signed tokens concurrently while
+   `/.well-known/jwks.json` published only the key of whichever worker served
+   that request. A consumer verifying against the JWKS failed about half the
+   time, restart or no restart. v2 resolves one key: configured PEM, else one
+   row in `signing_keys`, generated once and read back after the insert so a
+   replica that loses the race adopts the winner's key.
+2. **v1's `/login` could only ever accept its first bot token.**
+   `validate_telegram_auth` does `auth_data.pop('hash')` on the caller's dict
+   and the caller loops five tokens with that same dict (`Server.py:32,69-70`)
+   — the second iteration sees no hash and returns `False`. Four of the five
+   personas' users got `401` unconditionally. v2 does not mutate the payload;
+   `test_the_payload_is_not_mutated` is the pin.
+3. **`auth_date` enforcement is written and switched off**, and that is a
+   decision someone has to make, not an oversight. v1 never checked it, so a
+   captured widget payload mints tokens forever — but the shipped WebHub
+   renews a session by **re-posting the payload it stored at first login**
+   (`../COOKIEBOT-WebHub/src/lib/api/axios.ts`), so any real
+   `CB_WEBHUB_AUTH_MAX_AGE_SECONDS` logs those sessions out. Closing the hole
+   is a client change first. Recorded under "Open decision" in
+   `.specs/features/x_webhub_login/spec.md`.
+4. **`CB_WEBHUB_ISSUER` should be set before this is public.** Unset, the
+   issuer is the request's base URL — v1's behaviour, and behind a proxy that
+   is `X-Forwarded-Host`, so a caller picks the `iss` of the tokens this
+   service mints. v2 cannot guess its own public URL, so the fallback is v1's
+   and the setting is the fix.
+
+`signing_keys` holds an unencrypted private key when no PEM is configured.
+Deliberate, argued in the migration's docstring: the alternative for an
+unconfigured deployment is not "no key at rest", it is D7 itself.
+
+### The database is now profiled — `docs/db-profile.md`
+
+`pg_stat_statements` over the whole test workload (28 856 statements), 920
+`auto_explain` plans, and targeted `EXPLAIN (ANALYZE, BUFFERS)` against 200k
+seeded users / 400k memberships. One real defect, fixed:
+
+**All three birthday reads could not use `users_birthday_idx`.** It is partial
+(`WHERE birthdate IS NOT NULL`) and none of them said so, so Postgres refused
+it and fell back to a parallel sequential scan of the entire `users` table.
+`birth_month` is `GENERATED ALWAYS AS (EXTRACT(MONTH FROM birthdate))` so the
+implication is real, but the planner will not reason through a generated
+column's expression. `/nextbirthday` measured **318 ms -> 38 ms**; the daily
+sweep **681 ms -> 464 ms**. The fix is a redundant-looking `birthdate IS NOT
+NULL` in `cb_core/birthdays.py`, and
+`test_birthday_broadcast.py::TestPartialIndexIsReachable` is the regression —
+it plans with `enable_seqscan = off` (propagated to the shards via
+`citus.propagate_set_commands = 'local'`) and asserts the index name appears,
+plus a third test proving the predicate-less statement fails that same
+assertion so it cannot pass vacuously. **Check for this shape before adding
+any partial index.** The schema's other three are reachable; verified.
+
+The rest of the profile found nothing to fix: every reply-path statement is
+`Task Count: 1` and index-backed, and the cross-shard statements that exist
+are the ones already argued for in their contracts. What it does quantify is
+that a cross-shard statement costs 10-30× the shard work it dispatches (86 ms
+of coordinator for 8 × 0.5 ms of deletes), which is the number to have in mind
+before putting one on a per-message path.
+
+Two things left alone and written up rather than changed: `/ship`'s
+`ORDER BY random()` reads a group's whole membership to pick two names (fine
+at current sizes, quadratic-feeling at 10k members), and
+`mediarestrict.enforce_media_restriction` compares a DB-generated `joined_at`
+against the **application's** clock — a real hazard if an app host and the
+database host disagree, but the six `core_mediarestrict` failures seen once at
+the start of this session did not reproduce in four subsequent clean runs, and
+changing a shipped feature's behaviour on a hunch is worse than recording it.
+
+---
+
+## 0b. The session before that
 
 Four features ported: the publisher trio (all of v1's `Bot/Publisher.py`) and
 `x_reverse_search`. **38/53 done, 5 partial, 3 blocked, 7 planned.**
@@ -142,7 +258,7 @@ Spanish groups in English).
 
 ---
 
-## 0. Previous session
+## 0c. And the one before that
 
 Verified green on this machine, last run:
 

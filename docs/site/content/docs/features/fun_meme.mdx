@@ -3,13 +3,14 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Meme generator"
-description: "image compositing is a worker job, not a reply-path call"
-status: planned
+description: "v1's 97kB metadata CSV ships as package data, its 110MB of templates go to object storage via `cb.py meme-seed`; Pillow compositing in cb-worker; v1's roster fallback was dead code and its empty-pool branch a NameError, both fixed - see docs/contracts/fun_meme.md; QA authored (4 scenarios)"
+status: done
 milestone: M2
 area: fun
 layer: worker
 triggers: ["/meme"]
 v1_source: "SocialContent.py:224-277"
+contract: "docs/contracts/fun_meme.md"
 ---
 <FeatureHeader id="fun_meme" />
 

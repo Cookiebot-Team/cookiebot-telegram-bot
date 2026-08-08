@@ -109,9 +109,12 @@ FEATURES: tuple[Feature, ...] = (
     Feature("core_setlang", "core", "Language selection", "M1", Status.DONE,
             Layer.GATEWAY, "Configurations.py:242-251", (),
             "QA describes a web settings page; v1 only has the in-chat menu"),
-    Feature("core_botskins", "core", "Per-event bot skins", "M1", Status.PARTIAL,
+    Feature("core_botskins", "core", "Per-event bot skins", "M1", Status.DONE,
             Layer.GATEWAY, "universal_funcs.py:39-52", (),
-            "one process serves every skin; per-event asset packs pending"),
+            "one process serves every skin; cb_core/skins.py adds the two behavioural forks "
+            "v1 keys on is_alternate_bot (intro animation, fun-override flair) plus the "
+            "per-skin asset override tree; all 5 personas configured (0007). Handler packs "
+            "remain platform_tenancy's open item - see docs/contracts/core_botskins.md"),
 
     # --------------------------------------------------------------------- fun
     Feature("fun_dice", "fun", "Roll an n-sided die", "M2", Status.DONE,
@@ -124,9 +127,12 @@ FEATURES: tuple[Feature, ...] = (
     Feature("fun_death", "fun", "Random cause of death", "M2", Status.BLOCKED,
             Layer.GATEWAY, "Miscellaneous.py:335-357", ("/death", "/morte", "/muerte"),
             "image pool only ever lived in v1's private GCS bucket, never checked in - see .specs/features/fun_death/spec.md"),
-    Feature("fun_meme", "fun", "Meme generator", "M2", Status.PLANNED,
+    Feature("fun_meme", "fun", "Meme generator", "M2", Status.DONE,
             Layer.WORKER, "SocialContent.py:224-277", ("/meme",),
-            "image compositing is a worker job, not a reply-path call"),
+            "v1's 97kB metadata CSV ships as package data, its 110MB of templates go to "
+            "object storage via `cb.py meme-seed`; Pillow compositing in cb-worker; v1's "
+            "roster fallback was dead code and its empty-pool branch a NameError, both "
+            "fixed - see docs/contracts/fun_meme.md; QA authored (4 scenarios)"),
     Feature("fun_battle", "fun", "Battle poll", "M2", Status.PARTIAL,
             Layer.GATEWAY, "SocialContent.py:294-379", ("/battle", "/batalha", "/batalla"),
             "two-people shape ships (roster + getUserProfilePhotos, no scrape); "
@@ -147,10 +153,12 @@ FEATURES: tuple[Feature, ...] = (
             "/trex is spec'd in QA but missing from v1 - net-new"),
 
     # -------------------------------------------------------------------- util
-    Feature("util_birthday", "util", "Today's birthdays", "M2", Status.PARTIAL,
+    Feature("util_birthday", "util", "Today's birthdays", "M2", Status.DONE,
             Layer.WORKER, "Birthdays.py:14-61", ("/birthday", "/aniversario", "/cumpleanos"),
-            "manual command only - the daily every-group broadcast is an unverified, unresolved "
-            "parity gap, see docs/contracts/util_birthday.md"),
+            "both v1 shapes: the manual command, and the daily every-group broadcast - whose "
+            "caller turned out to be COOKIEBOT.py:333-339 (the message handler's finally, on "
+            "the first update of a new UTC day), not a scheduler. v2 runs it as a cron with "
+            "one deferred job per group instead of v1's sleep(3) loop (D8)"),
     Feature("util_nextbirthday", "util", "Upcoming birthdays", "M2", Status.DONE,
             Layer.GATEWAY, "Birthdays.py:104-117", ("/nextbirthday", "/proximosaniversarios"),
             "not group-scoped, matching v1 exactly - see docs/contracts/util_nextbirthday.md"),
@@ -166,9 +174,11 @@ FEATURES: tuple[Feature, ...] = (
     Feature("util_youtube", "util", "YouTube search", "M2", Status.DONE,
             Layer.WORKER, "SocialContent.py:172-189", ("/youtube",),
             "search + reply moved to cb-worker; v1's googleapiclient call had no timeout at all"),
-    Feature("core_musicdetection", "core", "Identify music in voice notes", "M3", Status.PLANNED,
+    Feature("core_musicdetection", "core", "Identify music in voice notes", "M3", Status.DONE,
             Layer.WORKER, "Audio.py:6-20", (),
-            "ShazamAPI is unofficial - feature-flag it behind a breaker"),
+            "passive, off by default, breakered cb-worker job; shazamio-core segfaults on "
+            "py3.14 so the recogniser is AudD's documented API behind a swappable seam - "
+            "see docs/contracts/core_musicdetection.md; QA authored (5 scenarios)"),
     Feature("util_postforwarder", "util", "Cross-group post forwarding", "M3", Status.DONE,
             Layer.WORKER, "Publisher.py:46-92",
             ("/divulgar", "/publish", "/publicar", "/repost", "/repostar", "/reenviar"),
@@ -181,8 +191,12 @@ FEATURES: tuple[Feature, ...] = (
             "QA says /deletereposts, v1 ships /deleteposts"),
 
     # ---------------------------------- shipped in v1, never specified in QA
-    Feature("x_giveaways", "util", "Giveaways", "M3", Status.PLANNED,
-            Layer.GATEWAY, "Giveaways.py:25-173", ("/giveaway",), "no QA scenario exists - write one"),
+    Feature("x_giveaways", "util", "Giveaways", "M3", Status.DONE,
+            Layer.GATEWAY, "Giveaways.py:25-173", ("/giveaway",),
+            "two distributed tables replace Giveaways.db; v1's /giveaway never completed "
+            "(json.loads on a de-quoted callback payload) and its enter button was "
+            "admin-only - both fixed, see docs/contracts/x_giveaways.md; "
+            "QA authored, not ported (10 scenarios)"),
     Feature("x_conversational_ai", "fun", "Conversational AI replies", "M3", Status.DONE,
             Layer.GATEWAY, "NaturalLanguage.py:65-77", (),
             "langchain provider behind the router, tenant budget cap, v1's per-user "
@@ -198,21 +212,38 @@ FEATURES: tuple[Feature, ...] = (
             ("/searchsource", "/buscarfonte", "/buscarfuente"),
             "v1 handed SauceNAO a Telegram file URL carrying the bot token (D-RS-1); "
             "v2 uploads the bytes instead"),
-    Feature("x_distortion", "fun", "Media distortion", "M3", Status.PLANNED,
-            Layer.WORKER, "Distortioner.py:114-156", ("/destroy", "/zoar"),
-            "v1 busy-waits on a module global; replace with a worker semaphore"),
-    Feature("x_owner_commands", "util", "Owner-only operations", "M3", Status.PLANNED,
+    Feature("x_distortion", "fun", "Media distortion", "M3", Status.DONE,
+            Layer.WORKER, "Distortioner.py:114-156", ("/destroy", "/zoar", "/destruir"),
+            "branch chain on the reply path, carve + ffmpeg in cb-worker behind a real "
+            "semaphore (D3) with per-call temp dirs (D4); v1's video/GIF arms are "
+            "unreachable and stay disabled; seam carving over numpy replaces ImageMagick "
+            "liquid_rescale - see docs/contracts/x_distortion.md; QA authored (12 scenarios)"),
+    Feature("x_owner_commands", "util", "Owner-only operations", "M3", Status.DONE,
             Layer.GATEWAY, "COOKIEBOT.py:83-105",
-            ("/grupos", "/broadcast", "/leave", "/blacklist", "/stop", "/restart")),
+            ("/grupos", "/groups", "/broadcast", "/leave", "/blacklist", "/unblacklist",
+             "/stop", "/restart"),
+            "private-chat only and gated on CB_OWNER_ID; /grupos is one paged message "
+            "instead of v1's one getChat + one sendMessage per group (D11) and "
+            "/broadcast is a cb-worker fan-out instead of a sleep(0.5) loop on the "
+            "handler thread (D8); /stop and /restart answer a refusal rather than "
+            "os._exit-ing one of N replicas - see docs/contracts/x_owner_commands.md; "
+            "QA authored (9 scenarios)"),
     Feature("x_custom_commands", "fun", "Per-group custom commands", "M3", Status.BLOCKED,
             Layer.GATEWAY, "Miscellaneous.py:145-158", (),
             "same GCS blocker as fun_death, and worse: the command *names* are the "
             "bucket's Custom/ folder names (Miscellaneous.py:23), so without the "
             "export there is not even a trigger list. Still the seed of tenant "
             "handler packs once the assets land"),
-    Feature("x_webhub_login", "platform", "Telegram-login JWT for the web console", "M4", Status.PLANNED,
+    Feature("x_webhub_login", "platform", "Telegram-login JWT for the web console", "M4", Status.DONE,
             Layer.API, "Server.py:25-52", (),
-            "v1 regenerates the signing key on every restart (D7) - persist it"),
+            "D7 fixed: the RSA key is configured or generated once into signing_keys "
+            "(migration 0008), so it survives a restart and every replica shares it - "
+            "v1 generated one per gunicorn worker per start and published only the "
+            "answering worker's in its JWKS. Also D-WL-2: v1's pop('hash') meant only "
+            "the first of its five bot tokens could ever sign anyone in. auth_date "
+            "enforcement is written but off by default (the WebHub renews by replaying "
+            "the payload) - see docs/contracts/x_webhub_login.md. No QA scenario: the "
+            "feature has no Telegram surface"),
     Feature("x_analytics_api", "platform", "Per-group analytics endpoints", "M4", Status.PLANNED,
             Layer.API, "", (), "rollup tables exist; no HTTP surface yet"),
 )

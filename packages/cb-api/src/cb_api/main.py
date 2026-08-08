@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-from cb_api.routers import health
+from cb_api.routers import health, login
 from cb_core import cache, db, metrics, storage
 from cb_core.logging import configure_logging, get_logger
 from cb_core.migrations import ensure_schema
@@ -61,13 +61,21 @@ app = FastAPI(
 
 # Explicit allowlist. The Java service shipped allowed-origins:"*" together with
 # allow-credentials:true, which browsers reject and which is unsafe regardless.
+# v1's own Flask app did the same for `/login` alone (`Server.py:22`), so
+# `CB_WEBHUB_ALLOWED_ORIGINS` is where the web console's origin goes — an
+# allowlist, never "*".
+_origins = list(settings.webhub_allowed_origins)
+if settings.is_local and "http://localhost:3000" not in _origins:
+    _origins.append("http://localhost:3000")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"] if settings.is_local else [],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["authorization", "content-type"],
 )
 
 app.include_router(health.router)
+# x_webhub_login: `/`, `/login` and the two `.well-known` documents.
+app.include_router(login.router)
 FastAPIInstrumentor.instrument_app(app, excluded_urls="healthz,readyz")
