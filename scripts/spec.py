@@ -127,9 +127,12 @@ FEATURES: tuple[Feature, ...] = (
     Feature("fun_death", "fun", "Random cause of death", "M2", Status.BLOCKED,
             Layer.GATEWAY, "Miscellaneous.py:335-357", ("/death", "/morte", "/muerte"),
             "image pool only ever lived in v1's private GCS bucket, never checked in - see .specs/features/fun_death/spec.md"),
-    Feature("fun_meme", "fun", "Meme generator", "M2", Status.PLANNED,
+    Feature("fun_meme", "fun", "Meme generator", "M2", Status.DONE,
             Layer.WORKER, "SocialContent.py:224-277", ("/meme",),
-            "image compositing is a worker job, not a reply-path call"),
+            "v1's 97kB metadata CSV ships as package data, its 110MB of templates go to "
+            "object storage via `cb.py meme-seed`; Pillow compositing in cb-worker; v1's "
+            "roster fallback was dead code and its empty-pool branch a NameError, both "
+            "fixed - see docs/contracts/fun_meme.md; QA authored (4 scenarios)"),
     Feature("fun_battle", "fun", "Battle poll", "M2", Status.PARTIAL,
             Layer.GATEWAY, "SocialContent.py:294-379", ("/battle", "/batalha", "/batalla"),
             "two-people shape ships (roster + getUserProfilePhotos, no scrape); "

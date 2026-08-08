@@ -52,9 +52,17 @@ PUBLISHER_APPROVE = "publisher_approve"
 #: ever constructed (spec D-RS-1).
 REVERSE_SEARCH = "reverse_search"
 
+#: `fun_meme`'s compositing pass (`cb_worker/jobs/meme.py`), enqueued from
+#: `cb_gateway/handlers/meme.py`. A template fetch from object storage, N
+#: profile-photo downloads and a Pillow paste — `scripts/spec.py`'s row for
+#: this feature already said "image compositing is a worker job, not a
+#: reply-path call".
+COMPOSE_MEME = "compose_meme"
+
 __all__ = [
     "BIRTHDAY_COLLAGE",
     "CALLADMS_NOTIFY_ADMINS",
+    "COMPOSE_MEME",
     "EVERYONE_FANOUT",
     "NEXT_BIRTHDAYS_FOLLOWUP",
     "PUBLISHER_APPROVE",
