@@ -184,3 +184,137 @@ class TestNextBirthdaysFollowup:
         ctx: dict[str, Any] = {"bot": bot}
         await job.next_birthdays_followup(ctx, group_id=555, lang="en")
         bot.send_message.assert_awaited_once_with(555, "text")
+
+
+# ------------------------------------------------- the daily broadcast (v1's
+# `manual_chat_id=None` shape). See the job module's docstring for the caller
+# this project could not previously find — `COOKIEBOT.py:333-339`.
+
+
+class _SweepBot:
+    """Only `get_chat`, which is all the sweep asks a bot for."""
+
+    def __init__(self, pinned: dict[int, str | None] | None = None) -> None:
+        self.pinned = pinned or {}
+        self.asked: list[int] = []
+
+    async def get_chat(self, group_id: int) -> object:
+        self.asked.append(group_id)
+        caption = self.pinned.get(group_id)
+
+        class _Pinned:
+            def __init__(self, text: str | None) -> None:
+                self.caption = text
+
+        class _Chat:
+            def __init__(self, text: str | None) -> None:
+                self.pinned_message = _Pinned(text) if text is not None else None
+
+        return _Chat(caption)
+
+
+class _Redis:
+    def __init__(self) -> None:
+        self.jobs: list[dict[str, object]] = []
+
+    async def enqueue_job(self, name: str, **kwargs: object) -> None:
+        self.jobs.append({"name": name, **kwargs})
+
+
+@pytest.mark.parametrize(
+    ("caption", "expected"),
+    [
+        (None, False),
+        ("", False),
+        ("just a pinned photo", False),
+        # v1 checks three localised markers, case-insensitively (`:32`).
+        ("<i>Happy birthday!</i>\n2026-08-06", True),
+        ("<i>FELIZ ANIVERSÁRIO!</i>\n2026-08-06", True),
+        ("<i>feliz cumpleaños!</i>\n2026-08-06", True),
+        # Yesterday's post does not suppress today's (`:33`, `:44`).
+        ("<i>Happy birthday!</i>\n2026-08-05", False),
+        # The marker alone, with no date, is not today's either.
+        ("<i>Happy birthday!</i>", False),
+    ],
+)
+def test_pinned_dedup_matches_v1s_markers(caption: str | None, expected: bool) -> None:
+    assert job.already_posted_today(caption, "2026-08-06") is expected
+
+
+async def _sweep(monkeypatch: pytest.MonkeyPatch, **kw: object) -> tuple[_Redis, _SweepBot, int]:
+    from cb_core.group_config import GroupConfig
+    from cb_core.settings import Settings
+
+    groups: tuple[int, ...] = kw.get("groups", (-100, -200))  # type: ignore[assignment]
+    fun: dict[int, bool] = kw.get("fun", {})  # type: ignore[assignment]
+    pinned: dict[int, str | None] = kw.get("pinned", {})  # type: ignore[assignment]
+    enabled: bool = kw.get("enabled", True)  # type: ignore[assignment]
+
+    async def _groups(month: int, day: int) -> tuple[int, ...]:
+        return groups
+
+    async def _config(group_id: int) -> GroupConfig:
+        return GroupConfig(group_id=group_id, functions_fun=fun.get(group_id, True))
+
+    monkeypatch.setattr(job.birthdays, "groups_with_birthdays", _groups)
+    monkeypatch.setattr(job.group_config, "get_config", _config)
+    monkeypatch.setattr(job, "get_settings", lambda: Settings(birthday_broadcast_enabled=enabled))
+
+    redis, bot = _Redis(), _SweepBot(pinned)
+    queued = await job.broadcast_birthdays({"bot": bot, "redis": redis})
+    return redis, bot, queued
+
+
+async def test_the_sweep_queues_one_job_per_eligible_group(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    redis, _bot, queued = await _sweep(monkeypatch)
+    assert queued == 2
+    assert [job["group_id"] for job in redis.jobs] == [-100, -200]
+
+
+async def test_the_sweep_spaces_the_posts_instead_of_sleeping(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """v1 slept 3 seconds per group on a worker thread (FEATURE-MAP D8)."""
+    redis, _bot, _ = await _sweep(monkeypatch)
+    assert [job["_defer_by"] for job in redis.jobs] == [
+        0,
+        job.BROADCAST_SPACING_SECONDS,
+    ]
+
+
+async def test_a_group_with_fun_off_is_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
+    """v1: `if not funfunctions: continue` (`Birthdays.py:24-26`)."""
+    redis, _bot, queued = await _sweep(monkeypatch, fun={-100: False})
+    assert queued == 1
+    assert [job["group_id"] for job in redis.jobs] == [-200]
+
+
+async def test_a_group_that_already_has_todays_post_pinned_is_skipped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from datetime import UTC, datetime
+
+    today = datetime.now(UTC).date().isoformat()
+    redis, _bot, queued = await _sweep(
+        monkeypatch, pinned={-100: f"<i>Happy birthday!</i>\n{today}"}
+    )
+    assert queued == 1
+    assert [job["group_id"] for job in redis.jobs] == [-200]
+
+
+async def test_the_switch_stops_the_sweep_before_it_reads_anything(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    redis, bot, queued = await _sweep(monkeypatch, enabled=False)
+    assert (queued, redis.jobs, bot.asked) == (0, [], [])
+
+
+async def test_a_day_with_no_birthdays_asks_telegram_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The cheap path, and the common one: no group query result means no
+    `getChat` per group, which is the round trip v1 made unconditionally."""
+    redis, bot, queued = await _sweep(monkeypatch, groups=())
+    assert (queued, redis.jobs, bot.asked) == (0, [], [])

@@ -153,10 +153,12 @@ FEATURES: tuple[Feature, ...] = (
             "/trex is spec'd in QA but missing from v1 - net-new"),
 
     # -------------------------------------------------------------------- util
-    Feature("util_birthday", "util", "Today's birthdays", "M2", Status.PARTIAL,
+    Feature("util_birthday", "util", "Today's birthdays", "M2", Status.DONE,
             Layer.WORKER, "Birthdays.py:14-61", ("/birthday", "/aniversario", "/cumpleanos"),
-            "manual command only - the daily every-group broadcast is an unverified, unresolved "
-            "parity gap, see docs/contracts/util_birthday.md"),
+            "both v1 shapes: the manual command, and the daily every-group broadcast - whose "
+            "caller turned out to be COOKIEBOT.py:333-339 (the message handler's finally, on "
+            "the first update of a new UTC day), not a scheduler. v2 runs it as a cron with "
+            "one deferred job per group instead of v1's sleep(3) loop (D8)"),
     Feature("util_nextbirthday", "util", "Upcoming birthdays", "M2", Status.DONE,
             Layer.GATEWAY, "Birthdays.py:104-117", ("/nextbirthday", "/proximosaniversarios"),
             "not group-scoped, matching v1 exactly - see docs/contracts/util_nextbirthday.md"),

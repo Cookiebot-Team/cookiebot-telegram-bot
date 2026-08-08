@@ -113,6 +113,13 @@ class Settings(BaseSettings):
     saucenao_api_key: str = ""
     saucenao_timeout_seconds: float = 15.0
 
+    # util_birthday — the daily every-group broadcast (v1's `manual_chat_id=None`
+    # shape). On by default because v1 does it: `COOKIEBOT.py:333-339` calls
+    # `birthday()` unattended from the message handler's `finally` on the first
+    # message of a new UTC day, so live groups receive it today and switching it
+    # off silently would be the regression, not the safe choice. The switch
+    # exists for a deployment that does not want it.
+    birthday_broadcast_enabled: bool = True
 
     # core_musicdetection — off by default, and a second switch on top of the
     # optional `music` extra not being installed either (cb_worker/music.py):

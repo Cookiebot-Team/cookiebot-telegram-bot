@@ -12,15 +12,14 @@ Files owned by this port: `packages/cb-core/src/cb_core/birthdays.py` (new),
 `packages/cb-gateway/src/cb_gateway/handlers/birthday.py` (new), and the
 tests listed below.
 
-## Status: `partial` — read this before assuming the feature is done
+## Status: `done` — both of v1's shapes are built
 
-**This is not the whole feature. It is the part that could be verified.**
 v1's `birthday()` serves two invocation shapes that share a body: a manual,
-on-demand command (what this port builds, matching both QA scenarios
-exactly) and an unattended, every-group daily broadcast driven by something
-outside `../COOKIEBOT-Telegram-Group-Bot` entirely. See "The unverified
-daily broadcast" below — **do not treat `partial` here as "everything except
-some polish."**
+on-demand command and an unattended, every-group daily broadcast. The manual
+half shipped first, with the broadcast recorded here as an **unverified**
+parity gap. **It is no longer unverified** — the caller was found, and the
+broadcast is built. See "The daily broadcast" below, which replaces the
+"unverified" section this document used to carry.
 
 ## Phase 1 — where v1 lives
 
@@ -50,32 +49,61 @@ UI is built; code that never ran is not a behaviour to be compatible with.
 If live collection is wanted later, it is a net-new feature on
 `.specs/features/private_dispatch/`'s mechanism, not a port.
 
-## The unverified daily broadcast — an open parity gap, not a closed one
+## The daily broadcast — the caller, found
 
 v1's `birthday()` also runs unattended, iterating every group the backend
 knows about (`groups = get_request_backend('registers')` when
 `manual_chat_id` is `None`), checking a pinned-message dedup marker so it
-does not repost the same day twice. **Nothing in this checkout calls
-`birthday()` that way** — no cron entry, no systemd timer, no `while True`
-loop anywhere in `../COOKIEBOT-Telegram-Group-Bot` invokes it unattended.
+does not repost the same day twice. This document previously recorded that
+"nothing in this checkout calls `birthday()` that way — no cron entry, no
+systemd timer, no `while True` loop", and flagged the risk that a scheduler
+living outside the three reference repos would make shipping only the manual
+command a silent regression.
 
-**Absence of the caller in this repository is not proof of absence in the
-running v1 deployment.** If v1's live groups currently receive a daily,
-unprompted birthday montage from a scheduler that lives in infrastructure
-config, a separate script, or a host-level cron entry none of the three
-reference repos would ever show, then shipping only the manual command is a
-**silent regression** for every one of those groups at cutover — the
-feature reads "shipped" on this project's own board while a real,
-currently-working behaviour quietly disappears from the chat.
+**There is a caller, and it is not a scheduler — which is why looking for one
+found nothing.** `COOKIEBOT.py:333-339`, inside the `finally:` of the message
+handler:
 
-**This is not resolved by this port, and is not resolved by the absence of
-evidence in this checkout.** Someone with access to the live v1 deployment
-needs to confirm, before cutover, whether groups currently receive an
-unattended daily birthday post. If they do, building the daily-broadcast
-shape (a `cb-worker` cron job, reusing this port's collage/roster/photo
-machinery, over every group in `groups` rather than one) is a real,
-necessary piece of work — not an optional enhancement — and belongs in
-`HANDOFF.md`'s gap list until it is either built or confirmed unnecessary.
+```python
+finally:
+    check_new_name(cookiebot, msg, chat_id, chat_type)
+    if not is_alternate_bot and not current_date_mutex.locked():
+        msg_date = ...                      # today, UTC
+        with current_date_mutex:
+            if current_stored_date != msg_date:
+                current_date_utc = msg_date_utc
+                birthday(cookiebot, current_date_utc, msg=msg)   # manual_chat_id=None
+```
+
+So the flagship process broadcasts to every group on the **first message it
+happens to handle on a new UTC day**, off the back of an unrelated update.
+Live v1 groups do receive an unprompted daily birthday post, and the gap this
+section used to describe was real.
+
+**v2 runs it as a cron, not as v1's trigger.** `broadcast_birthdays`
+(`cb_worker/jobs/birthday.py`, registered at 00:10 UTC) reproduces the
+*behaviour*, not the mechanism, because the mechanism has three properties
+nobody wants: it fires late in a quiet group (whenever someone finally
+speaks), it can fire twice if two processes race the module-global date, and
+it never fires at all in a group whose day starts with silence — that group's
+birthday post depends on a *different* group's traffic.
+
+| v1 | v2 |
+|---|---|
+| first message of a new UTC day, flagship process only | `cron(broadcast_birthdays, hour=0, minute=10)` |
+| `get_request_backend('registers')` — every group, then a member list per group | one `groups_with_birthdays(month, day)` query; a day with no birthdays does nothing at all |
+| `time.sleep(3)` between groups on a worker thread (FEATURE-MAP **D8**) | one deferred job per group, `_defer_by = n * 3` — nothing blocks, and a crash mid-sweep loses only what was not yet enqueued |
+| skip if `not funfunctions` (`:24-26`) | same, per group |
+| skip if today's post is already pinned (`:32-33,44`) | same — `already_posted_today`, matching v1's three localised markers and the date |
+| posts unprompted (no `reply_to`) | same; `post_birthday_collage`'s `message_id` is `None` for this shape |
+| pins, sends `🎂`, schedules the 900s follow-up | same |
+
+`CB_BIRTHDAY_BROADCAST_ENABLED` defaults to **true**, because v1 does this
+today: switching it off by default would itself be the regression.
+
+**Not ported:** v1's `is_old_birthday_pinned` flag (`:33`) is computed and
+then used nowhere except a commented-out unpin (`:45-46`), so it has no
+observable effect.
 
 ## Phase 2 — v1 behaviour contract (the manual shape, what this port builds)
 
