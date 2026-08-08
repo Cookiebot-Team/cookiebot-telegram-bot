@@ -21,18 +21,23 @@ from cb_gateway.handlers import (
     complaint,
     config_menu,
     deletereposts,
+    destroy,
     dice,
     doomlist,
     embedder,
     everyone,
     firecracker,
     fun_random,
+    giveaway,
     groupguardian,
     isalive,
     listcommand,
     mediarestrict,
     members,
+    meme,
+    musicdetection,
     nextbirthday,
+    owner,
     postgetter,
     privacy,
     publisher,
@@ -71,6 +76,7 @@ def build_router() -> Router:
     root.include_router(firecracker.router)
     root.include_router(everyone.router)
     root.include_router(battle.router)
+    root.include_router(meme.router)
     root.include_router(youtube.router)
     root.include_router(birthday.router)
     root.include_router(nextbirthday.router)
@@ -80,6 +86,20 @@ def build_router() -> Router:
     root.include_router(publisher.router)
     root.include_router(deletereposts.router)
     root.include_router(reverse_search.router)
+    # x_distortion. Disjoint trigger; the media it acts on is whatever the
+    # command replies to, so it never competes with the passive handlers below.
+    root.include_router(destroy.router)
+    # x_giveaways. `/giveaway` is a disjoint trigger like the rest of this
+    # block; its four callbacks are filtered on the `GIVEAWAY ` prefix, which
+    # no other callback handler claims (`CONFIG`, `RULES`, the captcha and the
+    # publisher's own presses all carry different prefixes).
+    root.include_router(giveaway.router)
+
+    # x_owner_commands. Private-chat only and owner-gated, so it shares no
+    # trigger with anything above; registered here rather than in the command
+    # block because a DM never reaches the join chain or the content rules at
+    # all (`.specs/features/private_dispatch/`).
+    root.include_router(owner.router)
 
     # ---- join chain: order matters, see the module docstring ----
     # 1. Bookkeeping first. `group_members.joined_at` is recorded even for a
@@ -119,6 +139,11 @@ def build_router() -> Router:
     # the captcha-caption reply, the complaint reply, a reply_markup reply) is
     # already registered earlier above — do not reorder any of it.
     root.include_router(chat_ai.router)
+    # core_musicdetection. Ahead of `transcribe` because v1 runs the music
+    # check first and unconditionally, while the transcribe->AI sub-step in
+    # the same v1 branch has an extra precondition. It always raises
+    # SkipHandler, so being first costs the handlers below nothing.
+    root.include_router(musicdetection.router)
     # x_speech_to_text: F.voice is disjoint from F.text (chat_ai) and from the
     # command triggers above (F.voice never carries a leading "/"), so its
     # relative order against either is irrelevant (design.md R1.8) -- it only
