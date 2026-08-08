@@ -189,8 +189,12 @@ FEATURES: tuple[Feature, ...] = (
             "QA says /deletereposts, v1 ships /deleteposts"),
 
     # ---------------------------------- shipped in v1, never specified in QA
-    Feature("x_giveaways", "util", "Giveaways", "M3", Status.PLANNED,
-            Layer.GATEWAY, "Giveaways.py:25-173", ("/giveaway",), "no QA scenario exists - write one"),
+    Feature("x_giveaways", "util", "Giveaways", "M3", Status.DONE,
+            Layer.GATEWAY, "Giveaways.py:25-173", ("/giveaway",),
+            "two distributed tables replace Giveaways.db; v1's /giveaway never completed "
+            "(json.loads on a de-quoted callback payload) and its enter button was "
+            "admin-only - both fixed, see docs/contracts/x_giveaways.md; "
+            "QA authored, not ported (10 scenarios)"),
     Feature("x_conversational_ai", "fun", "Conversational AI replies", "M3", Status.DONE,
             Layer.GATEWAY, "NaturalLanguage.py:65-77", (),
             "langchain provider behind the router, tenant budget cap, v1's per-user "

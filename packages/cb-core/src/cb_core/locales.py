@@ -154,6 +154,44 @@ def get(key: str, lang: str = "en", **fmt: object) -> str:
     return value
 
 
+def nested_value(section: str, key: str, lang: str = "en") -> object | None:
+    """One entry out of a *nested* catalog object, falling back per entry.
+
+    Several of v1's features keep their strings in an object rather than at the
+    top level — `captcha`, `giveaway`, `destroy`, `battle_*`. `get()` resolves
+    flat keys only, so those used to be reached by hand at each call site, and
+    the hand-rolled versions fell back per *object*: if `es` had the object at
+    all, a sub-key missing from it resolved to nothing. That is the common case
+    rather than the rare one — v1's `es` catalog has a `giveaway` object with
+    ten of its sixteen entries absent — so the fallback has to be per entry,
+    which is what this does and what `get()` already does for flat keys.
+
+    Returns the raw value (a `str` for most, a `list` for `giveaway.buttons`,
+    a `dict` for `giveaway.winnner`), or `None` when neither language has it.
+    """
+    for candidate in (resolve_language(lang), _DEFAULT_LANGUAGE):
+        section_value = _CATALOGS[candidate].get(section)
+        if isinstance(section_value, dict) and key in section_value:
+            return section_value[key]
+    metrics.cache_lookups_total.labels(cache="locale", layer="nested", outcome="miss").inc()
+    return None
+
+
+def get_nested(section: str, key: str, lang: str = "en", **fmt: object) -> str:
+    """`nested_value` as a formatted string, with `get()`'s exact conventions:
+    missing returns `"<section>.<key>"`, malformed substitution returns the
+    unformatted value rather than raising."""
+    value = nested_value(section, key, lang)
+    if not isinstance(value, str):
+        return f"{section}.{key}"
+    if fmt:
+        try:
+            return value % fmt
+        except (KeyError, ValueError, TypeError):
+            return value
+    return value
+
+
 def lines(name: str, lang: str = "en") -> tuple[str, ...]:
     """The non-empty lines of one of v1's line-list files (death, sorte, ...)."""
     if name not in _LINE_FILES:

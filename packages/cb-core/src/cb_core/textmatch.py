@@ -58,6 +58,10 @@ COMMAND_ALIASES: dict[str, str] = {
     "everyone": "everyone",
     "adm": "calladms", "admin": "calladms", "report": "calladms",
     "youtube": "youtube",
+    # x_giveaways. v1 has exactly one spelling (COOKIEBOT.py:249,262) — no
+    # PT/ES alias was ever shipped, so inventing one here would be a new
+    # trigger, not a preserved one.
+    "giveaway": "giveaway",
     "transcribe": "transcribe", "transcrever": "transcribe", "transcribir": "transcribe",
     # QA spells this /deletereposts; v1 shipped /deleteposts — accept both.
     "deletereposts": "deletereposts", "deleteposts": "deletereposts",

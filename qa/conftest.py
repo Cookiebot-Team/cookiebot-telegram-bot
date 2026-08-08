@@ -254,6 +254,9 @@ clean_rules = _table_cleaner("group_rules")
 clean_welcomes = _table_cleaner("group_welcomes")
 clean_captcha = _table_cleaner("captcha_challenges")
 clean_members = _table_cleaner("group_members")
+# `giveaway_participants` has an ON DELETE CASCADE foreign key to this table and
+# is colocated with it, so one delete clears both.
+clean_giveaways = _table_cleaner("giveaways")
 
 
 @pytest.fixture(autouse=True)
