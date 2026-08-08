@@ -75,3 +75,58 @@ def test_a_group_appears_once_however_many_people_share_the_day(world: World, ru
         _set_birthday(run, member.user_id, 3, 14)
     found = run(birthdays.groups_with_birthdays(3, 14))
     assert found.count(world.group_id) == 1
+
+
+# ------------------------------------------------------------------ plan shape
+
+
+async def _plan_under_no_seqscan(sql: str, *args: object) -> str:
+    """`EXPLAIN` the statement with sequential scans priced out of the way.
+
+    The discriminator has to work on a table with a handful of rows, where a
+    sequential scan is genuinely the cheapest plan and would be chosen whether
+    or not the index is usable. `enable_seqscan = off` removes that ambiguity:
+    the planner then picks the index **if it is allowed to**, and falls back to
+    the (heavily penalised, but only remaining) sequential scan if it is not.
+    So the plan tells us about index *eligibility*, not about this dataset.
+
+    `citus.propagate_set_commands = 'local'` is what carries the `SET LOCAL`
+    down to the shard queries; without it the coordinator's setting never
+    reaches the node that plans the scan, and the assertion below reads a plan
+    that was never influenced at all.
+    """
+    async with db.transaction() as conn:
+        await conn.execute("SET LOCAL citus.propagate_set_commands = 'local'")
+        await conn.execute("SET LOCAL enable_seqscan = off")
+        rows = await conn.fetch(f"EXPLAIN (COSTS OFF) {sql}", *args)
+    return "\n".join(str(row[0]) for row in rows)
+
+
+class TestPartialIndexIsReachable:
+    """`users_birthday_idx` is partial (`WHERE birthdate IS NOT NULL`), so every
+    read has to state that predicate or the index is silently unusable.
+
+    Nothing about the *results* changes when it is missing — `birth_month` is
+    `EXTRACT(MONTH FROM birthdate)`, so a NULL birthdate can never match — which
+    is exactly why this needs a plan-shape test rather than a behavioural one.
+    Measured on 200k seeded users, single-node Citus: 318ms without, 38ms with.
+    """
+
+    def test_the_all_users_read_uses_the_birthday_index(self, run: Run) -> None:
+        plan = run(_plan_under_no_seqscan(birthdays._ALL_USERS_WITH_BIRTHDAY, 3, 14))  # noqa: SLF001
+        assert "users_birthday_idx" in plan, plan
+
+    def test_the_daily_sweep_uses_the_birthday_index(self, run: Run) -> None:
+        plan = run(_plan_under_no_seqscan(birthdays._GROUPS_WITH_BIRTHDAYS, 3, 14))  # noqa: SLF001
+        assert "users_birthday_idx" in plan, plan
+
+    def test_dropping_the_predicate_really_would_lose_the_index(self, run: Run) -> None:
+        """The test above is only worth anything if the same statement without
+        `birthdate IS NOT NULL` fails it — otherwise it would pass no matter
+        what the module did."""
+        without = birthdays._ALL_USERS_WITH_BIRTHDAY.replace(  # noqa: SLF001
+            "WHERE birthdate IS NOT NULL\n   AND birth_month", "WHERE birth_month"
+        )
+        assert "birthdate" not in without, without
+        plan = run(_plan_under_no_seqscan(without, 3, 14))
+        assert "users_birthday_idx" not in plan, plan

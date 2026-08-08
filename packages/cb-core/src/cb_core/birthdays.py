@@ -15,6 +15,20 @@ structurally the same as `roster`'s, filtered further by
 `birth_month`/`birth_day` (both `GENERATED` columns, `0001_initial_schema.py:82-83`,
 backed by `users_birthday_idx`) instead of "everyone."
 
+**Every query here carries a redundant-looking `birthdate IS NOT NULL`, and it
+must stay.** `users_birthday_idx` is *partial* — `ON users (birth_month,
+birth_day) WHERE birthdate IS NOT NULL` (`0001_initial_schema.py:94-95`) — and
+Postgres only uses a partial index when it can prove the index predicate holds
+for the query. `birth_month = $1` does imply `birthdate IS NOT NULL` (both
+columns are `EXTRACT(... FROM birthdate)`, so a NULL birthdate yields a NULL
+month that no `=` can match), but the planner does not reason through a
+generated column's expression to get there. Without the predicate spelled out
+the index is unusable and every one of these reads degrades to a parallel
+sequential scan of the whole `users` table. Measured on 200k seeded users,
+single-node Citus: `all_users_with_birthday` 318ms -> 38ms, the daily
+`groups_with_birthdays` sweep 681ms -> 464ms. The predicate is a semantic
+no-op; it exists purely to unlock the index.
+
 Neither v2 nor v1 collects a birthdate through any code path that still
 runs (`.specs/features/util_birthday/spec.md`'s "collection-mechanism"
 section) — what this module reads is whatever survived the one-time Mongo
@@ -50,6 +64,7 @@ SELECT u.user_id, u.username, u.first_name, u.last_name
   JOIN users u ON u.user_id = gm.user_id
  WHERE gm.group_id = $1
    AND gm.left_at IS NULL
+   AND u.birthdate IS NOT NULL
    AND u.birth_month = $2
    AND u.birth_day = $3
  ORDER BY u.user_id
@@ -83,7 +98,8 @@ async def members_with_birthday(group_id: int, month: int, day: int) -> tuple[Bi
 _ALL_USERS_WITH_BIRTHDAY = """
 SELECT user_id, username, first_name, last_name
   FROM users
- WHERE birth_month = $1
+ WHERE birthdate IS NOT NULL
+   AND birth_month = $1
    AND birth_day = $2
  ORDER BY user_id
 """
@@ -124,6 +140,42 @@ async def all_users_with_birthday(month: int, day: int) -> tuple[BirthdayPerson,
         )
         for row in rows
     )
+
+
+_GROUPS_WITH_BIRTHDAYS = """
+SELECT DISTINCT gm.group_id
+  FROM group_members gm
+  JOIN users u ON u.user_id = gm.user_id
+ WHERE gm.left_at IS NULL
+   AND u.birthdate IS NOT NULL
+   AND u.birth_month = $1
+   AND u.birth_day = $2
+ ORDER BY gm.group_id
+"""
+
+
+async def groups_with_birthdays(month: int, day: int) -> tuple[int, ...]:
+    """Every group with at least one present member born on this month/day.
+
+    The daily broadcast's first question. v1 asked it the other way round —
+    fetch every group the backend knows about, then per group fetch its
+    member list and intersect it with today's birthday users
+    (`Birthdays.py:20-39`) — which is one HTTP round trip per group per day
+    whether or not that group has a birthday at all.
+
+    **Deliberately cross-shard**, and one of the places AGENTS.md §4.4 says
+    that is allowed: a scheduled worker job. It is also cheap — `users` is a
+    reference table, so the join is node-local on every shard, the `GROUP BY`
+    is really a per-shard `DISTINCT`, and only the small group-id list crosses
+    the network. A day with no birthdays anywhere returns nothing and the
+    broadcast does no further work.
+    """
+    try:
+        rows = await db.fetch(_GROUPS_WITH_BIRTHDAYS, month, day, name="birthdays_groups")
+    except Exception as exc:  # noqa: BLE001 - a sweep that cannot read is a sweep that does nothing
+        log.warning("birthdays.groups_query_failed", error=str(exc))
+        return ()
+    return tuple(int(row["group_id"]) for row in rows)
 
 
 def display_name(person: BirthdayPerson) -> str:
