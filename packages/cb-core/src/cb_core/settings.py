@@ -195,6 +195,32 @@ class Settings(BaseSettings):
     telegram_polling_timeout: int = 30
     owner_id: int = 0
 
+    # x_webhub_login — the web console's Telegram-login token exchange.
+    #: PEM of the RSA private key that signs the console's JWTs. Unset means
+    #: cb-api generates one **once** and persists it (`signing_keys`), which is
+    #: what fixes v1's D7: v1 regenerated a key per process on every start, so
+    #: with gunicorn's two workers half of all issued tokens failed to verify
+    #: against the published JWKS at any moment. Set this and the table is
+    #: never read — for a deployment that would rather no private key lived in
+    #: its application database.
+    webhub_jwt_private_key_pem: str = ""
+    #: v1's literal (`Server.py:23`). A resource server that pinned the key id
+    #: keeps working.
+    webhub_jwt_kid: str = "cookiebot-2025"
+    #: v1's 30 minutes (`Server.py:43`).
+    webhub_token_ttl_seconds: int = 1800
+    #: `iss`, and the base of the discovery document. Unset reproduces v1's
+    #: `request.url_root` — which behind a proxy is whatever `X-Forwarded-Host`
+    #: says, so anyone who can reach the service chooses the issuer. Set it.
+    webhub_issuer: str = ""
+    #: How old Telegram's `auth_date` may be. **0 reproduces v1**, which never
+    #: checked it at all, so a captured widget payload mints tokens forever.
+    #: Non-zero is the fix — but the shipped WebHub renews by re-posting the
+    #: payload it stored at first login, so any real value logs those sessions
+    #: out when their token expires. See `.specs/features/x_webhub_login/spec.md`.
+    webhub_auth_max_age_seconds: int = 0
+    #: Browser origins allowed to call `/login`. v1 shipped `origins: "*"`.
+    webhub_allowed_origins: list[str] = Field(default_factory=list)
 
     @field_validator("trace_sample_ratio")
     @classmethod

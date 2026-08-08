@@ -234,9 +234,16 @@ FEATURES: tuple[Feature, ...] = (
             "bucket's Custom/ folder names (Miscellaneous.py:23), so without the "
             "export there is not even a trigger list. Still the seed of tenant "
             "handler packs once the assets land"),
-    Feature("x_webhub_login", "platform", "Telegram-login JWT for the web console", "M4", Status.PLANNED,
+    Feature("x_webhub_login", "platform", "Telegram-login JWT for the web console", "M4", Status.DONE,
             Layer.API, "Server.py:25-52", (),
-            "v1 regenerates the signing key on every restart (D7) - persist it"),
+            "D7 fixed: the RSA key is configured or generated once into signing_keys "
+            "(migration 0008), so it survives a restart and every replica shares it - "
+            "v1 generated one per gunicorn worker per start and published only the "
+            "answering worker's in its JWKS. Also D-WL-2: v1's pop('hash') meant only "
+            "the first of its five bot tokens could ever sign anyone in. auth_date "
+            "enforcement is written but off by default (the WebHub renews by replaying "
+            "the payload) - see docs/contracts/x_webhub_login.md. No QA scenario: the "
+            "feature has no Telegram surface"),
     Feature("x_analytics_api", "platform", "Per-group analytics endpoints", "M4", Status.PLANNED,
             Layer.API, "", (), "rollup tables exist; no HTTP surface yet"),
 )

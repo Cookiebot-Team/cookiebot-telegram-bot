@@ -15,6 +15,10 @@ dependencies = [
     "alembic>=1.14",
     "sqlalchemy>=2.0",
     "psycopg[binary]>=3.2",
+    # x_webhub_login. v1 used PyJWT for the token and jwcrypto for the key;
+    # `cryptography` (PyJWT's own extra) covers both, so this is one dependency
+    # rather than two.
+    "pyjwt[crypto]>=2.10",
 ]
 
 [tool.setuptools.packages.find]
