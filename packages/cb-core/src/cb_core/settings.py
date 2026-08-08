@@ -127,6 +127,12 @@ class Settings(BaseSettings):
     #: Empty means the feature is inert, exactly like youtube_api_key.
     audd_api_key: str = ""
 
+    # x_distortion — how many /destroy jobs one worker runs at once. v1 had a
+    # hard bound of exactly one per media class, enforced by spinning on a
+    # module global (FEATURE-MAP D3); this is the same bound as a real
+    # semaphore, defaulted to 2 because the carve now runs off the event loop
+    # and no longer burns a core while it waits.
+    distortion_concurrency: int = 2
 
     # util_postforwarder / util_postgetter — v1 hardcoded one deployment's
     # channel ids as module constants (Bot/Publisher.py:20-22). v2 is

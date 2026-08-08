@@ -48,6 +48,8 @@ COMMAND_ALIASES: dict[str, str] = {
     "acende": "firecracker", "fogos": "firecracker",
     "complaint": "complaint", "milton": "complaint", "reclamacao": "complaint",
     "reclamação": "complaint", "queja": "complaint",
+    # x_distortion. v1 dispatches all three spellings (COOKIEBOT.py:217,242).
+    "destroy": "destroy", "zoar": "destroy", "destruir": "destroy",
     # util
     "birthday": "birthday", "aniversario": "birthday", "aniversário": "birthday",
     "cumpleanos": "birthday", "cumpleaños": "birthday",

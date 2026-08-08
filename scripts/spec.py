@@ -206,9 +206,12 @@ FEATURES: tuple[Feature, ...] = (
             ("/searchsource", "/buscarfonte", "/buscarfuente"),
             "v1 handed SauceNAO a Telegram file URL carrying the bot token (D-RS-1); "
             "v2 uploads the bytes instead"),
-    Feature("x_distortion", "fun", "Media distortion", "M3", Status.PLANNED,
-            Layer.WORKER, "Distortioner.py:114-156", ("/destroy", "/zoar"),
-            "v1 busy-waits on a module global; replace with a worker semaphore"),
+    Feature("x_distortion", "fun", "Media distortion", "M3", Status.DONE,
+            Layer.WORKER, "Distortioner.py:114-156", ("/destroy", "/zoar", "/destruir"),
+            "branch chain on the reply path, carve + ffmpeg in cb-worker behind a real "
+            "semaphore (D3) with per-call temp dirs (D4); v1's video/GIF arms are "
+            "unreachable and stay disabled; seam carving over numpy replaces ImageMagick "
+            "liquid_rescale - see docs/contracts/x_distortion.md; QA authored (12 scenarios)"),
     Feature("x_owner_commands", "util", "Owner-only operations", "M3", Status.PLANNED,
             Layer.GATEWAY, "COOKIEBOT.py:83-105",
             ("/grupos", "/broadcast", "/leave", "/blacklist", "/stop", "/restart")),

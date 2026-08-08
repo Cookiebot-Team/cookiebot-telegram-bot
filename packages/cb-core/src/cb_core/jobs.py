@@ -52,6 +52,13 @@ PUBLISHER_APPROVE = "publisher_approve"
 #: ever constructed (spec D-RS-1).
 REVERSE_SEARCH = "reverse_search"
 
+#: `x_distortion`'s seam carve / vibrato pass (`cb_worker/jobs/distortion.py`),
+#: enqueued from `cb_gateway/handlers/destroy.py`. Pure CPU plus an ffmpeg
+#: subprocess — v1 ran both inline on the reply path behind a busy-wait spin
+#: lock (FEATURE-MAP D3), which is the single clearest case of AGENTS.md §2.4
+#: anywhere in the v1 tree.
+DISTORT_MEDIA = "distort_media"
+
 #: `core_musicdetection`'s Shazam lookup (`cb_worker/jobs/music.py`), enqueued
 #: from `cb_gateway/handlers/musicdetection.py` for every voice note. The
 #: highest-volume outbound call in the bot, against an unofficial endpoint —
@@ -69,6 +76,7 @@ __all__ = [
     "BIRTHDAY_COLLAGE",
     "CALLADMS_NOTIFY_ADMINS",
     "COMPOSE_MEME",
+    "DISTORT_MEDIA",
     "EVERYONE_FANOUT",
     "IDENTIFY_MUSIC",
     "NEXT_BIRTHDAYS_FOLLOWUP",

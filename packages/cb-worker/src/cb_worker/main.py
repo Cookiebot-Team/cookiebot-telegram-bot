@@ -29,6 +29,7 @@ from cb_core.settings import Settings, get_settings
 from cb_core.telemetry import context_from_carrier, setup_tracing, span
 from cb_worker.jobs.birthday import next_birthdays_followup, post_birthday_collage
 from cb_worker.jobs.calladms import notify_admins_of_call
+from cb_worker.jobs.distortion import distort_media
 from cb_worker.jobs.everyone import everyone_fanout
 from cb_worker.jobs.meme import compose_meme
 from cb_worker.jobs.music import identify_music
@@ -213,6 +214,7 @@ class WorkerSettings:
         publisher_approve,  # util_postforwarder's render + fan-out
         deliver_scheduled_posts,
         search_source,  # x_reverse_search's SauceNAO lookup
+        distort_media,  # x_distortion's seam carve / vibrato pass
         identify_music,  # core_musicdetection's recognition lookup
         compose_meme,  # fun_meme's template compositing
         maintain_partitions,
