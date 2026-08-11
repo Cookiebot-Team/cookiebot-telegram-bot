@@ -12,6 +12,8 @@
     "sandbox",
     "e2e",
     "deploy",
+    "cutover",
+    "cutover-bucket-export",
     "multi-tenant",
     "feature-map",
     "scenario-coverage"

@@ -29,7 +29,7 @@ for the others, per `importer/__init__.py`'s contract.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from cb_core.logging import get_logger
 from cb_worker.importer import ImportReport, MappedRows, MongoSource, Skipped
@@ -85,6 +85,8 @@ async def run_import(
     collections: Sequence[str] | None = None,
     dry_run: bool = False,
     batch_size: int = 500,
+    on_collection_start: Callable[[str], None] | None = None,
+    on_collection_done: Callable[[str, int, int], None] | None = None,
 ) -> ImportReport:
     """Read, map and load every requested collection; always return a full report.
 
@@ -94,6 +96,17 @@ async def run_import(
     live v1 database and again at cutover — produces the same rows, not
     duplicates or resurrected defaults (see `loader.py`'s module docstring for
     exactly which columns each re-run overwrites).
+
+    `on_collection_start`/`on_collection_done` are optional progress hooks, not
+    a `rich` dependency: this module has to stay import-clean of any rendering
+    library so it can be unit-tested and driven headlessly (`__main__.py` today,
+    `cb_worker.cutover` tomorrow). `on_collection_start(name)` fires before a
+    collection is read; `on_collection_done(name, read, written)` fires exactly
+    once after it (success, per-document skip, or whole-collection failure
+    alike), with the rows this call actually read and wrote for that collection
+    — which is what lets a caller drive a "N of M collections" progress bar
+    whose per-item description means something. Both default to `None`, which
+    is a no-op, so every existing caller and test is unaffected.
     """
     report = ImportReport()
     available = source.collections()
@@ -103,6 +116,9 @@ async def run_import(
         log.warning("import.collection.unavailable", collection=name)
 
     for collection in _ordered(available, wanted):
+        if on_collection_start is not None:
+            on_collection_start(collection)
+        written_before = report.total_written()
         try:
             await _import_collection(
                 collection, source, report, dry_run=dry_run, batch_size=batch_size
@@ -114,6 +130,13 @@ async def run_import(
             # a collection was lost without saying anything about why.
             detail = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
             report.skipped.append(Skipped(collection, "*", f"collection failed: {detail}"))
+        finally:
+            if on_collection_done is not None:
+                on_collection_done(
+                    collection,
+                    report.read.get(collection, 0),
+                    report.total_written() - written_before,
+                )
 
     return report
 

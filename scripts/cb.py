@@ -297,6 +297,29 @@ def meme_seed(extra: list[str]) -> int:
     return run("uv", "run", "python", "-m", "cb_worker.meme_seed", *extra)
 
 
+@task(
+    "cutover",
+    "run the full v1 -> v2 migration with progress (schema, mongo, bucket, memes, verify)",
+)
+def cutover(extra: list[str]) -> int:
+    """The one command for cutover day: composes `migrate`, `import-mongo`,
+    `bucket-export` and `meme-seed` into a single ordered run — schema first,
+    then the two data moves, then a read-only verify — with a `rich` progress
+    bar per step and a final summary table.
+
+    Every underlying step is already idempotent (see each task's own
+    docstring), so this is safe to run more than once: a second pass costs a
+    few "already there" checks, never a duplicate write. `--dry-run` reports
+    what every step would do and writes nothing; `--only`/`--skip` narrow
+    which steps run without changing their order; `--yes` skips the
+    confirmation prompt a real run against a non-local environment otherwise
+    asks for. This does not replace the individual tasks above — each of them
+    still works standalone for its own case (a mid-week Mongo delta sync, a
+    bucket-export `--verify` re-check).
+    """
+    return run("uv", "run", "python", "-m", "cb_worker.cutover", *extra)
+
+
 @task("migrate-check", "upgrade, downgrade to base, upgrade again")
 def migrate_check(_: list[str]) -> int:
     return chain(

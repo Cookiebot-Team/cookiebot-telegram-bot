@@ -25,6 +25,7 @@ import argparse
 import asyncio
 import mimetypes
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -71,42 +72,59 @@ def source_path(root: Path, template: MemeTemplate) -> Path:
 
 
 async def seed(
-    root: Path, *, dry_run: bool = False, force: bool = False, verify: bool = False
+    root: Path,
+    *,
+    dry_run: bool = False,
+    force: bool = False,
+    verify: bool = False,
+    on_template: Callable[[MemeTemplate, str], None] | None = None,
 ) -> SeedReport:
+    """`on_template(template, outcome)` fires exactly once per catalog entry,
+    after its fate for this run is decided (`"copied"`, `"skipped"`, `"missing"`,
+    `"present"` — verify's affirmative case — or `"failed"`). It exists so a
+    caller that wants a progress bar (`cb_worker.cutover`) can drive one without
+    this module importing `rich` itself — the same "pure logic, no rich" split
+    `cb_worker.importer.runner` keeps for its own optional collection callbacks.
+    Default `None` leaves every existing caller and test byte-for-byte unchanged.
+    """
     report = SeedReport()
     store = storage.store()
 
     for template in all_templates():
         key = template.storage_key
         path = source_path(root, template)
+        outcome: str
 
         if verify:
             if not await store.exists(key):
                 report.missing.append(key)  # type: ignore[union-attr]
+                outcome = "missing"
             else:
                 report.skipped += 1
-            continue
-
-        if not path.is_file():
+                outcome = "present"
+        elif not path.is_file():
             report.missing.append(str(path))  # type: ignore[union-attr]
-            continue
-
-        if not force and await store.exists(key):
+            outcome = "missing"
+        elif not force and await store.exists(key):
             report.skipped += 1
-            continue
-
-        if dry_run:
+            outcome = "skipped"
+        elif dry_run:
             report.copied += 1
-            continue
+            outcome = "copied"
+        else:
+            try:
+                content_type, _ = mimetypes.guess_type(template.filename)
+                await store.put(key, path.read_bytes(), content_type=content_type or "image/jpeg")
+            except Exception as exc:  # noqa: BLE001 - one bad file must not end the run
+                log.warning("meme_seed.put_failed", key=key, error=str(exc))
+                report.failed.append(key)  # type: ignore[union-attr]
+                outcome = "failed"
+            else:
+                report.copied += 1
+                outcome = "copied"
 
-        try:
-            content_type, _ = mimetypes.guess_type(template.filename)
-            await store.put(key, path.read_bytes(), content_type=content_type or "image/jpeg")
-        except Exception as exc:  # noqa: BLE001 - one bad file must not end the run
-            log.warning("meme_seed.put_failed", key=key, error=str(exc))
-            report.failed.append(key)  # type: ignore[union-attr]
-            continue
-        report.copied += 1
+        if on_template is not None:
+            on_template(template, outcome)
 
     return report
 

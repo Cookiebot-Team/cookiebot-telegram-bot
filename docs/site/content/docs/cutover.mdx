@@ -1,0 +1,97 @@
+---
+title: "Cutover"
+description: "One command that moves v1 into v2 — schema, Mongo, buckets, templates — with a progress bar and a report you can read under pressure"
+---
+
+## What it is
+
+```sh
+python scripts/cb.py cutover --dry-run
+python scripts/cb.py cutover --only mongo --collections configs,rules --yes
+python scripts/cb.py cutover --skip bucket --yes
+```
+
+`cb_worker.cutover` composes the four tools that already existed — the schema
+converger (`cb_core.migrations`), the Mongo importer (`cb_worker.importer`), the
+GCS bucket export (`cb_worker.bucket_export`) and the meme template seeder
+(`cb_worker.meme_seed`) — into one ordered run. It replaces none of them: each
+still works standalone, which is what a mid-week delta sync or a `--verify`
+re-check actually wants.
+
+The reason it exists is the same reason a checklist exists. Cutover day is four
+commands in a specific order, each with its own flags, run by someone watching a
+group chat go quiet. Getting the order wrong is silent: import a `configs`
+document for a chat before its `groups` row and the foreign key rejects it;
+seed templates into `memory://` and the run reports success and loses every
+byte at exit.
+
+## The six steps
+
+| Step | Writes | What it does |
+|---|---|---|
+| `preflight` | never | Postgres reachable, storage URI usable, Mongo source configured, v1 checkout present |
+| `schema` | Postgres | `alembic upgrade head`, reporting the revision before and after |
+| `mongo` | Postgres | v1 MongoDB (or a `mongodump` directory) → Citus |
+| `bucket` | object storage | v1's private GCS bucket → v2 object storage |
+| `memes` | object storage | v1's checked-in meme templates → v2 object storage |
+| `verify` | never | row counts per table, objects at the destination, the alembic revision |
+
+`--only` narrows to a subset and `--skip` removes from it; neither reorders
+anything. A step that fails is recorded and the run continues to the next one —
+the operator gets everything that *could* run this time, not just the first
+failure — and the exit code is 1 if any step failed, 2 for a user error such as
+a misspelled step name.
+
+## Why it is safe to run twice
+
+Every underlying tool is idempotent, and that is what the whole design rests
+on:
+
+- the importer upserts on the natural key, so a re-run rewrites nothing and
+  duplicates nothing;
+- the bucket export skips a blob whose content already landed, and appends to a
+  manifest as it goes, so a killed run resumes;
+- the seeder skips a template key already present at the same size.
+
+So the intended usage is not one careful run. It is: run it now while v1 still
+serves, run it again next week, run it once more at cutover to catch the delta.
+
+## Preflight refuses the two mistakes that look like success
+
+**`memory://` with a write step selected.** The in-process store accepts every
+upload and loses all of it when the process exits. A run that seeded 801
+templates into it would print a green table and leave `/meme` exactly as dead as
+before, which is why this is a hard failure rather than a warning.
+
+**Both `CB_MONGO_URI` and `CB_MONGO_DUMP_DIR` set.** The importer picks exactly
+one source; two configured means the operator believes they are importing
+something they are not.
+
+An *absent* Mongo source is not an error — that is the normal state once cutover
+is done, so the step skips and the run still exits 0.
+
+## Dry run
+
+`--dry-run` reads and maps everything and writes nothing: the mongo step still
+runs every mapper and every skip rule, and reports the rows each table *would*
+have received. The schema step compares the current revision against head rather
+than emitting SQL, because a preview that needs `env.py`'s offline branch to be
+exact for every revision is not a risk worth taking on the one day it matters.
+
+## Progress
+
+Each step drives one `rich` progress bar with a total known before the work
+starts — collections for `mongo`, catalog entries for `memes`, blobs per prefix
+for `bucket` — and the run ends in a summary table of step, status, duration and
+the one number that matters for that step. The pure logic layers never import
+`rich`: the importer and seeder take optional callbacks and stay renderer-
+agnostic, which is what keeps them testable without a terminal.
+
+## What this cannot do for you
+
+The bucket step needs a read-only-scoped GCS credential for v1's private
+bucket. Without one it is skipped, and the four features whose assets live only
+there (`fun_death`, `fun_partneredcons`, `x_custom_commands`, and the one-tag
+shapes of `fun_battle`) stay blocked — see
+[Cutover bucket export](/docs/cutover-bucket-export) for the read-only
+guarantee and the prefix inventory.
