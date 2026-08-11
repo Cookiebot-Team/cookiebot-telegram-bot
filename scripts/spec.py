@@ -253,10 +253,12 @@ FEATURES: tuple[Feature, ...] = (
     Feature("x_drawing_idea", "fun", "Drawing idea prompt", "M3", Status.PLANNED,
             Layer.GATEWAY, "Miscellaneous.py:137-143", ("/ideiadesenho", "/drawingidea", "/ideadibujo"),
             "signed URL from a GCS blob pool; no QA scenario exists - write one"),
-    Feature("x_analysis", "util", "Message analysis (reply_to_message dump)", "M3", Status.PLANNED,
+    Feature("x_analysis", "util", "Message analysis (reply_to_message dump)", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:71-81", ("/analise", "/analisis", "/analysis"),
-            "dumps the raw Telegram reply_to_message payload back to chat; "
-            "no QA scenario exists - write one"),
+            "dumps the replied-to message's fields back to chat, ungated exactly as v1 "
+            "dispatches it (COOKIEBOT.py:202); truncates at 4000 chars, where v1 sent the "
+            "whole dump and Telegram rejected anything over 4096 - so the command did "
+            "nothing on exactly the messages worth analysing. QA authored, not ported"),
     Feature("x_sticker_autoreply", "fun", "Sticker DB auto-reply", "M3", Status.PLANNED,
             Layer.GATEWAY, "SocialContent.py:208-222", (),
             "passive: builds a sticker DB from sfw-group stickers, replies to any "

@@ -14,6 +14,7 @@ the rest never run. Hence explicit, commented order rather than alphabetical.
 from aiogram import Router
 
 from cb_gateway.handlers import (
+    analysis,
     battle,
     birthday,
     calladms,
@@ -66,6 +67,8 @@ def build_router() -> Router:
     # ---- commands: disjoint triggers, order irrelevant ----
     root.include_router(isalive.router)
     root.include_router(privacy.router)
+    # x_analysis sits in v1's ungated stretch of the chain, next to /privacy.
+    root.include_router(analysis.router)
     root.include_router(listcommand.router)
     root.include_router(config_menu.router)
     root.include_router(rules.router)

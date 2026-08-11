@@ -1,18 +1,18 @@
 {
   "generated_at": "2026-08-11",
-  "commit": "f8ded83",
+  "commit": "9e2b8e5",
   "test_summary": "not run",
   "totals": {
     "features": 61,
-    "done": 46,
+    "done": 47,
     "partial": 3,
-    "planned": 9,
+    "planned": 8,
     "blocked": 3,
     "spec_scenarios": 63,
     "ported": 153,
     "spec_files": 31,
     "spec_files_covered": 29,
-    "new_specs": 64,
+    "new_specs": 68,
     "green": 0,
     "failing": 0
   },
@@ -38,7 +38,7 @@
     {
       "id": "M3",
       "title": "Publisher, AI, giveaways, owner tooling",
-      "done": 10,
+      "done": 11,
       "total": 19
     },
     {
@@ -1267,18 +1267,18 @@
       "area": "util",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/analise",
         "/analisis",
         "/analysis"
       ],
       "v1_source": "Miscellaneous.py:71-81",
-      "notes": "dumps the raw Telegram reply_to_message payload back to chat; no QA scenario exists - write one",
+      "notes": "dumps the replied-to message's fields back to chat, ungated exactly as v1 dispatches it (COOKIEBOT.py:202); truncates at 4000 chars, where v1 sent the whole dump and Telegram rejected anything over 4096 - so the command did nothing on exactly the messages worth analysing. QA authored, not ported",
       "contract": null,
       "scenarios": {
         "spec": 0,
-        "ported": 0,
+        "ported": 4,
         "green": 0,
         "failing": 0
       },
@@ -2014,6 +2014,14 @@
       "state": "no step definitions"
     },
     {
+      "stem": "x_analysis",
+      "spec": 0,
+      "ported": 4,
+      "green": 0,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
       "stem": "x_conversational_ai",
       "spec": 0,
       "ported": 7,
@@ -2163,6 +2171,7 @@
     "x_speech_to_text: marked done but no scenario executed green",
     "x_reverse_search: marked done but no scenario executed green",
     "x_distortion: marked done but no scenario executed green",
-    "x_owner_commands: marked done but no scenario executed green"
+    "x_owner_commands: marked done but no scenario executed green",
+    "x_analysis: marked done but no scenario executed green"
   ]
 }

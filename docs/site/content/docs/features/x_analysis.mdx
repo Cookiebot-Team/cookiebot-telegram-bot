@@ -3,8 +3,8 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Message analysis (reply_to_message dump)"
-description: "dumps the raw Telegram reply_to_message payload back to chat; no QA scenario exists - write one"
-status: planned
+description: "dumps the replied-to message's fields back to chat, ungated exactly as v1 dispatches it (COOKIEBOT.py:202); truncates at 4000 chars, where v1 sent the whole dump and Telegram rejected anything over 4096 - so the command did nothing on exactly the messages worth analysing. QA authored, not ported"
+status: done
 milestone: M3
 area: util
 layer: gateway
