@@ -1,9 +1,9 @@
 # platform_tenancy — Specify
 
 **Feature id:** `platform_tenancy` · **Milestone:** M1 · **Kind:** state report
-**Status:** `partial` — schema, read path and per-tenant command enforcement
-landed; `handler_pack`, `llm_overrides`, `storage_prefix` and the tenant cost
-rollup still have no consumer.
+**Status:** `partial` — schema, read path, per-tenant command enforcement,
+per-tenant LLM task overrides and per-tenant storage key prefixing landed;
+`handler_pack` and the tenant cost rollup still have no consumer.
 
 This is not a build spec. It records what exists, what doesn't, and why —
 per `scripts/status.py`'s rule that a `partial` needs a written reason, not a
@@ -48,6 +48,40 @@ plan.
   `metrics.updates_dropped_total{reason="tenant_disabled"}`, and logs
   `tenant_gate.command_disabled`. Unit tested end to end, including the
   fail-open path: `packages/cb-gateway/tests/test_tenant_command_gate.py`.
+- **`llm_overrides` is consulted in `LLMRouter.config_for`/`provider_for`**
+  (`cb_core/llm/router.py:117-198`, `_merge_task_config`/`config_for`).
+  `complete()`/`transcribe()` (`router.py:207-329`) resolve the tenant once
+  per call — the same `TenantRegistry.by_id` lookup `ensure_within_budget`
+  already needed (`llm/budget.py:193`, now takes an optional pre-resolved
+  `tenant` so the two don't each pay their own lookup) — and layer
+  `tenant.llm_overrides[task]` field-by-field over the global `TaskConfig`
+  via `msgspec.structs.replace`, so a tenant naming only `model` keeps the
+  global `max_tokens`/`system`/`temperature`/`timeout`. `tenant_id=None`
+  (every caller before this landed) skips the registry lookup entirely — no
+  behaviour change for them. A malformed override (an unknown field, a
+  non-mapping value) or one naming a provider this deployment has no
+  credentials for logs a warning (`llm.tenant_override_invalid` /
+  `llm.tenant_override_unconfigured_provider`) and falls back to the global
+  config for that task rather than failing the call. Unit tested:
+  `packages/cb-core/tests/test_llm.py` (`TestRouterTenantOverrides`).
+- **`storage_prefix` is applied in key derivation**
+  (`cb_core/storage/keys.py:44-89`'s `blob_key`/`hash_and_key`/`derived_key`,
+  each taking an optional `prefix` that defaults to `""`) and threaded
+  through `MediaService.put`'s optional `tenant_id` parameter
+  (`cb_core/storage/media.py:83-95`), which resolves `Tenant.storage_prefix`
+  through the same `TenantRegistry.by_id` seam and prepends it ahead of the
+  whole content-addressed key. The empty-string default — every tenant row
+  today — reproduces the pre-tenancy key byte-for-byte, which is what keeps
+  every already-written `media_objects.blob_key` resolving; a non-empty
+  prefix deliberately opts a tenant out of the cross-tenant content dedupe
+  `keys.py`'s own docstring describes, trading it for isolation. Meme
+  templates (`cb_core/meme_templates.py:78-92`) deliberately do **not** get a
+  prefix — they are global, bot-owned assets seeded once by `cb.py
+  meme-seed` with no `group_id`/tenant in scope, and both the seeder and
+  `cb_worker.jobs.meme` already share one `storage_key` property, which is
+  what keeps them from drifting apart. Unit tested:
+  `packages/cb-core/tests/test_storage.py` (`TestKeys`,
+  `TestMediaServiceStoragePrefix`).
 
 ## What is missing
 
@@ -58,11 +92,6 @@ plan.
   router" mechanism `multi-tenant.mdx`'s "Custom implementations: handler
   packs" section describes is documented, not built — no `packs/` directory
   exists in the repo.
-- **`llm_overrides` and `storage_prefix` are schema-only**, same as
-  `handler_pack`: `cb_core/llm/router.py` never looks at a tenant when
-  resolving a task's model, and `cb_core/storage.py` never applies a prefix
-  to a key. Grepping the whole tree for either name outside `tenancy.py`
-  itself and its own test/migration finds nothing.
 - **`owner_ids` is unconsumed** — the feature that would read it,
   `x_owner_commands`, is still `Status.PLANNED`.
 - **`tenant_monthly_cost` has no writer.** The table exists

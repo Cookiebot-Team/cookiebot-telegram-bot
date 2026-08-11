@@ -76,6 +76,20 @@ class MemeTemplate(msgspec.Struct, frozen=True):
 
     @property
     def storage_key(self) -> str:
+        """No `Tenant.storage_prefix` here, deliberately. A template is bot-owned,
+        global, seeded once by `cb.py meme-seed` and read by every tenant's
+        `/meme` alike — there is no `group_id`, and so no tenant, in scope at
+        either the seed or the read. `storage_prefix` exists to let one tenant's
+        objects live under a separate namespace or bucket (`tenancy.py`'s own
+        comment on the field); applying it here would mean picking *a* tenant to
+        own a shared asset every tenant serves, which is not a real answer, or
+        seeding N tenant-prefixed copies of the same 110 MB for no isolation
+        benefit — nothing about a meme template needs per-tenant lifecycle rules.
+        Both `meme_seed.seed` and `cb_worker.jobs.meme` call this one property
+        rather than deriving the key themselves (module docstring); if a prefix
+        is ever wanted here, it still has to be threaded through both call sites
+        from this single property, not invented separately in either.
+        """
         return f"{KEY_PREFIX}/{self.language}/{self.filename}"
 
 

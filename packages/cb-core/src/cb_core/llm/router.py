@@ -15,9 +15,11 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING
 
 import msgspec
+from msgspec import structs
 
 from cb_core import metrics
 from cb_core.breaker import Breaker
@@ -34,6 +36,14 @@ from cb_core.llm.types import (
 from cb_core.logging import get_logger
 from cb_core.settings import Settings
 from cb_core.telemetry import current_trace_id, span
+
+if TYPE_CHECKING:
+    # Deferred: only needed for the type checker. Runtime resolution of a
+    # tenant happens through a local import in `complete`/`transcribe`, same
+    # seam `ensure_within_budget` already used, so importing `cb_core.tenancy`
+    # (and the cache/db modules it pulls in) is not paid by every caller that
+    # never passes a `tenant_id`.
+    from cb_core.tenancy import Tenant
 
 log = get_logger("cb.llm")
 
@@ -104,6 +114,21 @@ DEFAULT_TASKS: dict[str, TaskConfig] = {
 _Breaker = Breaker
 
 
+def _merge_task_config(base: TaskConfig, override: Mapping[str, object]) -> TaskConfig:
+    """Layer `Tenant.llm_overrides[task]` over the global `TaskConfig` for that task.
+
+    Field-by-field via `msgspec.structs.replace`, not `TaskConfig(**override)`: a
+    tenant row that only names `model` in its override dict must keep the global
+    `max_tokens`/`system`/`temperature`/`timeout`/... rather than being forced to
+    restate a whole `TaskConfig` just to swap a model, and must keep tracking the
+    global values if they change later. `structs.replace` raises `TypeError` for
+    any key that is not a real `TaskConfig` field (including a non-mapping
+    `override`, since `**override` then fails the same way) — that is exactly the
+    "unparseable override" case `config_for` catches and falls back on.
+    """
+    return structs.replace(base, **override)
+
+
 class LLMRouter:
     def __init__(
         self,
@@ -117,14 +142,63 @@ class LLMRouter:
         self._breakers = {name: _Breaker() for name in providers}
         self._record_usage = record_usage
 
-    def config_for(self, task: str) -> TaskConfig:
+    def config_for(self, task: str, *, tenant: Tenant | None = None) -> TaskConfig:
+        """The effective `TaskConfig` for `task`, optionally layered with `tenant`'s
+        `llm_overrides`.
+
+        `tenant=None` (every caller before R-tenant-llm existed, and still every
+        caller that has no tenant in scope) is exactly the old behaviour: a plain
+        dict lookup, no merge, no logging. A tenant with no override for this
+        specific task is likewise unaffected — `llm_overrides` is sparse by design,
+        one entry per task a tenant actually wants to repoint.
+
+        A bad override — a key that is not a `TaskConfig` field, a non-dict value,
+        or a `provider` this deployment has no credentials for — must not cost the
+        tenant the task entirely (R1.7's "an unconfigured model surfaces as an
+        error at call time" is about the *global* config being wrong, not about one
+        tenant's row being wrong): it is logged and the global config for `task`
+        is used instead, same as if the tenant had no override at all.
+        """
         try:
-            return self._tasks[task]
+            base = self._tasks[task]
         except KeyError:
             raise LLMError(f"no model configured for task {task!r}") from None
+        if tenant is None:
+            return base
+        override = tenant.llm_overrides.get(task)
+        if not override:
+            return base
+        try:
+            merged = _merge_task_config(base, override)
+        except (TypeError, AttributeError) as exc:
+            # AttributeError covers a non-mapping override (e.g. a list) reaching
+            # `.items()`-shaped unpacking inside `structs.replace`'s `**override`.
+            log.warning(
+                "llm.tenant_override_invalid",
+                tenant_id=tenant.tenant_id,
+                task=task,
+                error=str(exc),
+            )
+            return base
+        if merged.provider not in self._providers:
+            log.warning(
+                "llm.tenant_override_unconfigured_provider",
+                tenant_id=tenant.tenant_id,
+                task=task,
+                provider=merged.provider,
+            )
+            return base
+        return merged
 
-    def provider_for(self, task: str) -> LLMProvider:
-        cfg = self.config_for(task)
+    def provider_for(self, task: str, *, tenant: Tenant | None = None) -> LLMProvider:
+        return self._provider_for_config(self.config_for(task, tenant=tenant))
+
+    def _provider_for_config(self, cfg: TaskConfig) -> LLMProvider:
+        # Split out of `provider_for` so `complete`/`transcribe` can resolve a
+        # `TaskConfig` once via `config_for` and look up its provider without a
+        # second call — `config_for` can now log a warning on an invalid tenant
+        # override, and `provider_for(task, tenant=tenant)` recomputing it would
+        # double that log line for one completion.
         provider = self._providers.get(cfg.provider)
         if provider is None:
             raise LLMUnavailableError(f"provider {cfg.provider!r} is not configured")
@@ -141,18 +215,25 @@ class LLMRouter:
         max_tokens: int | None = None,
         tenant_id: str | None = None,
     ) -> Completion:
-        cfg = self.config_for(task)
-        provider = self.provider_for(task)
-        breaker = self._breakers[cfg.provider]
-        now = time.monotonic()
-
+        tenant: Tenant | None = None
         if tenant_id is not None:
+            # One registry lookup serves both the `llm_overrides` merge in
+            # `config_for` below and the budget check: `TenantRegistry.by_id` is
+            # L1-cached (`tenancy.py`), so a second call would be cheap, but there
+            # is still no reason to pay it twice for the same completion.
+            from cb_core import tenancy
+            from cb_core.llm.budget import ensure_within_budget
+
+            tenant = await tenancy.registry.by_id(tenant_id)
             # R2.5: `tenant_id=None` (every caller before this task) skips the
             # check entirely. A budget refusal is not a provider failure, so it
             # runs before the breaker gate and outside its accounting.
-            from cb_core.llm.budget import ensure_within_budget
+            await ensure_within_budget(tenant_id, tenant=tenant)
 
-            await ensure_within_budget(tenant_id)
+        cfg = self.config_for(task, tenant=tenant)
+        provider = self._provider_for_config(cfg)
+        breaker = self._breakers[cfg.provider]
+        now = time.monotonic()
 
         if not breaker.allow(now):
             metrics.llm_requests_total.labels(
@@ -226,18 +307,24 @@ class LLMRouter:
         user_id: int | None = None,
         tenant_id: str | None = None,
     ) -> Transcript:
-        cfg = self.config_for("transcribe")
-        provider = self.provider_for("transcribe")
-        breaker = self._breakers[cfg.provider]
-        now = time.monotonic()
-
+        tenant: Tenant | None = None
         if tenant_id is not None:
+            # Same one-lookup-serves-both shape as complete(): the tenant row
+            # feeds both the `llm_overrides` merge in `config_for` and the
+            # budget check below.
+            from cb_core import tenancy
+            from cb_core.llm.budget import ensure_within_budget
+
+            tenant = await tenancy.registry.by_id(tenant_id)
             # R2.5, same as complete(): a budget refusal is not a provider
             # failure, so it runs before the breaker gate and outside its
             # accounting.
-            from cb_core.llm.budget import ensure_within_budget
+            await ensure_within_budget(tenant_id, tenant=tenant)
 
-            await ensure_within_budget(tenant_id)
+        cfg = self.config_for("transcribe", tenant=tenant)
+        provider = self._provider_for_config(cfg)
+        breaker = self._breakers[cfg.provider]
+        now = time.monotonic()
 
         if not breaker.allow(now):
             metrics.llm_requests_total.labels(

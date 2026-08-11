@@ -90,16 +90,37 @@ class MediaService:
         content_type: str | None = None,
         telegram_file_id: str | None = None,
         sfw: bool = True,
+        tenant_id: str | None = None,
     ) -> MediaRef:
         """Store bytes and register them for this group.
 
         Idempotent by content: uploading the same bytes twice in the same group
         returns the existing reference and skips the blob write.
+
+        `tenant_id`, when given, resolves `Tenant.storage_prefix` and applies it
+        to the derived key (`keys.blob_key`'s own docstring covers the dedupe
+        trade-off that makes). `tenant_id=None` — every caller before this
+        parameter existed — resolves nothing and derives the same unprefixed key
+        as always; that is not just a convenient default, it is what keeps every
+        already-written `media_objects.blob_key` resolving (see `blob_key`'s
+        docstring on why the empty-prefix path may never change).
         """
         if kind not in VALID_KINDS:
             raise ValueError(f"unknown media kind {kind!r}")
 
-        content_hash, key = hash_and_key(kind, data)
+        prefix = ""
+        if tenant_id is not None:
+            # Deferred import, same seam `LLMRouter.complete()` uses: resolving a
+            # tenant pulls in `cache`/`db` via `tenancy`, which a caller with no
+            # tenant in scope should not have to pay for just importing this
+            # module. `TenantRegistry.by_id` is L1-cached, so this is one dict
+            # lookup on every call after the first for a given tenant.
+            from cb_core import tenancy
+
+            tenant = await tenancy.registry.by_id(tenant_id)
+            prefix = tenant.storage_prefix
+
+        content_hash, key = hash_and_key(kind, data, prefix=prefix)
 
         existing = await db.fetchrow(_SELECT_BY_HASH, group_id, content_hash, name="media_by_hash")
         if existing is not None:
@@ -117,7 +138,11 @@ class MediaService:
             )
 
         # Another group may already hold this exact blob — check before paying
-        # for the upload.
+        # for the upload. Only true cross-group dedupe when both groups resolve
+        # to the same prefix (same tenant, or both unprefixed): a differently
+        # prefixed tenant derives a different `key` for identical bytes, so this
+        # `exists` check misses on purpose and a second copy is written — the
+        # isolation `storage_prefix` is for, spelled out in `blob_key`'s docstring.
         if not await self._store.exists(key):
             await self._store.put(key, data, content_type=content_type)
             metrics.storage_bytes_total.labels(backend=self._store.scheme, kind=kind).inc(len(data))
@@ -125,8 +150,17 @@ class MediaService:
         else:
             metrics.media_dedupe_total.labels(kind=kind, result="blob_shared").inc()
 
-        # media_blobs is a reference table, so this write replicates; it only runs
-        # on a genuinely new blob, never on the dedupe path.
+        # media_blobs is a reference table keyed on content_hash alone, so once a
+        # prefix makes two tenants derive two different keys for identical bytes,
+        # only the first tenant's key is ever recorded here (`ON CONFLICT
+        # (content_hash) DO NOTHING`) — a second tenant's own copy is real, and
+        # its `media_objects` row below has the right key for reads, but
+        # `collect_garbage`'s scan (`unreferenced_blobs`) only ever considers the
+        # first-recorded key, so that second copy is never a GC candidate through
+        # this table. Harmless today (no tenant row sets a non-empty prefix yet),
+        # but a real limitation to fix — most likely by keying media_blobs on
+        # (content_hash, blob_key) — before storage_prefix is used for isolation
+        # rather than left at its default.
         await db.execute(
             """
             INSERT INTO media_blobs (content_hash, blob_key, kind, byte_size, content_type, backend)

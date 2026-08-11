@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator, Sequence
+from importlib import import_module
 from typing import Any
 
 import pytest
 
 from cb_core import db as db_mod
+from cb_core import tenancy as tenancy_mod
 from cb_core.ids import is_uuid7, timestamp_ms, uuid7
 from cb_core.llm import (
     LLMError,
@@ -26,9 +28,20 @@ from cb_core.llm import (
     spec_for,
 )
 from cb_core.llm.anthropic_provider import AnthropicProvider
+from cb_core.llm.base import LLMProvider
 from cb_core.llm.catalog import CATALOG, ModelSpec
 from cb_core.llm.router import _Breaker
 from cb_core.llm.types import Completion, Transcript
+from cb_core.tenancy import Tenant
+
+# `from cb_core.llm import router` (and even `import cb_core.llm.router as x`,
+# which still resolves through the package's own namespace) both give the
+# `router()` factory function, not the submodule: `cb_core/llm/__init__.py`'s
+# own `from cb_core.llm.router import (..., router, ...)` rebinds the package
+# attribute `cb_core.llm.router` to that function, shadowing the submodule.
+# `import_module` goes straight to `sys.modules`, bypassing the shadowed
+# attribute, which is what `log.warning` needs to be monkeypatched below.
+router_mod = import_module("cb_core.llm.router")
 
 
 class TestCatalog:
@@ -459,6 +472,231 @@ class TestRouterTranscribe:
                 await router.complete("chat", [Message(role="user", content="x")])
         with pytest.raises(LLMUnavailableError):
             await router.transcribe(b"audio")
+
+
+def _install_tenant(monkeypatch: pytest.MonkeyPatch, tenant: Tenant) -> None:
+    """Same seam `test_llm_budget.py`'s `install_tenant` patches, but router.py
+    reaches `tenancy.registry` through a local import rather than a module-level
+    one (see `complete`'s comment on why), so the patch target here is the
+    singleton itself, not a name inside `cb_core.llm.router`."""
+
+    async def fake_by_id(tenant_id: str) -> Tenant:
+        assert tenant_id == tenant.tenant_id
+        return tenant
+
+    monkeypatch.setattr(tenancy_mod.registry, "by_id", fake_by_id)
+
+
+class TestRouterTenantOverrides:
+    """`Tenant.llm_overrides`: per-tenant task -> model overrides, merged over
+    the global `TaskConfig` (`router.py`'s `_merge_task_config`/`config_for`).
+    """
+
+    def _router(self, provider: _StubProvider, **extra_providers: LLMProvider) -> LLMRouter:
+        providers: dict[str, LLMProvider] = {"stub": provider, **extra_providers}
+        return LLMRouter(
+            providers,
+            {
+                "chat": TaskConfig(
+                    provider="stub", model="stub-model", max_tokens=64, effort="low", system="base"
+                )
+            },
+            record_usage=False,
+        )
+
+    def test_config_for_with_no_tenant_is_unchanged(self) -> None:
+        router = self._router(_StubProvider(_completion()))
+        assert router.config_for("chat") == TaskConfig(
+            provider="stub", model="stub-model", max_tokens=64, effort="low", system="base"
+        )
+
+    def test_override_merges_field_by_field(self) -> None:
+        """A tenant naming only `model` keeps every other global field —
+        `max_tokens`/`effort`/`system` here — rather than being forced to
+        restate a whole `TaskConfig`."""
+        router = self._router(_StubProvider(_completion()))
+        tenant = Tenant(
+            tenant_id="acme",
+            display_name="Acme",
+            llm_overrides={"chat": {"model": "stub-model-2"}},
+        )
+        merged = router.config_for("chat", tenant=tenant)
+        assert merged.model == "stub-model-2"
+        assert merged.max_tokens == 64
+        assert merged.effort == "low"
+        assert merged.system == "base"
+
+    def test_tenant_with_no_override_for_this_task_is_unaffected(self) -> None:
+        router = self._router(_StubProvider(_completion()))
+        tenant = Tenant(tenant_id="acme", display_name="Acme", llm_overrides={})
+        assert router.config_for("chat", tenant=tenant) == router.config_for("chat")
+
+    async def test_no_tenant_id_never_resolves_a_tenant(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The registry lookup is the seam this test guards: `tenant_id=None`
+        must skip it entirely, not just skip the override merge."""
+
+        async def boom(tenant_id: str) -> Tenant:
+            raise AssertionError("tenant_id=None must never call TenantRegistry.by_id")
+
+        monkeypatch.setattr(tenancy_mod.registry, "by_id", boom)
+
+        provider = _StubProvider(_completion())
+        result = await self._router(provider).complete("chat", [Message(role="user", content="hi")])
+        assert result.text == "ok"
+        assert provider.calls[0]["model"] == "stub-model"
+
+    async def test_tenant_id_resolves_the_registry_exactly_once(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """`config_for`'s override merge and `ensure_within_budget` both need the
+        tenant row; `complete()` must fetch it once and hand the same object to
+        both rather than paying `by_id` twice for one completion."""
+        tenant = Tenant(
+            tenant_id="acme",
+            display_name="Acme",
+            llm_overrides={"chat": {"model": "stub-model-2"}},
+        )
+        calls = 0
+
+        async def fake_by_id(tenant_id: str) -> Tenant:
+            nonlocal calls
+            calls += 1
+            return tenant
+
+        monkeypatch.setattr(tenancy_mod.registry, "by_id", fake_by_id)
+
+        provider = _StubProvider(_completion())
+        result = await self._router(provider).complete(
+            "chat", [Message(role="user", content="hi")], tenant_id="acme"
+        )
+        assert result.text == "ok"
+        assert calls == 1
+        assert provider.calls[0]["model"] == "stub-model-2"
+
+    async def test_override_names_unconfigured_provider_falls_back_and_logs(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        tenant = Tenant(
+            tenant_id="acme",
+            display_name="Acme",
+            llm_overrides={"chat": {"provider": "ghost", "model": "ghost-model"}},
+        )
+        _install_tenant(monkeypatch, tenant)
+        events: list[tuple[str, dict[str, object]]] = []
+        monkeypatch.setattr(
+            router_mod.log, "warning", lambda event, **kw: events.append((event, kw))
+        )
+
+        provider = _StubProvider(_completion())
+        result = await self._router(provider).complete(
+            "chat", [Message(role="user", content="hi")], tenant_id="acme"
+        )
+
+        assert result.text == "ok"
+        assert provider.calls[0]["model"] == "stub-model"  # fell back to the global config
+        assert events == [
+            (
+                "llm.tenant_override_unconfigured_provider",
+                {"tenant_id": "acme", "task": "chat", "provider": "ghost"},
+            )
+        ]
+
+    async def test_unparseable_override_falls_back_and_logs(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A field name that is not a real `TaskConfig` field is exactly as
+        unparseable as a value of the wrong shape — both come back from
+        `structs.replace` as a `TypeError` and both must not cost the tenant the
+        call."""
+        tenant = Tenant(
+            tenant_id="acme",
+            display_name="Acme",
+            llm_overrides={"chat": {"not_a_real_field": "x"}},
+        )
+        _install_tenant(monkeypatch, tenant)
+        events: list[tuple[str, dict[str, object]]] = []
+        monkeypatch.setattr(
+            router_mod.log, "warning", lambda event, **kw: events.append((event, kw))
+        )
+
+        provider = _StubProvider(_completion())
+        result = await self._router(provider).complete(
+            "chat", [Message(role="user", content="hi")], tenant_id="acme"
+        )
+
+        assert result.text == "ok"
+        assert provider.calls[0]["model"] == "stub-model"
+        assert len(events) == 1
+        assert events[0][0] == "llm.tenant_override_invalid"
+        assert events[0][1]["tenant_id"] == "acme"
+
+    def test_override_for_a_task_that_does_not_exist_globally_raises_like_today(self) -> None:
+        """A tenant cannot invent a task the global router never defined —
+        `config_for` looks the *requested* task up in `self._tasks` before it
+        ever consults `tenant.llm_overrides`, so this is unchanged from the
+        no-tenant case (`TestRouter.test_unknown_task_is_an_error`)."""
+        router = self._router(_StubProvider(_completion()))
+        tenant = Tenant(
+            tenant_id="acme", display_name="Acme", llm_overrides={"ghost_task": {"model": "x"}}
+        )
+        with pytest.raises(LLMError):
+            router.config_for("ghost_task", tenant=tenant)
+
+    async def test_override_for_a_task_nobody_requests_is_inert(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The reverse of the above: an override keyed to a task the tenant made
+        up is simply never looked at, because nothing ever asks the router to
+        resolve that task. It costs nothing and breaks nothing."""
+        tenant = Tenant(
+            tenant_id="acme",
+            display_name="Acme",
+            llm_overrides={"a_task_nobody_asks_for": {"model": "x"}},
+        )
+        _install_tenant(monkeypatch, tenant)
+
+        provider = _StubProvider(_completion())
+        result = await self._router(provider).complete(
+            "chat", [Message(role="user", content="hi")], tenant_id="acme"
+        )
+        assert result.text == "ok"
+        assert provider.calls[0]["model"] == "stub-model"
+
+    def test_provider_for_reflects_the_merged_config(self) -> None:
+        stub2 = _StubProvider(_completion())
+        router = self._router(_StubProvider(_completion()), stub2=stub2)
+        tenant = Tenant(
+            tenant_id="acme", display_name="Acme", llm_overrides={"chat": {"provider": "stub2"}}
+        )
+        assert router.provider_for("chat", tenant=tenant) is stub2
+
+    async def test_transcribe_also_resolves_and_merges_overrides(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """`config_for`/`provider_for` are shared by `complete` and `transcribe`
+        (AGENTS.md's "same predicate, no drifting apart" — see the module's own
+        precedent in `tenancy.py`'s docstring for `by_skin`), so the merge must
+        apply to a transcription task's config the same way."""
+        tenant = Tenant(
+            tenant_id="acme",
+            display_name="Acme",
+            llm_overrides={"transcribe": {"filename": "ignored"}},  # not a real field, see below
+        )
+        _install_tenant(monkeypatch, tenant)
+
+        provider = _TranscribeStubProvider(_transcript(model="whisper-2"))
+        router = LLMRouter(
+            {"stub": provider},
+            {"transcribe": TaskConfig(provider="stub", model="stub-model")},
+            record_usage=False,
+        )
+        # An invalid override (unknown field) must fall back rather than break
+        # transcription entirely — the same contract `complete()` gets.
+        result = await router.transcribe(b"audio", tenant_id="acme")
+        assert result.text == "hello"
+        assert provider.transcribe_calls[0]["model"] == "stub-model"
 
 
 class TestUuid7:
