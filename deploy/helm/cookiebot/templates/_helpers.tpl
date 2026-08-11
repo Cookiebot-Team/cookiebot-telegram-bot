@@ -133,4 +133,49 @@ env:
         name: {{ .Values.secrets.name }}
         key: {{ .Values.secrets.openaiApiKeyKey }}
 {{- end }}
+{{- if .Values.objectStorage.enabled }}
+{{- /*
+     AWS_*, not CB_*: obstore's S3Store reads the ambient AWS environment the
+     way every S3 client does, so nothing in cb_core has to learn what a MinIO
+     endpoint is. AWS_ALLOW_HTTP is the one that is easy to miss — without it
+     the Rust layer refuses a plaintext endpoint and the error names TLS, not
+     the scheme.
+*/}}
+  - name: AWS_ENDPOINT_URL
+    value: {{ include "cookiebot.objectStorageEndpoint" . | quote }}
+  - name: AWS_ALLOW_HTTP
+    value: "true"
+  - name: AWS_REGION
+    value: {{ .Values.objectStorage.region | quote }}
+  - name: AWS_ACCESS_KEY_ID
+    valueFrom:
+      secretKeyRef:
+        name: {{ .Values.objectStorage.credentialsSecret.name }}
+        key: {{ .Values.objectStorage.credentialsSecret.accessKeyKey }}
+  - name: AWS_SECRET_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        name: {{ .Values.objectStorage.credentialsSecret.name }}
+        key: {{ .Values.objectStorage.credentialsSecret.secretKeyKey }}
+{{- end }}
+{{- end -}}
+
+{{- define "cookiebot.objectStorageEndpoint" -}}
+{{- printf "http://%s-objectstore.%s.svc:%d" (include "cookiebot.fullname" .) .Release.Namespace (int .Values.objectStorage.port) -}}
+{{- end -}}
+
+{{/*
+Where blobs go.
+
+An explicit config.storageUri always wins; the bundled MinIO only fills in the
+default. That ordering is what lets one values file enable the bucket without
+also having to repeat its name in a URI, while a production values file that
+names a real bucket is never second-guessed.
+*/}}
+{{- define "cookiebot.storageUri" -}}
+{{- if and .Values.objectStorage.enabled (eq .Values.config.storageUri "memory://") -}}
+{{- printf "s3://%s" .Values.objectStorage.bucket -}}
+{{- else -}}
+{{- .Values.config.storageUri -}}
+{{- end -}}
 {{- end -}}

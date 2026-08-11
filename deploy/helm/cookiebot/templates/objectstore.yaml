@@ -1,0 +1,221 @@
+{{- if .Values.objectStorage.enabled }}
+{{/*
+An S3 endpoint inside the namespace, for environments that have no cloud bucket.
+
+The application only ever speaks S3 (`cb_core.storage`, obstore's S3Store), so
+this is a deployment choice, not a code path: UAT gets MinIO here, production
+points `config.storageUri` at a real bucket and sets `objectStorage.enabled` to
+false. Nothing in the image knows which one it is talking to.
+
+Credentials are not generated here. A chart that mints a random password writes
+a *different* one on every `helm upgrade` unless it reads the cluster back with
+`lookup`, which Argo CD's server-side diff cannot do reliably — the bucket would
+then be unreachable after a resync with no error that says so. So this reads an
+existing Secret, the same treatment `cookiebot-secrets` and `ghcr-pull` already
+get in this chart.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cookiebot.fullname" . }}-objectstore
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+    app.kubernetes.io/name: objectstore
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: objectstore
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: s3
+      port: {{ .Values.objectStorage.port }}
+      targetPort: s3
+    - name: console
+      port: {{ .Values.objectStorage.consolePort }}
+      targetPort: console
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "cookiebot.fullname" . }}-objectstore
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+    app.kubernetes.io/name: objectstore
+spec:
+  serviceName: {{ include "cookiebot.fullname" . }}-objectstore
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: objectstore
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        {{- include "cookiebot.labels" . | nindent 8 }}
+        app.kubernetes.io/name: objectstore
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: minio
+          image: {{ .Values.objectStorage.image }}
+          args:
+            - server
+            - /data
+            - --address
+            - :{{ .Values.objectStorage.port }}
+            - --console-address
+            - :{{ .Values.objectStorage.consolePort }}
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.objectStorage.credentialsSecret.name }}
+                  key: {{ .Values.objectStorage.credentialsSecret.accessKeyKey }}
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.objectStorage.credentialsSecret.name }}
+                  key: {{ .Values.objectStorage.credentialsSecret.secretKeyKey }}
+            {{- /* Off by default it phones home for a release check on start. */}}
+            - name: MINIO_UPDATE
+              value: "off"
+          ports:
+            - name: s3
+              containerPort: {{ .Values.objectStorage.port }}
+            - name: console
+              containerPort: {{ .Values.objectStorage.consolePort }}
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: s3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: s3
+            initialDelaySeconds: 15
+          resources:
+            {{- toYaml .Values.objectStorage.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            {{- /* MinIO writes its own config and lock files under /data, and
+                   `mc` (below, in the bucket job) needs $HOME writable — but the
+                   server itself keeps nothing outside /data, so the root
+                   filesystem stays read-only here. */}}
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      {{- if not .Values.objectStorage.persistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+  {{- if .Values.objectStorage.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with .Values.objectStorage.persistence.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.objectStorage.persistence.size }}
+  {{- end }}
+---
+{{/*
+The bucket itself.
+
+MinIO does not create one on first write and neither does obstore — a missing
+bucket surfaces at runtime as a 404 on every upload, which reads like a code
+bug. This makes it a deploy-time concern instead. `mb --ignore-existing` is
+what makes it safe to re-run on every sync.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "cookiebot.fullname" . }}-objectstore-bucket
+  labels:
+    {{- include "cookiebot.labels" . | nindent 4 }}
+    app.kubernetes.io/name: objectstore-bucket
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 5
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        {{- include "cookiebot.labels" . | nindent 8 }}
+        app.kubernetes.io/name: objectstore-bucket
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mc
+          image: {{ .Values.objectStorage.clientImage }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              # The Service is headless, so this resolves to the pod as soon as
+              # it is ready; --retry rides out the gap between PostSync firing
+              # and MinIO finishing its first-start disk format.
+              mc alias set cb "http://{{ include "cookiebot.fullname" . }}-objectstore.{{ .Release.Namespace }}.svc:{{ .Values.objectStorage.port }}" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+              mc mb --ignore-existing "cb/{{ .Values.objectStorage.bucket }}"
+              mc ls cb
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.objectStorage.credentialsSecret.name }}
+                  key: {{ .Values.objectStorage.credentialsSecret.accessKeyKey }}
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.objectStorage.credentialsSecret.name }}
+                  key: {{ .Values.objectStorage.credentialsSecret.secretKeyKey }}
+            {{- /* mc keeps its alias config under $HOME; the image's default is
+                   /root, which a non-root user cannot write. */}}
+            - name: HOME
+              value: /tmp
+            - name: MC_CONFIG_DIR
+              value: /tmp/.mc
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

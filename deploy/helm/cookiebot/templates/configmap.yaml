@@ -37,7 +37,7 @@ data:
 
   CB_OWNER_ID: {{ .Values.config.ownerId | quote }}
   CB_DEFAULT_LANGUAGE: {{ .Values.config.defaultLanguage | quote }}
-  CB_STORAGE_URI: {{ .Values.config.storageUri | quote }}
+  CB_STORAGE_URI: {{ include "cookiebot.storageUri" . | quote }}
 
   CB_OTLP_ENDPOINT: {{ .Values.config.otlpEndpoint | quote }}
   CB_TRACES_ENABLED: {{ .Values.config.tracesEnabled | quote }}
