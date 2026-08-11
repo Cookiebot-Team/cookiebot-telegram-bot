@@ -253,6 +253,11 @@ def admin_prompted_for_language(
             config_menu.build_callback_data(field.letter, GROUP_ID),
             ctx.update_id,
             user_id=ADMIN_ID,
+            # The prompt goes back to the chat the button was pressed in, and
+            # the whole menu flow lives in the admin's DM — pressing it from
+            # the group would put the prompt there and leave the reply below
+            # answering the wrong message.
+            chat_id=ADMIN_ID,
         ),
     )
 
@@ -266,8 +271,15 @@ def admin_replies_with(
     telegram: MockTelegram,
     value: str,
 ) -> None:
-    prompts = [c for c in telegram.calls_to("sendMessage") if int(c.get("chat_id", 0)) == ADMIN_ID]
-    assert prompts, "the prompt was never sent, so there is nothing to reply to"
+    # Match the prompt by the marker the handler itself recognises, not by
+    # chat: the menu message goes to the same chat and would otherwise be
+    # picked up as "the last thing sent", which is not a config prompt at all.
+    prompts = [
+        c
+        for c in telegram.calls_to("sendMessage")
+        if "REPLY THIS MESSAGE with the new variable value" in c.get("text", "")
+    ]
+    assert prompts, f"the prompt was never sent: {telegram.calls}"
     update = make_private_message_update(value, ctx.update_id + 1, user_id=ADMIN_ID)
     update["message"]["reply_to_message"] = {
         "message_id": 9001,
