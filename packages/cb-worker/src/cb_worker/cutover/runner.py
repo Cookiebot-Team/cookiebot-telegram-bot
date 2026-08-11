@@ -39,7 +39,7 @@ from cb_core.logging import get_logger
 from cb_core.meme_templates import MemeTemplate, all_templates
 from cb_core.migrations import ensure_schema, head_revision, migrations_dir
 from cb_core.settings import Settings
-from cb_core.storage import store_from_uri
+from cb_core.storage import BlobStore, store_from_uri
 from cb_worker import meme_seed
 from cb_worker.bucket_export import manifest as bucket_manifest_io
 from cb_worker.bucket_export.runner import run_export
@@ -474,6 +474,31 @@ def render_verify(
     return table
 
 
+#: How many `exists` probes verify keeps in flight. `BlobStore` has no list
+#: operation, so counting what landed means one HEAD per key — 801 of them for
+#: the meme catalog alone. Sequentially that is one network round trip each,
+#: which is unnoticeable against a local store and roughly a minute against a
+#: real bucket; a bounded gather makes it a few seconds without opening 801
+#: connections at once, which is what an unbounded gather would ask the backend
+#: for.
+_PROBE_CONCURRENCY = 32
+
+
+async def _count_present(store: BlobStore, keys: Sequence[str]) -> int:
+    """How many of `keys` the destination already holds.
+
+    A probe that raises is counted as absent rather than propagated: verify is
+    the step that reports what a cutover achieved, and losing the whole report
+    to one flaky HEAD would be the opposite of useful.
+    """
+    present = 0
+    for start in range(0, len(keys), _PROBE_CONCURRENCY):
+        chunk = keys[start : start + _PROBE_CONCURRENCY]
+        found = await asyncio.gather(*(store.exists(key) for key in chunk), return_exceptions=True)
+        present += sum(1 for outcome in found if outcome is True)
+    return present
+
+
 async def _step_verify(settings: Settings, *, console: Console, manifest_path: Path) -> StepResult:
     """Read-only, always: row counts per table the mongo step can write, the
     object counts the bucket and memes steps landed, and the alembic revision.
@@ -495,10 +520,7 @@ async def _step_verify(settings: Settings, *, console: Console, manifest_path: P
 
     store = storage.store()
     templates = all_templates()
-    meme_present = 0
-    for template in templates:
-        if await store.exists(template.storage_key):
-            meme_present += 1
+    meme_present = await _count_present(store, [t.storage_key for t in templates])
 
     bucket_objects = 0
     bucket_bytes = 0
