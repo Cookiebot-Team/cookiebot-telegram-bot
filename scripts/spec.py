@@ -234,6 +234,33 @@ FEATURES: tuple[Feature, ...] = (
             "bucket's Custom/ folder names (Miscellaneous.py:23), so without the "
             "export there is not even a trigger list. Still the seed of tenant "
             "handler packs once the assets land"),
+    Feature("x_age_guess", "fun", "Age guess (agify.io)", "M3", Status.PLANNED,
+            Layer.GATEWAY, "Miscellaneous.py:185-202", ("/idade", "/age", "/edad"),
+            "agify.io name lookup, no auth; no QA scenario exists - write one"),
+    Feature("x_gender_guess", "fun", "Gender guess (genderize.io)", "M3", Status.PLANNED,
+            Layer.GATEWAY, "Miscellaneous.py:204-224", ("/genero", "/gênero", "/gender"),
+            "genderize.io name lookup, no auth; no QA scenario exists - write one"),
+    Feature("x_unearth", "fun", "Unearth a random old message", "M3", Status.PLANNED,
+            Layer.GATEWAY, "Miscellaneous.py:325-333", ("/desenterrar", "/unearth"),
+            "forwards a random message_id in [1, current]; no QA scenario exists - write one"),
+    Feature("x_fortune_cookie", "fun", "Fortune cookie", "M3", Status.PLANNED,
+            Layer.GATEWAY, "Miscellaneous.py:359-375", ("/sorte", "/fortunecookie", "/suerte"),
+            "animated GIF + locale-random fortune line from sorte.txt; "
+            "no QA scenario exists - write one"),
+    Feature("x_image_search", "util", "Image search (qualquer coisa)", "M3", Status.PLANNED,
+            Layer.GATEWAY, "SocialContent.py:144-170", ("/qualquercoisa", "/anything", "/cualquiercosa"),
+            "Google Custom Search Image API, sfw-gated; no QA scenario exists - write one"),
+    Feature("x_drawing_idea", "fun", "Drawing idea prompt", "M3", Status.PLANNED,
+            Layer.GATEWAY, "Miscellaneous.py:137-143", ("/ideiadesenho", "/drawingidea", "/ideadibujo"),
+            "signed URL from a GCS blob pool; no QA scenario exists - write one"),
+    Feature("x_analysis", "util", "Message analysis (reply_to_message dump)", "M3", Status.PLANNED,
+            Layer.GATEWAY, "Miscellaneous.py:71-81", ("/analise", "/analisis", "/analysis"),
+            "dumps the raw Telegram reply_to_message payload back to chat; "
+            "no QA scenario exists - write one"),
+    Feature("x_sticker_autoreply", "fun", "Sticker DB auto-reply", "M3", Status.PLANNED,
+            Layer.GATEWAY, "SocialContent.py:208-222", (),
+            "passive: builds a sticker DB from sfw-group stickers, replies to any "
+            "doc/sticker sent in reply to the bot; no QA scenario exists - write one"),
     Feature("x_webhub_login", "platform", "Telegram-login JWT for the web console", "M4", Status.DONE,
             Layer.API, "Server.py:25-52", (),
             "D7 fixed: the RSA key is configured or generated once into signing_keys "
