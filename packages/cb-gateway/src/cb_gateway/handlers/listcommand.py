@@ -36,16 +36,25 @@ line up with the now-shared shape.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any, cast
+from typing import cast
 
 from aiogram import Bot, F, Router
 from aiogram.enums import ChatType
 from aiogram.types import Message
 
-from cb_core import db, locales, tenancy
+from cb_core import locales, tenancy
 from cb_core.logging import get_logger
-from cb_core.tenancy import Tenant
+
+# `command_available_for_tenant` moved to `cb_gateway/command_catalog.py` so
+# `TenantCommandGateMiddleware` (`middlewares.py`) can share it instead of
+# growing a second copy of the same rule; imported here (not re-exported via
+# `__all__`) purely so it keeps resolving as `listcommand.command_available_for_tenant`
+# for existing callers and tests. `_fetch_catalog_row` keeps its old private
+# name as a module-level alias so the monkeypatch seam in
+# `packages/cb-gateway/tests/test_listcommand.py` — which rebinds the name on
+# *this* module — needs no change.
+from cb_gateway.command_catalog import command_available_for_tenant
+from cb_gateway.command_catalog import fetch_catalog_row as _fetch_catalog_row
 from cb_gateway.context import context_for
 from cb_gateway.filters import CommandName
 from cb_gateway.telemetry import mark_outcome
@@ -55,42 +64,6 @@ log = get_logger("cb.gateway.listcommand")
 router = Router(name="listcommand")
 
 _CATALOG_COMMAND = "commands"
-
-# command_catalog is a reference table (packages/cb-api/migrations/versions/
-# 0001_initial_schema.py) — replicated to every node, so a primary-key lookup is
-# node-local wherever it runs; no group_id, no shard fan-out.
-_SELECT_CATALOG_ROW = "SELECT command, enabled FROM command_catalog WHERE command = $1"
-
-
-def command_available_for_tenant(row: Mapping[str, Any] | None, tenant: Tenant) -> bool:
-    """v2's per-tenant filtering: v1 has no concept of a command catalog or of a
-    command being switched off for a whole brand — every command that appears in
-    `Cookiebot_functions.txt` is dispatched unconditionally, forever, for every
-    v1 process (there was only ever one bot binary per persona, so "which
-    commands exist" was a compile-time fact, not configuration).
-
-    `command_catalog` (reference table) plus `tenants.disabled_commands`
-    (`cb_core/tenancy.py`) give a brand built on the shared "core" handler pack a
-    way to turn a command off without a code change — the thing `is_alternate_bot`
-    used to require a whole separate process for (FEATURE-MAP `core_botskins`).
-
-    This is pure and DB-free on purpose: it is the one piece of "should /commands
-    answer" logic worth unit-testing in isolation from any I/O.
-
-    A command absent from the catalog, or explicitly disabled there, does not
-    exist for anyone — `enabled` is the global kill switch. Per-tenant opt-out is
-    layered on top of that, never instead of it.
-    """
-    if row is None or not row["enabled"]:
-        return False
-    return tenant.command_enabled(row["command"])
-
-
-async def _fetch_catalog_row(command: str) -> Mapping[str, Any] | None:
-    """The DB seam — a test may monkeypatch this the same way `group_config._fetch_row`
-    documents it should be (`cb_core/group_config.py:110-117`); real callers never
-    reach past it to asyncpg directly."""
-    return await db.fetchrow(_SELECT_CATALOG_ROW, command, name="listcommand_catalog_lookup")
 
 
 async def _commands_available(skin: str) -> bool:
