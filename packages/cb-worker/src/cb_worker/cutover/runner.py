@@ -165,7 +165,12 @@ def _check_storage(settings: Settings, selected: frozenset[StepName]) -> Preflig
     except Exception as exc:  # noqa: BLE001 - a bad URI is a config error to report, not raise
         return PreflightCheck("object storage", "fail", str(exc))
     bucket = getattr(built, "bucket", None)
-    return PreflightCheck("object storage", "ok", f"{built.scheme}://{bucket or uri}")
+    # `bucket` is set for s3:// and gs:// and None for file://, whose URI
+    # already carries its own scheme — printing `f"{scheme}://{uri}"` for that
+    # case produced `file://file:///var/...`, which reads like a malformed
+    # setting in the one table an operator checks before writing anything.
+    detail = f"{built.scheme}://{bucket}" if bucket else uri
+    return PreflightCheck("object storage", "ok", detail)
 
 
 def _check_mongo(settings: Settings) -> PreflightCheck:
