@@ -9,6 +9,7 @@
     "core_listcommand",
     "core_mediarestrict",
     "core_privacy",
+    "core_reload",
     "core_rules",
     "core_setlang",
     "core_stickerspam",

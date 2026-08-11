@@ -14,6 +14,7 @@ the rest never run. Hence explicit, commented order rather than alphabetical.
 from aiogram import Router
 
 from cb_gateway.handlers import (
+    age,
     analysis,
     battle,
     birthday,
@@ -28,7 +29,9 @@ from cb_gateway.handlers import (
     embedder,
     everyone,
     firecracker,
+    fortune,
     fun_random,
+    gender,
     giveaway,
     groupguardian,
     isalive,
@@ -42,6 +45,7 @@ from cb_gateway.handlers import (
     postgetter,
     privacy,
     publisher,
+    reload,
     reverse_search,
     rules,
     setlang,
@@ -70,6 +74,7 @@ def build_router() -> Router:
     root.include_router(privacy.router)
     # x_analysis sits in v1's ungated stretch of the chain, next to /privacy.
     root.include_router(analysis.router)
+    root.include_router(reload.router)
     root.include_router(listcommand.router)
     root.include_router(config_menu.router)
     root.include_router(rules.router)
@@ -82,6 +87,12 @@ def build_router() -> Router:
     root.include_router(battle.router)
     root.include_router(meme.router)
     root.include_router(unearth.router)
+    # x_age_guess / x_gender_guess / x_fortune_cookie all sit in the same
+    # funfunctions-gated block as /random, /unearth and friends
+    # (COOKIEBOT.py:214-241) and are disjoint triggers like the rest of it.
+    root.include_router(age.router)
+    root.include_router(gender.router)
+    root.include_router(fortune.router)
     root.include_router(youtube.router)
     root.include_router(birthday.router)
     root.include_router(nextbirthday.router)

@@ -88,6 +88,13 @@ FEATURES: tuple[Feature, ...] = (
             Layer.GATEWAY, "Miscellaneous.py:124-127", ("/commands", "/comandos")),
     Feature("core_privacy", "core", "Privacy policy", "M1", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:60-63", ("/privacy", "/privacidade", "/privacidad")),
+    Feature("core_reload", "core", "Reload cached admins and settings", "M1", Status.DONE,
+            Layer.GATEWAY, "COOKIEBOT.py:197-201", ("/reload", "/recarregar"),
+            "v2's caches invalidate themselves (D6), which is why nobody ported this - but the "
+            "trigger is still advertised in the Cookiebot_functions.txt this repo ships verbatim, "
+            "so typing it answered nothing. Does a real invalidation, not a stub: admins.refresh "
+            "re-reads getChatAdministrators, which is the one thing no invalidation of ours could "
+            "have known about. QA authored, not ported"),
     Feature("core_rules", "core", "Group rules and /newrules", "M1", Status.DONE,
             Layer.GATEWAY, "GroupShield.py:49-63", ("/rules", "/regras", "/newrules", "/novasregras")),
     Feature("core_welcome", "core", "Welcome message and /newwelcome", "M1", Status.DONE,
@@ -234,22 +241,35 @@ FEATURES: tuple[Feature, ...] = (
             "bucket's Custom/ folder names (Miscellaneous.py:23), so without the "
             "export there is not even a trigger list. Still the seed of tenant "
             "handler packs once the assets land"),
-    Feature("x_age_guess", "fun", "Age guess (agify.io)", "M3", Status.PLANNED,
+    Feature("x_age_guess", "fun", "Age guess (agify.io)", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:185-202", ("/idade", "/age", "/edad"),
-            "agify.io name lookup, no auth; no QA scenario exists - write one"),
-    Feature("x_gender_guess", "fun", "Gender guess (genderize.io)", "M3", Status.PLANNED,
+            "GET agify.io?name=, timeout+Breaker per doomlist.py's pattern; fun-gated with "
+            "v1's fun_off reply. Argument comes from ParsedCommand.args rather than v1's "
+            "replace-chain, which crashed on a lone trailing space; an agify timeout/error/"
+            "malformed body/open breaker answers the same not_know text as count == 0, "
+            "since v1 never handles that case at all (silence). QA authored, not ported"),
+    Feature("x_gender_guess", "fun", "Gender guess (genderize.io)", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:204-224", ("/genero", "/gênero", "/gender"),
-            "genderize.io name lookup, no auth; no QA scenario exists - write one"),
+            "GET genderize.io?name=, same timeout+Breaker/argument/failure handling as "
+            "x_age_guess. A null gender with a non-zero count (should be unreachable behind "
+            "count == 0, but v1's f\"gender.{genero}\" would build the dead key "
+            "'gender.None' if it were) renders the dormant 'gender.unknown' entry that v1's "
+            "own lib.json already ships (en only, never read by any v1 code path) instead "
+            "of crashing or going silent. QA authored, not ported"),
     Feature("x_unearth", "fun", "Unearth a random old message", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:325-333", ("/desenterrar", "/unearth"),
             "forwards a random message_id in [1, current], fun-gated with v1's fun_off reply. "
             "v1 wrote a 100-attempt retry and then returned inside its own except, so it tried "
             "once and answered nothing whenever that id was deleted; the retry is real here, "
             "bounded at 8. QA authored, not ported"),
-    Feature("x_fortune_cookie", "fun", "Fortune cookie", "M3", Status.PLANNED,
+    Feature("x_fortune_cookie", "fun", "Fortune cookie", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:359-375", ("/sorte", "/fortunecookie", "/suerte"),
-            "animated GIF + locale-random fortune line from sorte.txt; "
-            "no QA scenario exists - write one"),
+            "animated GIF + locale-random fortune line from sorte.txt (locales.lines) plus "
+            "six lucky numbers, one per tens-decade; fun-gated with v1's fun_off reply. "
+            "v1's time.sleep(3) between sending the animation and deleting it blocked the "
+            "whole process, so the delete-then-answer tail now runs as a background "
+            "asyncio.Task (complaint.py's _schedule_tail idiom) instead, keeping v1's exact "
+            "user-visible order without holding the reply path open. QA authored, not ported"),
     Feature("x_image_search", "util", "Image search (qualquer coisa)", "M3", Status.PLANNED,
             Layer.GATEWAY, "SocialContent.py:144-170", ("/qualquercoisa", "/anything", "/cualquiercosa"),
             "Google Custom Search Image API, sfw-gated; no QA scenario exists - write one"),

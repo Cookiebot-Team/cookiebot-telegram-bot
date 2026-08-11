@@ -3,8 +3,8 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Fortune cookie"
-description: "animated GIF + locale-random fortune line from sorte.txt; no QA scenario exists - write one"
-status: planned
+description: "animated GIF + locale-random fortune line from sorte.txt (locales.lines) plus six lucky numbers, one per tens-decade; fun-gated with v1's fun_off reply. v1's time.sleep(3) between sending the animation and deleting it blocked the whole process, so the delete-then-answer tail now runs as a background asyncio.Task (complaint.py's _schedule_tail idiom) instead, keeping v1's exact user-visible order without holding the reply path open. QA authored, not ported"
+status: done
 milestone: M3
 area: fun
 layer: gateway

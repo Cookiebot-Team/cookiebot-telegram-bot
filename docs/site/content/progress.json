@@ -1,18 +1,18 @@
 {
   "generated_at": "2026-08-11",
-  "commit": "4fd2a14",
+  "commit": "a76b481",
   "test_summary": "not run",
   "totals": {
-    "features": 61,
-    "done": 48,
+    "features": 62,
+    "done": 52,
     "partial": 3,
-    "planned": 7,
+    "planned": 4,
     "blocked": 3,
     "spec_scenarios": 63,
     "ported": 153,
     "spec_files": 31,
     "spec_files_covered": 29,
-    "new_specs": 73,
+    "new_specs": 89,
     "green": 0,
     "failing": 0
   },
@@ -26,8 +26,8 @@
     {
       "id": "M1",
       "title": "Survival core \u2014 moderation, config, captcha, tenancy",
-      "done": 14,
-      "total": 15
+      "done": 15,
+      "total": 16
     },
     {
       "id": "M2",
@@ -38,7 +38,7 @@
     {
       "id": "M3",
       "title": "Publisher, AI, giveaways, owner tooling",
-      "done": 12,
+      "done": 15,
       "total": 19
     },
     {
@@ -362,6 +362,28 @@
         "failing": 0
       },
       "url": "/docs/features/core_privacy"
+    },
+    {
+      "id": "core_reload",
+      "title": "Reload cached admins and settings",
+      "area": "core",
+      "layer": "gateway",
+      "milestone": "M1",
+      "status": "done",
+      "triggers": [
+        "/reload",
+        "/recarregar"
+      ],
+      "v1_source": "COOKIEBOT.py:197-201",
+      "notes": "v2's caches invalidate themselves (D6), which is why nobody ported this - but the trigger is still advertised in the Cookiebot_functions.txt this repo ships verbatim, so typing it answered nothing. Does a real invalidation, not a stub: admins.refresh re-reads getChatAdministrators, which is the one thing no invalidation of ours could have known about. QA authored, not ported",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 2,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/core_reload"
     },
     {
       "id": "core_rules",
@@ -1130,18 +1152,18 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/idade",
         "/age",
         "/edad"
       ],
       "v1_source": "Miscellaneous.py:185-202",
-      "notes": "agify.io name lookup, no auth; no QA scenario exists - write one",
+      "notes": "GET agify.io?name=, timeout+Breaker per doomlist.py's pattern; fun-gated with v1's fun_off reply. Argument comes from ParsedCommand.args rather than v1's replace-chain, which crashed on a lone trailing space; an agify timeout/error/malformed body/open breaker answers the same not_know text as count == 0, since v1 never handles that case at all (silence). QA authored, not ported",
       "contract": null,
       "scenarios": {
         "spec": 0,
-        "ported": 0,
+        "ported": 5,
         "green": 0,
         "failing": 0
       },
@@ -1153,18 +1175,18 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/genero",
         "/g\u00eanero",
         "/gender"
       ],
       "v1_source": "Miscellaneous.py:204-224",
-      "notes": "genderize.io name lookup, no auth; no QA scenario exists - write one",
+      "notes": "GET genderize.io?name=, same timeout+Breaker/argument/failure handling as x_age_guess. A null gender with a non-zero count (should be unreachable behind count == 0, but v1's f\"gender.{genero}\" would build the dead key 'gender.None' if it were) renders the dormant 'gender.unknown' entry that v1's own lib.json already ships (en only, never read by any v1 code path) instead of crashing or going silent. QA authored, not ported",
       "contract": null,
       "scenarios": {
         "spec": 0,
-        "ported": 0,
+        "ported": 6,
         "green": 0,
         "failing": 0
       },
@@ -1198,18 +1220,18 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/sorte",
         "/fortunecookie",
         "/suerte"
       ],
       "v1_source": "Miscellaneous.py:359-375",
-      "notes": "animated GIF + locale-random fortune line from sorte.txt; no QA scenario exists - write one",
+      "notes": "animated GIF + locale-random fortune line from sorte.txt (locales.lines) plus six lucky numbers, one per tens-decade; fun-gated with v1's fun_off reply. v1's time.sleep(3) between sending the animation and deleting it blocked the whole process, so the delete-then-answer tail now runs as a background asyncio.Task (complaint.py's _schedule_tail idiom) instead, keeping v1's exact user-visible order without holding the reply path open. QA authored, not ported",
       "contract": null,
       "scenarios": {
         "spec": 0,
-        "ported": 0,
+        "ported": 3,
         "green": 0,
         "failing": 0
       },
@@ -1814,6 +1836,14 @@
       "state": "no step definitions"
     },
     {
+      "stem": "core_reload",
+      "spec": 0,
+      "ported": 2,
+      "green": 0,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
       "stem": "core_rules",
       "spec": 4,
       "ported": 9,
@@ -2014,6 +2044,14 @@
       "state": "no step definitions"
     },
     {
+      "stem": "x_age_guess",
+      "spec": 0,
+      "ported": 5,
+      "green": 0,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
       "stem": "x_analysis",
       "spec": 0,
       "ported": 4,
@@ -2033,6 +2071,22 @@
       "stem": "x_distortion",
       "spec": 0,
       "ported": 10,
+      "green": 0,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "x_fortune_cookie",
+      "spec": 0,
+      "ported": 3,
+      "green": 0,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "x_gender_guess",
+      "spec": 0,
+      "ported": 6,
       "green": 0,
       "failing": 0,
       "state": "v2-only spec"
@@ -2149,6 +2203,7 @@
     "util_isalive: marked done but no scenario executed green",
     "core_listcommand: marked done but no scenario executed green",
     "core_privacy: marked done but no scenario executed green",
+    "core_reload: marked done but no scenario executed green",
     "core_rules: marked done but no scenario executed green",
     "core_welcome: marked done but no scenario executed green",
     "core_groupguardian: marked done but no scenario executed green",
@@ -2180,7 +2235,10 @@
     "x_reverse_search: marked done but no scenario executed green",
     "x_distortion: marked done but no scenario executed green",
     "x_owner_commands: marked done but no scenario executed green",
+    "x_age_guess: marked done but no scenario executed green",
+    "x_gender_guess: marked done but no scenario executed green",
     "x_unearth: marked done but no scenario executed green",
+    "x_fortune_cookie: marked done but no scenario executed green",
     "x_analysis: marked done but no scenario executed green"
   ]
 }

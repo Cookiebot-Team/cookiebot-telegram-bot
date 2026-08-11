@@ -3,8 +3,8 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Gender guess (genderize.io)"
-description: "genderize.io name lookup, no auth; no QA scenario exists - write one"
-status: planned
+description: "GET genderize.io?name=, same timeout+Breaker/argument/failure handling as x_age_guess. A null gender with a non-zero count (should be unreachable behind count == 0, but v1's f\"gender.{genero}\" would build the dead key 'gender.None' if it were) renders the dormant 'gender.unknown' entry that v1's own lib.json already ships (en only, never read by any v1 code path) instead of crashing or going silent. QA authored, not ported"
+status: done
 milestone: M3
 area: fun
 layer: gateway
