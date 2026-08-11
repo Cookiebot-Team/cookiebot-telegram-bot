@@ -30,6 +30,7 @@ from qa.conftest import (
     feed,
     make_callback_update,
     make_message_update,
+    make_private_message_update,
 )
 from qa.mock_telegram import MockTelegram
 
@@ -216,3 +217,76 @@ def button_writes_column(ctx: Context, column: str) -> None:
     letter, _group_id = parsed
     field = config_menu.FIELD_BY_LETTER[letter]
     assert field.column == column, (field.column, column)
+
+
+# --- the language side effect (HANDOFF.md §4.3's gap) ------------------------
+
+
+@given("the admin has been prompted for the new language")
+def admin_prompted_for_language(
+    ctx: Context,
+    database: Any,
+    run: Callable[[Coroutine[Any, Any, Any]], Any],
+    dispatcher: Dispatcher,
+    bot: Bot,
+    telegram: MockTelegram,
+) -> None:
+    """Open the menu, then press the Language button, so the prompt this
+    scenario replies to is the real one the handler recognises rather than a
+    string retyped here.
+
+    Takes `database` because this is the one scenario in this module that
+    drives the *write* path — the module docstring's rule is that those need a
+    real Postgres, and that fixture skips cleanly when there is none rather
+    than failing offline. The side effect under test only fires after the write
+    succeeds, which is exactly the ordering worth proving."""
+    _set_full_admin(telegram, ADMIN_ID)
+    feed(run, dispatcher, bot, make_message_update("/config", ctx.update_id, user_id=ADMIN_ID))
+    ctx.update_id += 1
+    field = config_menu.FIELD_BY_LETTER["k"]
+    assert field.column == "language", field
+    feed(
+        run,
+        dispatcher,
+        bot,
+        make_callback_update(
+            config_menu.build_callback_data(field.letter, GROUP_ID),
+            ctx.update_id,
+            user_id=ADMIN_ID,
+        ),
+    )
+
+
+@when(parsers.parse('the admin replies with "{value}"'))
+def admin_replies_with(
+    ctx: Context,
+    run: Callable[[Coroutine[Any, Any, Any]], Any],
+    dispatcher: Dispatcher,
+    bot: Bot,
+    telegram: MockTelegram,
+    value: str,
+) -> None:
+    prompts = [c for c in telegram.calls_to("sendMessage") if int(c.get("chat_id", 0)) == ADMIN_ID]
+    assert prompts, "the prompt was never sent, so there is nothing to reply to"
+    update = make_private_message_update(value, ctx.update_id + 1, user_id=ADMIN_ID)
+    update["message"]["reply_to_message"] = {
+        "message_id": 9001,
+        "date": 0,
+        "chat": {"id": ADMIN_ID, "type": "private"},
+        "from": {"id": 424242, "is_bot": True, "first_name": "Cookiebot"},
+        "text": prompts[-1].get("text", ""),
+    }
+    feed(run, dispatcher, bot, update)
+
+
+@then("the bot relabels the group's Telegram command menu")
+def command_menu_relabelled(telegram: MockTelegram) -> None:
+    """`setMyCommands`, scoped to the group — v1 relabels under all three
+    Telegram UI languages (`setlang.set_group_commands`), so what matters here
+    is that the call happened at all and named this chat."""
+    calls = telegram.calls_to("setMyCommands")
+    assert calls, f"the command menu was never relabelled: {telegram.calls}"
+    scopes = [
+        json.loads(c["scope"]) if isinstance(c.get("scope"), str) else c.get("scope") for c in calls
+    ]
+    assert any(int(scope.get("chat_id", 0)) == GROUP_ID for scope in scopes if scope), scopes
