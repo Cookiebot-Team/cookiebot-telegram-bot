@@ -48,6 +48,7 @@ from cb_gateway.handlers import (
     ship,
     stickerspam,
     transcribe,
+    unearth,
     welcome,
     youtube,
 )
@@ -80,6 +81,7 @@ def build_router() -> Router:
     root.include_router(everyone.router)
     root.include_router(battle.router)
     root.include_router(meme.router)
+    root.include_router(unearth.router)
     root.include_router(youtube.router)
     root.include_router(birthday.router)
     root.include_router(nextbirthday.router)

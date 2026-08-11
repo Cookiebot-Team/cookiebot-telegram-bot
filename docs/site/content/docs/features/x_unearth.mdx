@@ -3,8 +3,8 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Unearth a random old message"
-description: "forwards a random message_id in [1, current]; no QA scenario exists - write one"
-status: planned
+description: "forwards a random message_id in [1, current], fun-gated with v1's fun_off reply. v1 wrote a 100-attempt retry and then returned inside its own except, so it tried once and answered nothing whenever that id was deleted; the retry is real here, bounded at 8. QA authored, not ported"
+status: done
 milestone: M3
 area: fun
 layer: gateway

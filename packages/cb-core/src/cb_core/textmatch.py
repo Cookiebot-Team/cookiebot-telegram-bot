@@ -60,6 +60,8 @@ COMMAND_ALIASES: dict[str, str] = {
     "youtube": "youtube",
     # x_analysis. All three spellings are v1 triggers (COOKIEBOT.py:202).
     "analysis": "analysis", "analise": "analysis", "analisis": "analysis",
+    # x_unearth. Two spellings, both v1 triggers (COOKIEBOT.py:236).
+    "unearth": "unearth", "desenterrar": "unearth",
     # x_giveaways. v1 has exactly one spelling (COOKIEBOT.py:249,262) — no
     # PT/ES alias was ever shipped, so inventing one here would be a new
     # trigger, not a preserved one.

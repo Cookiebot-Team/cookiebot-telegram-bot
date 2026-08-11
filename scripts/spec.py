@@ -240,9 +240,12 @@ FEATURES: tuple[Feature, ...] = (
     Feature("x_gender_guess", "fun", "Gender guess (genderize.io)", "M3", Status.PLANNED,
             Layer.GATEWAY, "Miscellaneous.py:204-224", ("/genero", "/gênero", "/gender"),
             "genderize.io name lookup, no auth; no QA scenario exists - write one"),
-    Feature("x_unearth", "fun", "Unearth a random old message", "M3", Status.PLANNED,
+    Feature("x_unearth", "fun", "Unearth a random old message", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:325-333", ("/desenterrar", "/unearth"),
-            "forwards a random message_id in [1, current]; no QA scenario exists - write one"),
+            "forwards a random message_id in [1, current], fun-gated with v1's fun_off reply. "
+            "v1 wrote a 100-attempt retry and then returned inside its own except, so it tried "
+            "once and answered nothing whenever that id was deleted; the retry is real here, "
+            "bounded at 8. QA authored, not ported"),
     Feature("x_fortune_cookie", "fun", "Fortune cookie", "M3", Status.PLANNED,
             Layer.GATEWAY, "Miscellaneous.py:359-375", ("/sorte", "/fortunecookie", "/suerte"),
             "animated GIF + locale-random fortune line from sorte.txt; "
