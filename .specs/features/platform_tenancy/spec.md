@@ -132,11 +132,9 @@ Nothing here is blocked on an external dependency; it is unscheduled work:
 1. At least one real handler pack, to prove the `build(core_router) -> Router`
    interface `multi-tenant.mdx` designs — `x_custom_commands` is the natural
    first consumer per the rollout table.
-2. `llm_overrides` consulted in `LLMRouter.config_for`/`provider_for`, and
-   `storage_prefix` applied in `cb_core/storage.py`'s key derivation.
-3. A worker job rolling `llm_usage` into `tenant_monthly_cost`, before budget
+2. A worker job rolling `llm_usage` into `tenant_monthly_cost`, before budget
    enforcement can mean anything.
-4. Tenant rows + tokens for the 3 missing personas, if they're still wanted —
+3. Tenant rows + tokens for the 3 missing personas, if they're still wanted —
    that's a product question, not an engineering one.
 
 ## v1 equivalent
