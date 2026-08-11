@@ -114,13 +114,18 @@ class TestDisabledCommandIsDropped:
         after = counter._value.get()  # noqa: SLF001
         assert after == before + 1
 
-    async def test_command_absent_from_the_catalog_matches_the_shared_predicate(
+    async def test_command_absent_from_the_catalog_still_runs(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """`command_available_for_tenant(None, tenant)` is `False` regardless of
-        tenant (`command_catalog.py`'s docstring) — a command missing from the
-        reference table does not exist for anyone. This proves the middleware
-        reduces to that same predicate rather than inventing its own rule."""
+        """The catalog is an allowlist for *listing* and a denylist for dispatch.
+
+        This is the regression guard for the outage the first version of this
+        gate shipped: it reused `/commands`' own predicate, where an absent row
+        means "not available", and so dropped every command the 29-row seed in
+        `0001_initial_schema.py` does not mention — `/giveaway`, `/transcribe`,
+        `/destroy`, every owner command. It looked correct on a machine with no
+        Postgres, because the gate's fail-open path ran instead.
+        """
 
         async def fake_by_skin(skin: str) -> Tenant:
             return FALLBACK
@@ -131,7 +136,54 @@ class TestDisabledCommandIsDropped:
         monkeypatch.setattr(middlewares.tenancy.registry, "by_skin", fake_by_skin)
         monkeypatch.setattr(middlewares, "fetch_catalog_row", fake_fetch)
 
-        data: dict[str, Any] = {"skin": "cookiebot", "parsed_command": _command("nosuchcommand")}
+        data: dict[str, Any] = {"skin": "cookiebot", "parsed_command": _command("giveaway")}
+        result = await middlewares.TenantCommandGateMiddleware()(_handler, object(), data)
+
+        assert result == "handled"
+
+    async def test_a_catalogued_command_switched_off_globally_is_dropped(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """`enabled = false` on a row that does exist is the operator's kill
+        switch, and it still blocks — that half of the rule is unchanged."""
+
+        async def fake_by_skin(skin: str) -> Tenant:
+            return FALLBACK
+
+        async def fake_fetch(command: str) -> dict[str, Any]:
+            return {"command": command, "enabled": False}
+
+        monkeypatch.setattr(middlewares.tenancy.registry, "by_skin", fake_by_skin)
+        monkeypatch.setattr(middlewares, "fetch_catalog_row", fake_fetch)
+
+        data: dict[str, Any] = {"skin": "cookiebot", "parsed_command": _command("dice")}
+        result = await middlewares.TenantCommandGateMiddleware()(_handler, object(), data)
+
+        assert result is None
+
+    async def test_a_tenant_disables_a_command_that_has_no_catalog_row(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """`disabled_commands` names a command directly, so it must work whether
+        or not the catalog describes it — otherwise a brand could not switch off
+        exactly the newer commands most likely to be missing a row."""
+
+        tenant = Tenant(
+            tenant_id="acme",
+            display_name="Acme",
+            disabled_commands=frozenset({"giveaway"}),
+        )
+
+        async def fake_by_skin(skin: str) -> Tenant:
+            return tenant
+
+        async def fake_fetch(command: str) -> None:
+            return None
+
+        monkeypatch.setattr(middlewares.tenancy.registry, "by_skin", fake_by_skin)
+        monkeypatch.setattr(middlewares, "fetch_catalog_row", fake_fetch)
+
+        data: dict[str, Any] = {"skin": "acme", "parsed_command": _command("giveaway")}
         result = await middlewares.TenantCommandGateMiddleware()(_handler, object(), data)
 
         assert result is None

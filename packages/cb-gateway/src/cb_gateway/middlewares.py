@@ -20,7 +20,7 @@ from cb_core.events import recorder
 from cb_core.logging import get_logger
 from cb_core.telemetry import current_trace_id, record_error, span
 from cb_core.textmatch import ParsedCommand, parse_command
-from cb_gateway.command_catalog import command_available_for_tenant, fetch_catalog_row
+from cb_gateway.command_catalog import command_blocked_for_tenant, fetch_catalog_row
 from cb_gateway.telemetry import OUTCOME_ATTR, error_reason_for_chat, mark_outcome
 
 log = get_logger("cb.gateway.mw")
@@ -301,10 +301,13 @@ class TenantCommandGateMiddleware(BaseMiddleware):
     `handler(event, data)` with no tenant or catalog lookup at all — the
     per-update cost this adds is exactly zero unless the update is a command.
 
-    `command_available_for_tenant` and the catalog fetch (`cb_gateway/command_catalog.py`)
-    are the same seam `/commands` already uses, so a tenant can never see one
-    answer from the help text and a different one from actually sending the
-    command.
+    The catalog fetch is the same seam `/commands` uses, but the *rule* applied
+    to its result is `command_blocked_for_tenant`, not the listing's
+    `command_available_for_tenant`. Read that function's docstring before
+    changing either: listing is an allowlist (advertise only what the catalog
+    describes) and dispatch is a denylist (drop only what is explicitly off).
+    Collapsing them deletes every command the 29-row seed does not mention —
+    `/giveaway`, `/transcribe`, `/destroy`, every owner command — from the bot.
 
     Fails open: a tenant-registry or catalog outage must run the command, not
     drop it — the same rule `DedupeMiddleware`'s cache branch above follows for
@@ -332,7 +335,7 @@ class TenantCommandGateMiddleware(BaseMiddleware):
             log.warning("tenant_gate.lookup_failed", skin=skin, command=parsed.name, error=str(exc))
             return await handler(event, data)
 
-        if command_available_for_tenant(row, tenant):
+        if not command_blocked_for_tenant(parsed.name, row, tenant):
             return await handler(event, data)
 
         # Silent, matching how v1's absent handler behaved: a persona that

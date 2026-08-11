@@ -49,13 +49,47 @@ def command_available_for_tenant(row: Mapping[str, Any] | None, tenant: Tenant) 
     now shared by two callers (`/commands`' own listing and the dispatch gate)
     that must never disagree about what "disabled" means.
 
-    A command absent from the catalog, or explicitly disabled there, does not
-    exist for anyone — `enabled` is the global kill switch. Per-tenant opt-out is
-    layered on top of that, never instead of it.
+    A command absent from the catalog, or explicitly disabled there, is not
+    *listed* — `enabled` is the global kill switch and the catalog is what
+    `/commands` advertises. Per-tenant opt-out is layered on top of that, never
+    instead of it.
+
+    Note the asymmetry with `command_blocked_for_tenant` below, which is
+    deliberate and is the whole reason both functions exist.
     """
     if row is None or not row["enabled"]:
         return False
     return tenant.command_enabled(row["command"])
 
 
-__all__ = ["command_available_for_tenant", "fetch_catalog_row"]
+def command_blocked_for_tenant(command: str, row: Mapping[str, Any] | None, tenant: Tenant) -> bool:
+    """Whether dispatch must drop `command` — the *denylist* half of the same rule.
+
+    Listing and dispatch are not the same question, and treating them as one is
+    a live outage: the catalog seeds 29 rows (`0001_initial_schema.py:486`),
+    while the gateway ships considerably more commands than that — `/giveaway`,
+    `/transcribe`, `/searchsource`, `/destroy`, every owner command, and every
+    command added since. Reusing `command_available_for_tenant` here — where
+    absent means "not available" — silently deleted all of them from the bot the
+    moment a database was actually reachable, which is exactly what CI caught
+    and a laptop with no Postgres could not: the gate's fail-open path made the
+    same code look correct offline.
+
+    So absence means "the catalog does not describe this command", not "this
+    command does not exist". Only two things block:
+
+    * an explicit `enabled = false` row — the global kill switch, deliberately
+      set by an operator for a command the catalog does know about;
+    * `tenants.disabled_commands` — the per-brand opt-out this gate exists for,
+      which names commands directly and needs no catalog row to mean something.
+
+    Keeping the catalog as an allowlist for dispatch would also make adding any
+    command a two-step change (code plus a migration) where forgetting the
+    second step produces silence rather than an error.
+    """
+    if row is not None and not row["enabled"]:
+        return True
+    return not tenant.command_enabled(command)
+
+
+__all__ = ["command_available_for_tenant", "command_blocked_for_tenant", "fetch_catalog_row"]
