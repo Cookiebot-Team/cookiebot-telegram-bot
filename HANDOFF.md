@@ -8,6 +8,88 @@ what to do first.
 
 ## 0a. Most recent session (read before §0b)
 
+Cutover tooling, two tenancy fields that had no reader, and — the bulk of it —
+the features that were missing from the board rather than missing from the
+code. PR #4.
+
+### The board was understating the work by eight features
+
+`docs/site/content/docs/feature-map.mdx` §4 listed eight v1 features with real
+shipped code and no row in `scripts/spec.py`; `scripts/status.py`'s
+`MISSING_V1_INVENTORY` named the same eight; nothing checked them, so they were
+absent rather than red. `.specs/features/_pending/missing-spec-rows.md` had the
+rows written and unapplied since the session that found them. They are applied
+now: **62 features on the board, not 53.**
+
+Then a second gap, found by comparing the `Cookiebot_functions.txt` that
+`/commands` renders — ported byte-for-byte from v1 — against
+`COMMAND_ALIASES`: six advertised commands had no handler at all. Four are
+ported (`/analise`, `/desenterrar`, `/idade`, `/genero`, `/sorte`, `/reload` —
+five, plus `/reload` which was not even in the eight). `/anything` and
+`/drawingidea` are not: see §4.
+
+### `/anything` is v1's catch-all, and that is a bigger job than it looks
+
+`x_image_search` is not just `/qualquercoisa`. `COOKIEBOT.py:283-289` sends
+**every unrecognised `/command`** to Google image search, with a per-user and a
+global daily quota, an `avoid_search.txt` blocklist (49 entries, not yet ported
+as package data) and safe-search keyed to the group's `sfw` flag. It also now
+interacts with the dispatch gate below. Left planned deliberately.
+
+### The dispatch gate, and the outage CI caught
+
+`tenants.disabled_commands` was read in exactly one place — hiding a row from
+`/commands` — so a "disabled" command still ran for anyone who typed it. It is
+enforced at dispatch now, in an outer middleware that reads the already-parsed
+command and costs nothing for non-commands.
+
+The first version of it reused `/commands`' own predicate, where a command
+absent from `command_catalog` means "not available". As a dispatch rule that
+deleted every command the 29-row seed does not mention — `/giveaway`,
+`/transcribe`, `/destroy`, every owner command. **It passed locally and failed
+in CI**, because with no Postgres listening the gate's fail-open path ran
+instead: the offline suite exercised the outage branch and never the rule.
+Listing is an allowlist, dispatch is a denylist; `command_catalog.py` now has
+both functions and says why. Three tests pin it, all of them database-free.
+
+### Cutover
+
+`python scripts/cb.py cutover` — preflight, schema, mongo, bucket, memes,
+verify, in that order, with a `rich` progress bar per step and a summary table.
+It composes the four existing tools rather than replacing them. Verified
+against a `mongodump`-shaped source (18 rows, including the `"9999"` sentinel
+and the unparseable-id skip) and a real 112 MB template copy; the second run
+copies 0 and skips 801. `docs/site/content/docs/cutover.mdx` is the page.
+
+Running the seeder for real is what turned up `fun_meme`'s phantom row: v1
+deleted `Portuguese/photo_1893@29-11-2019_02-34-09.jpg` in `cf87b052` and never
+regenerated its CSV, so v2 shipped a catalog entry whose bytes exist nowhere —
+one guaranteed failure per seed run, and a template `/meme` could draw and then
+fail to render.
+
+### UAT has no bucket, and that is why /meme is inert there
+
+`storageUri: memory://` is not a neutral default: media and templates land in a
+process-local dict that a restart empties, and nothing reports it. The chart
+now ships an optional MinIO, its bucket-creation Job, and the `AWS_*` env
+obstore reads — `objectStorage.enabled`, off by default, on in the UAT values
+in the infrastructure repo. The credential is referenced, never generated
+(`scripts/cookiebot_env.py` writes it once).
+
+**The bucket is deployed but the data move has not run.** That is the first
+thing to pick up: §2 of this file plus `docs/cutover.mdx`.
+
+### Tenancy
+
+`llm_overrides` and `storage_prefix` had been on every tenant row since `0003`
+with no reader anywhere. Both have one now — overrides merge field-by-field so
+a tenant naming only `model` keeps the global everything-else, and a bad
+override falls back and logs rather than costing the tenant the task. An empty
+`storage_prefix` produces byte-identical keys, which is load-bearing:
+`media_objects.blob_key` stores the string, not a formula.
+
+## 0b. The session before that
+
 Two features closed out and the database profiled end to end.
 **46/53 done, 3 partial, 3 blocked, 1 planned.** Gate green:
 `cb.py check` exit 0 (2 797 unit+acceptance), `test-integration` 179 passed,
@@ -122,7 +204,7 @@ changing a shipped feature's behaviour on a hunch is worse than recording it.
 
 ---
 
-## 0b. The session before that
+## 0c. The session before that
 
 Four features ported: the publisher trio (all of v1's `Bot/Publisher.py`) and
 `x_reverse_search`. **38/53 done, 5 partial, 3 blocked, 7 planned.**
@@ -258,7 +340,7 @@ Spanish groups in English).
 
 ---
 
-## 0c. And the one before that
+## 0d. And the one before that
 
 Verified green on this machine, last run:
 
@@ -318,27 +400,30 @@ Python list from Mojo costs ~174 ns per item.
 
 ## 1. Where things stand
 
-**M0 is complete and M1's core moderation set is ported.** Ten v1 features are
-live end to end, on top of the three shared pieces the previous handoff said had
-to come first.
+**M0 and M1 are complete bar one row; M2 and M3 are most of the way.** The
+board is generated — `docs/site/content/progress.json`, rendered by the docs
+site — and this section is the prose that goes stale first, so trust the
+generated numbers over this paragraph if they disagree.
 
-Verified green on this machine, last run:
+Verified on this machine, last run:
 
 ```
-ruff check + format --check   clean (138 files)
-pytest -m "not integration"   558 passed
-pytest -m integration         100 passed  (real Citus, via podman)
-migrate-check                 upgrade → downgrade → upgrade, all green
-bench                         cooldowns 1.94x · dedupe 1.60x (textmatch + captcha ship pure)
-scripts/status.py --check     no inconsistencies
-scripts/cb.py check           exit 0
+ruff check + format --check   clean (433 files)
+mypy (four packages)          clean (147 files)
+pytest -m "not integration"   2 676 passed, 9 failed *
+migrate-check                 not run here (no local Postgres this session)
+docs-sync --check             in sync with the spec
 ```
+
+\* the nine are `qa/test_core_stickerspam.py` (8) and `qa/test_fun_complaint.py`
+(1), which need Postgres and Valkey — `cb.py up` first, or read them as skipped.
+CI runs them with the real infrastructure and is green.
 
 Progress, generated by `python scripts/cb.py status`:
 
 ```
-features   ██████████░░░░░░░░░░░░░░  22/53 done
-scenarios  ████████████████████████  74/63 of the v1 spec ported
+features   ████████████████████░░░░  52/62 done, 3 partial, 3 blocked, 4 planned
+scenarios  ████████████████████████  153/63 of the v1 spec ported
 ```
 
 Scenarios exceed 100% because each port added scenarios for v1 behaviour the QA
@@ -683,5 +768,14 @@ Those two checks are the guard against a site that drifts away from the code.
   `cb.py test` still works offline — but a full green run needs `cb.py up`.
 - Compiled `.so`/`.c`/`.html` artifacts are gitignored — after a fresh clone run
   `cb.py cython` if you want the compiled path.
-- Not a git repository yet. Worth `git init` before the next round of work so
-  `/review-changes` can diff.
+- A git repository since three sessions ago, on
+  `github.com/Cookiebot-Team/cookiebot-telegram-bot`. Work goes on a branch and
+  through a PR; `main` is what the UAT Argo Application tracks for the chart, so
+  a chart change is live the moment it merges.
+- **CI is not a formality here.** The acceptance suite runs against a real
+  Postgres and Valkey in CI and against neither on a laptop, and the two
+  disagree in exactly the places that matter: this session shipped a dispatch
+  gate that was green offline and deleted half the bot's commands with a
+  database attached (§0a). If a change touches anything that reads the database
+  on the dispatch path, either run `cb.py up` first or wait for CI before
+  believing a green run.
