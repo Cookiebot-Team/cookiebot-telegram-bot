@@ -194,7 +194,29 @@ Worth knowing, because every one of them passed the unit tests first:
 Both runs were still finishing when this session ended; check the manifest
 line count against 6,912 before trusting either as complete, and re-run the
 same command to resume — every blob already at the destination is skipped, not
-re-copied.
+re-copied. The two commands, verbatim:
+
+```sh
+# local copy — resumes from ~/projects/cookiebot/v1-bucket-export/manifest.jsonl
+DEST=~/projects/cookiebot/v1-bucket-export
+CB_GCS_EXPORT_SERVICE_ACCOUNT=cb-bucket-export-260812020941@cookiebot-309512.iam.gserviceaccount.com \
+CB_BUCKET_EXPORT_SOURCE_BUCKET=cookiebot-bucket \
+CB_BUCKET_EXPORT_DEST_URI="file://$DEST/blobs" \
+CB_BUCKET_EXPORT_MANIFEST="$DEST/manifest.jsonl" \
+  python scripts/cb.py bucket-export
+
+# UAT copy — needs `kubectl port-forward -n cookiebot-uat svc/cookiebot-objectstore 19000:9000`
+# and the access key/secret from the `cookiebot-object-storage` Secret
+CB_BUCKET_EXPORT_DEST_URI=s3://cookiebot-uat \
+CB_BUCKET_EXPORT_DEST_ENDPOINT=http://127.0.0.1:19000 \
+CB_BUCKET_EXPORT_DEST_REGION=us-east-1 AWS_ALLOW_HTTP=true \
+  python scripts/cb.py bucket-export
+```
+
+If that service account has been revoked by then, `gcs-auth provision` mints a
+new one in seconds; nothing about the export depends on *which* account it is.
+Expect roughly an hour per full run — the bottleneck is one GCS round trip per
+object, not bandwidth.
 
 ## What to pick up first
 
