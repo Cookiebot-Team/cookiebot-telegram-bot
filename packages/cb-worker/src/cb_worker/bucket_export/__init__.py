@@ -80,6 +80,15 @@ PREFIXES: tuple[str, ...] = (
     "Countdown/FurSMeet",  # Miscellaneous.py:20
     "Countdown/Furcamp",  # Miscellaneous.py:21
     "Countdown/Pawstral",  # Miscellaneous.py:22
+    # Not read by any v1 code path — and exported anyway, which is the whole
+    # point. `Miscellaneous.py:18-22` lists five countdown folders and this is
+    # not one of them, so `/trex` has no v1 behaviour behind it; QA specifies
+    # the trigger regardless, and `.specs/features/fun_partneredcons/spec.md`
+    # concluded from v1's source alone that it "has no image source at all".
+    # Listing the real bucket disproved that: `Countdown/Trex` holds 67 images.
+    # Exporting them is what turns `/trex` from "invent a pool or drop the
+    # trigger" into an ordinary port.
+    "Countdown/Trex",
     "Custom/",  # Miscellaneous.py:23,147 -- dynamic per-command subfolders
     "Fight/English",  # SocialContent.py:24 -- /battle
     "Fight/Portuguese",  # SocialContent.py:25 -- /battle
