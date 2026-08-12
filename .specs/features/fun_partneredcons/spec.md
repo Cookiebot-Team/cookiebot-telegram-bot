@@ -14,19 +14,29 @@ repos (`../COOKIEBOT-Telegram-Group-Bot`, `../Cookiebot-QA`,
 and `fun_battle` are already blocked on (`Countdown/` prefixes this time,
 detailed below) — per instruction, that joins the existing export
 prerequisite rather than becoming a new one. **`/trex`, the net-new
-trigger, has no image source at all** — not in v1 (confirmed: `/trex` does
-not exist anywhere in the v1 source, not even as dead code), not in QA's
-repo, not in the backend repo. This is reported before any `design.md` or
-code, per instruction, rather than building around it.
+trigger, has no *code* behind it anywhere** — confirmed: `/trex` does not
+exist in the v1 source, not even as dead code, nor in QA's repo or the
+backend repo.
+
+**Corrected: it does have an image source.** This section originally
+concluded "no image source at all", reasoning from the v1 source alone —
+`Miscellaneous.py:18-22` lists five countdown folders and `Trex` is not one
+of them. Listing the real bucket disproved it: `gs://cookiebot-bucket/
+Countdown/Trex` holds **67 images**, sitting there unread by any v1 code
+path. They were found by diffing a full bucket listing against
+`bucket_export.PREFIXES`, and the prefix has since been added to that tuple
+and exported. So `/trex` is not "invent a pool or drop the trigger" any
+more; it is an ordinary port with assets, and the only thing genuinely
+net-new about it is that v1 never wired the command up.
 
 ## Goal
 
 `/bff`, `/patas`, `/fursmeet`, `/furcamp`, `/pawstral` each post a themed
 picture with a countdown caption for one specific real-world furry
 convention v1's operators have a promotional partnership with. QA also
-specifies `/trex`, which has no v1 behaviour behind it at all — confirmed
-against `HANDOFF.md` §5 and re-verified here (see "Triggers: port vs.
-net-new" below).
+specifies `/trex`, which has no v1 *behaviour* behind it — but does have 67
+images in the bucket that no v1 code path ever read (see the correction
+above, and "Triggers: port vs. net-new" below).
 
 ## Triggers: port vs. net-new
 

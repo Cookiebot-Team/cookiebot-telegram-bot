@@ -91,6 +91,12 @@ class TestPrefixInventory:
             "Countdown/FurSMeet",
             "Countdown/Furcamp",
             "Countdown/Pawstral",
+            # The one prefix here that no v1 code path reads. It is exported
+            # because listing the real bucket found 67 images under it while
+            # `fun_partneredcons`'s spec — reasoning from the v1 source alone —
+            # had concluded `/trex` "has no image source at all". Removing it
+            # would put that feature back to inventing a pool.
+            "Countdown/Trex",
             "Custom/",
             "Fight/English",
             "Fight/Portuguese",
