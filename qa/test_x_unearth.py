@@ -6,6 +6,7 @@ for this feature; see the file's own header).
 
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -32,6 +33,28 @@ def _reset_forward_failures(telegram: MockTelegram) -> Iterator[None]:
     candidate is gone" scenario would silence every scenario after it."""
     yield
     telegram.clear_failures()
+
+
+@pytest.fixture(autouse=True)
+def _reset_config(run: Callable[[Coroutine[Any, Any, Any]], Any]) -> Iterator[None]:
+    """The fun-disabled scenario below flips `functions_fun` on the shared QA
+    group, and `group_config._l1` is process-global — the same leak
+    `qa/test_fun_random.py` and `qa/test_core_mediarestrict.py` already guard
+    against. Without this, whichever suite happens to run next inherits a bot
+    with fun switched off and fails somewhere unrelated to the cause.
+
+    Only visible with a database attached, which is why it was not needed when
+    this suite was written: with no Postgres the flip never persisted at all.
+    """
+    yield
+    # Best effort: only the fun-disabled scenario in this file opens a database
+    # (via the `database` fixture), so for every other scenario here there is no
+    # pool to write through and nothing that could have leaked either. Guarding
+    # on the write rather than taking `database` for the whole suite keeps the
+    # other five scenarios runnable with no Postgres at all.
+    with contextlib.suppress(Exception):
+        run(group_config.set_config(GROUP_ID, functions_fun=True))
+    group_config._l1.clear()  # noqa: SLF001
 
 
 @given("that the bot is in the group and properly set up")

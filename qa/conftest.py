@@ -182,10 +182,19 @@ async def _seed_qa_group() -> None:
         GROUP_ID,
         name="qa_seed_group",
     )
-    await db.execute("DELETE FROM group_configs WHERE group_id = $1", GROUP_ID, name="qa_reset_cfg")
-    await db.execute(
-        "INSERT INTO group_configs (group_id) VALUES ($1)", GROUP_ID, name="qa_seed_config"
-    )
+    # One transaction, not two statements. Between a bare DELETE and a bare
+    # INSERT, anything that writes this group's config — a handler still
+    # finishing from the previous scenario, a deferred task, another suite's
+    # seed in the same session — recreates the row and the INSERT then dies on
+    # `group_configs_pkey`, as a fixture error attributed to whichever
+    # scenario happened to be next. Rare with three DB-backed suites; routine
+    # once most of them are.
+    async with db.transaction() as conn:
+        await conn.execute("DELETE FROM group_configs WHERE group_id = $1", GROUP_ID)
+        await conn.execute(
+            "INSERT INTO group_configs (group_id) VALUES ($1) ON CONFLICT (group_id) DO NOTHING",
+            GROUP_ID,
+        )
 
 
 async def _drop_qa_group() -> None:
@@ -358,8 +367,12 @@ def _user(user_id: int = USER_ID, name: str = "Tester", username: str = "tester"
     return {"id": user_id, "is_bot": False, "first_name": name, "username": username}
 
 
-def _chat(chat_id: int = GROUP_ID) -> dict[str, Any]:
-    return {"id": chat_id, "type": "supergroup", "title": "QA Group"}
+def _chat(chat_id: int = GROUP_ID, *, title: str | None = None) -> dict[str, Any]:
+    return {
+        "id": chat_id,
+        "type": "supergroup",
+        "title": title if title is not None else "QA Group",
+    }
 
 
 def make_message_update(
@@ -368,8 +381,10 @@ def make_message_update(
     *,
     user_id: int = USER_ID,
     chat_id: int = GROUP_ID,
+    chat_title: str | None = None,
     reply_to: dict[str, Any] | None = None,
     sticker: str | None = None,
+    sticker_emoji: str | None = None,
     photo: bool = False,
     video: bool = False,
     animation: bool = False,
@@ -387,11 +402,19 @@ def make_message_update(
     x_speech_to_text's cap (D-ST-3) reads before anything else, so a plain
     int is enough to drive both the ordinary and the over-length scenario
     without a second, more elaborate parameter.
+
+    `chat_title`, when given, overrides the group's usual "QA Group" --
+    x_sticker_autoreply's (and fun_random's) NSFW-title write gate needs a
+    chat whose title actually flags itself. `sticker_emoji` sets the
+    sticker's own `emoji` field, absent by default the way it always was
+    before x_sticker_autoreply needed one -- x_sticker_autoreply's own
+    filters treat a missing emoji as a refusal, so every scenario that does
+    not care about it keeps behaving exactly as it did.
     """
     message: dict[str, Any] = {
         "message_id": update_id,
         "date": int(time.time()),
-        "chat": _chat(chat_id),
+        "chat": _chat(chat_id, title=chat_title),
         "from": _user(user_id),
     }
     if anonymous:
@@ -401,7 +424,7 @@ def make_message_update(
             "first_name": "Group",
             "username": "GroupAnonymousBot",
         }
-        message["sender_chat"] = _chat(chat_id)
+        message["sender_chat"] = _chat(chat_id, title=chat_title)
     if text is not None:
         message["text"] = text
         message["entities"] = (
@@ -422,6 +445,8 @@ def make_message_update(
             "type": "regular",
             "set_name": sticker,
         }
+        if sticker_emoji is not None:
+            message["sticker"]["emoji"] = sticker_emoji
     if photo:
         message["photo"] = [
             {
