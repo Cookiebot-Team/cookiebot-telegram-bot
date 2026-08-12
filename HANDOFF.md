@@ -216,7 +216,23 @@ CB_BUCKET_EXPORT_DEST_REGION=us-east-1 AWS_ALLOW_HTTP=true \
 If that service account has been revoked by then, `gcs-auth provision` mints a
 new one in seconds; nothing about the export depends on *which* account it is.
 Expect roughly an hour per full run — the bottleneck is one GCS round trip per
-object, not bandwidth.
+object, not bandwidth, so do not wrap it in a short `timeout`: the first UAT
+attempt was killed at 50 minutes having done 6,039 of 6,912, with `Fight/*`
+still outstanding.
+
+**Count unique `source_path`s, not manifest lines.** A resumed run appends a
+fresh row for every blob it checks, skips included, so the file grows past the
+object count and `wc -l` stops meaning anything. That is by design — the
+manifest is an append-only audit log and `manifest.latest_by_source` is what
+resolves it, which is also what `legacy-catalog` reads:
+
+```python
+import json, pathlib, collections
+seen = {}
+for line in pathlib.Path("manifest.jsonl").read_text().splitlines():
+    d = json.loads(line); seen[d["source_path"]] = d
+print(len(seen), collections.Counter(d["prefix"] for d in seen.values()))
+```
 
 ## What to pick up first
 
