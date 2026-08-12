@@ -76,8 +76,18 @@ obstore reads — `objectStorage.enabled`, off by default, on in the UAT values
 in the infrastructure repo. The credential is referenced, never generated
 (`scripts/cookiebot_env.py` writes it once).
 
-**The bucket is deployed but the data move has not run.** That is the first
-thing to pick up: §2 of this file plus `docs/cutover.mdx`.
+**The bucket is deployed and seeded.** 801 templates, 114 MB, live in
+`s3://cookiebot-uat`, and the worker resolves them (`storage.store().exists`
+against a real template key returns true inside the pod). `/meme` is no longer
+inert in UAT.
+
+Two things the first real run found, both now in `docs/cutover.mdx`: the
+templates are not in the image and have to be mounted, and the namespace's
+default-deny egress covers a real cutover (v1's bucket is GCS, and
+`*.googleapis.com` is allowed) but not an init container cloning v1 from
+GitHub. The seed was run over a port-forward instead, which is fine for
+templates and wrong for the data move — that one should not carry the database
+credential out of the cluster.
 
 ### Tenancy
 
