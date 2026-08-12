@@ -87,6 +87,36 @@ the one number that matters for that step. The pure logic layers never import
 `rich`: the importer and seeder take optional callbacks and stay renderer-
 agnostic, which is what keeps them testable without a terminal.
 
+## Running it inside the cluster
+
+`CB_SERVICE=cutover` runs the same code from the image, so a Job can do the
+migration with the DSN and the `AWS_*` the pods already have — nothing leaves
+the cluster, and on cutover day v1's Mongo is usually reachable from inside it
+and not from a laptop:
+
+```yaml
+args: ["cutover", "--only", "mongo,verify", "--yes"]
+```
+
+Two things caught the first real run of this in UAT, both worth knowing before
+you write the Job:
+
+- **The meme templates are not in the image.** They are 112 MB checked into the
+  v1 repository (`cb_core/meme_templates.py` explains why the bytes stay out of
+  the wheel), so the `memes` step needs them mounted — an init container that
+  clones v1, or a volume. The other steps need nothing extra.
+- **The namespace is default-deny egress.** The chart's own policy allows
+  Telegram's DCs, `*.googleapis.com`, R2 and the two LLM hosts, which covers a
+  real cutover — v1's bucket is GCS. It does not cover `github.com`, so an init
+  container cloning v1 from there needs its own carve-out, scoped to the Job's
+  label and deleted with it. Widening the namespace's egress permanently for a
+  one-off migration step is the wrong trade.
+
+The alternative, and what UAT's first seed actually used: port-forward the
+object store and run `cb.py cutover --only memes` from outside. Fine for a
+seed, wrong for the data move — that one should not carry the database
+credential out of the cluster.
+
 ## What this cannot do for you
 
 The bucket step needs a read-only-scoped GCS credential for v1's private
