@@ -98,6 +98,170 @@ override falls back and logs rather than costing the tenant the task. An empty
 `storage_prefix` produces byte-identical keys, which is load-bearing:
 `media_objects.blob_key` stores the string, not a formula.
 
+### v1's GCS bucket is finally readable — and exported
+
+This is the one that unblocks the rest of the backlog, so read it before
+picking anything up.
+
+Nobody here holds a key for `cookiebot-bucket`, which is why five features have
+been `BLOCKED` since the beginning. What an operator *does* have is a Google
+account that can already read it, and `cb.py gcs-auth` is what turns that into
+a usable credential:
+
+```sh
+gcloud auth application-default login          # you, in a browser, once
+python scripts/cb.py gcs-auth status           # read-only; proves the bucket lists
+python scripts/cb.py gcs-auth provision --bucket cookiebot-bucket --project cookiebot-309512
+```
+
+`provision` creates `cb-bucket-export-<stamp>` and grants exactly two things,
+both resource-scoped and neither project-wide: `roles/storage.objectViewer` on
+that one bucket, and `roles/iam.serviceAccountTokenCreator` on the account
+itself to the operator. The export then *impersonates* it — short-lived tokens
+pinned to `devstorage.read_only`, no key file on disk. `gcs-auth revoke` takes
+both grants and the account back out, and copes with a half-finished
+provision. A key file is still possible (`--key-file`) for an environment that
+cannot impersonate, which is the in-cluster case; it is deliberately not the
+default.
+
+**The bucket is 6,912 objects / 1.34 GB**, and what is in it maps one-to-one
+onto what was blocked:
+
+| Prefix | Objects | Size | Feature |
+|---|---|---|---|
+| `IdeiaDesenho` | 3,435 | 788.9 MB | `x_drawing_idea` |
+| `Countdown/*` | 833 | 236.1 MB | `fun_partneredcons` |
+| `Custom/*` | 1,784 | 183.3 MB | `x_custom_commands` |
+| `Fight/*` | 826 | 108.8 MB | `fun_battle`'s one-tag shapes |
+| `Death` | 34 | 21.5 MB | `fun_death` |
+
+### The catalog, and why the export alone is not enough
+
+`bucket_export` stores every blob content-addressed
+(`legacy/v1-bucket/<hh>/<hash><ext>`), which is right for storage and destroys
+the one fact those features need: which v1 prefix a blob came from. That
+mapping survives only in the export manifest, so:
+
+```sh
+python scripts/cb.py legacy-catalog --manifest <manifest> [--dry-run]
+```
+
+turns the manifest into per-prefix catalogs under
+`cb_core/asset_data/legacy/`, and `cb_core.legacy_assets` reads them the way
+`cb_core.meme_templates` reads its own — small catalog as package data, bytes
+in `cb_core.storage`, one accessor that is the only place a key comes from.
+`Custom/` is regrouped per command, because v1 discovers command *names* by
+listing that prefix's sub-folders. A checkout that has never run the export
+gets empty pools, not an ImportError.
+
+**`fun_death`'s spec is corrected in place**: its `T0` asked for the bytes to
+be vendored into the repo, which was right against `fun_complaint`'s 3.4 MB
+and is not against 21.5 MB for one prefix. `design.md` and `tasks.md` still
+say the old thing; `spec.md`'s top has the correction.
+
+### What running it for real cost, and what it taught
+
+Seven live runs against the real project before `provision` worked end to end.
+Worth knowing, because every one of them passed the unit tests first:
+
+- **`:getIamPolicy` on `iam.googleapis.com` is POST-only.** The code used GET,
+  which 404s forever. This one cost the most, because a 404 there is
+  indistinguishable from the propagation lag Cloud Storage genuinely does
+  exhibit — it was diagnosed as lag twice, and the retry budget was raised to
+  five minutes chasing something that was never going to succeed. The test
+  fake answered `get` and `post` alike, which is exactly why 28 green tests
+  could not see it; it records the verb now.
+- **`projects/-/serviceAccounts/<email>`** is documented, works elsewhere, and
+  404s for these calls. Use the explicit project id.
+- **Propagation is real, twice, differently.** The bucket grant needs a retry
+  on Storage's `400 … does not exist`; the tokenCreator grant then needs
+  ~20-45s before impersonation works. `provision` verifies it can actually
+  impersonate before claiming success.
+- **`gcloud auth application-default set-quota-project`** — the standard
+  advice for the "no project" warning — *broke* auth for an operator without
+  `serviceusage.serviceUsageConsumer` on that project. Pass `--project`
+  instead. The tool says so now.
+
+### Where the bytes are
+
+- **UAT**: `s3://cookiebot-uat` under `legacy/v1-bucket/`, alongside the 801
+  meme templates seeded earlier. The MinIO PVC is 8Gi with ~52G free on the
+  node behind it.
+- **Locally**: `~/projects/cookiebot/v1-bucket-export/` — `blobs/` plus its own
+  `manifest.jsonl`, deliberately outside the repository, since 1.34 GB does not
+  belong in git.
+
+Both runs were still finishing when this session ended; check the manifest
+line count against 6,912 before trusting either as complete, and re-run the
+same command to resume — every blob already at the destination is skipped, not
+re-copied. The two commands, verbatim:
+
+```sh
+# local copy — resumes from ~/projects/cookiebot/v1-bucket-export/manifest.jsonl
+DEST=~/projects/cookiebot/v1-bucket-export
+CB_GCS_EXPORT_SERVICE_ACCOUNT=cb-bucket-export-260812020941@cookiebot-309512.iam.gserviceaccount.com \
+CB_BUCKET_EXPORT_SOURCE_BUCKET=cookiebot-bucket \
+CB_BUCKET_EXPORT_DEST_URI="file://$DEST/blobs" \
+CB_BUCKET_EXPORT_MANIFEST="$DEST/manifest.jsonl" \
+  python scripts/cb.py bucket-export
+
+# UAT copy — needs `kubectl port-forward -n cookiebot-uat svc/cookiebot-objectstore 19000:9000`
+# and the access key/secret from the `cookiebot-object-storage` Secret
+CB_BUCKET_EXPORT_DEST_URI=s3://cookiebot-uat \
+CB_BUCKET_EXPORT_DEST_ENDPOINT=http://127.0.0.1:19000 \
+CB_BUCKET_EXPORT_DEST_REGION=us-east-1 AWS_ALLOW_HTTP=true \
+  python scripts/cb.py bucket-export
+```
+
+If that service account has been revoked by then, `gcs-auth provision` mints a
+new one in seconds; nothing about the export depends on *which* account it is.
+Expect roughly an hour per full run — the bottleneck is one GCS round trip per
+object, not bandwidth, so do not wrap it in a short `timeout`: the first UAT
+attempt was killed at 50 minutes having done 6,039 of 6,912, with `Fight/*`
+still outstanding.
+
+**The local copy predates `Countdown/Trex`.** That prefix was added to
+`PREFIXES` after the local download had already started (see PR #8 — 67 images
+under a folder v1 never reads, which `fun_partneredcons`'s spec had concluded
+did not exist), so a run that began before it finishes 67 objects short.
+Re-running picks them up in seconds; everything else is skipped. Both copies
+should end at **6,910** objects — the bucket's own listing says 6,912, and the
+two extra are folder placeholder objects rather than files.
+
+**Count unique `source_path`s, not manifest lines.** A resumed run appends a
+fresh row for every blob it checks, skips included, so the file grows past the
+object count and `wc -l` stops meaning anything. That is by design — the
+manifest is an append-only audit log and `manifest.latest_by_source` is what
+resolves it, which is also what `legacy-catalog` reads:
+
+```python
+import collections
+import json
+import pathlib
+
+seen = {}
+for line in pathlib.Path("manifest.jsonl").read_text().splitlines():
+    d = json.loads(line)
+    seen[d["source_path"]] = d
+print(len(seen), collections.Counter(d["prefix"] for d in seen.values()))
+```
+
+## What to pick up first
+
+1. **Generate the catalogs** from a finished manifest (`cb.py legacy-catalog`)
+   and commit them. Nothing downstream works until this exists.
+2. **`fun_death`** — a `feat/fun-death` branch was in progress when the session
+   ended and may be incomplete; check `git branch` and the gate before
+   building on it. Its spec is a complete Phase-2 contract, corrected for the
+   catalog.
+3. Then the other four: `x_drawing_idea`, `fun_partneredcons`,
+   `x_custom_commands`, `fun_battle`'s remaining shapes. All ordinary handler
+   work once the catalog exists.
+4. `x_image_search` is the one still-missing v1 command that needs no bucket —
+   it needs a Google Custom Search key and the `avoid_search.txt` blocklist
+   ported as package data. Note it is v1's *catch-all*: every unrecognised
+   `/command` becomes an image search, which interacts with the dispatch gate.
+
 ## 0b. The session before that
 
 Two features closed out and the database profiled end to end.
@@ -418,23 +582,32 @@ generated numbers over this paragraph if they disagree.
 Verified on this machine, last run:
 
 ```
-ruff check + format --check   clean (433 files)
-mypy (four packages)          clean (147 files)
-pytest -m "not integration"   2 676 passed, 9 failed *
-migrate-check                 not run here (no local Postgres this session)
+ruff check + format --check   clean (449 files)
+mypy (four packages)          clean (153 files)
+pytest -m "not integration"   3 049 passed, 0 failed *
+migrate-check                 clean through 0009 (upgrade -> downgrade -> upgrade)
 docs-sync --check             in sync with the spec
 ```
 
-\* the nine are `qa/test_core_stickerspam.py` (8) and `qa/test_fun_complaint.py`
-(1), which need Postgres and Valkey — `cb.py up` first, or read them as skipped.
-CI runs them with the real infrastructure and is green.
+\* zero, with a local Postgres up (`cb.py up`). That is worth stating plainly
+because for most of this project's life those runs showed "9 failed" and the
+failures were nothing but missing infrastructure — see §8's note on why a green
+offline run is not evidence for anything that reads the database on the
+dispatch path. Two flakes are environmental, not code: `test_hot_modules.py::
+TestMetricsServer` binds a port the local observability stack also wants, and
+the emulated Citus container occasionally answers "database system is in
+recovery" mid-suite.
 
 Progress, generated by `python scripts/cb.py status`:
 
 ```
-features   ████████████████████░░░░  52/62 done, 3 partial, 3 blocked, 4 planned
-scenarios  ████████████████████████  153/63 of the v1 spec ported
+features   █████████████████████░░░  53/62 done, 3 partial, 3 blocked, 3 planned
+scenarios  ████████████████████████  154/63 of the v1 spec ported
 ```
+
+The three `blocked` rows and one of the `partial` ones are blocked on nothing
+any more — see §0a: the bucket they were waiting for has been exported. What
+they need now is the catalog generated and then ordinary handler work.
 
 Scenarios exceed 100% because each port added scenarios for v1 behaviour the QA
 spec never covered — the spec described intent, not what v1 actually does.
@@ -756,6 +929,25 @@ Those two checks are the guard against a site that drifts away from the code.
 
 ## 8. Environment notes from this session
 
+- **Google Cloud, on this machine.** `gcloud` 580 is installed
+  (`/opt/homebrew/bin/gcloud`) and ADC exists for the operator's own account
+  (`~/.config/gcloud/application_default_credentials.json`, an
+  `authorized_user` refresh token). It has **no `quota_project_id` on purpose**
+  — setting one made every call carry `x-goog-user-project` and 403 for lack of
+  `serviceusage.serviceUsageConsumer`. Pass `--project cookiebot-309512`
+  instead. That account has `iam.serviceAccounts.create`/`delete`,
+  `storage.buckets.setIamPolicy` and `storage.objects.list`/`get`, which is
+  everything `gcs-auth provision` needs.
+- **A provisioned export account may still exist**:
+  `cb-bucket-export-260812020941@cookiebot-309512.iam.gserviceaccount.com`,
+  holding `objectViewer` on `cookiebot-bucket` and impersonable by the
+  operator. `cb.py gcs-auth status` says whether it is still there; revoke it
+  when the exports are done, or leave it — it can read one bucket and nothing
+  else. Note the bucket's four pre-existing `legacy*` bindings must survive any
+  `revoke`; that is asserted by tests and was verified live.
+- **The v1 assets are on disk** at `~/projects/cookiebot/v1-bucket-export/`
+  (`blobs/` + `manifest.jsonl`), outside the repository on purpose. Re-running
+  the same command resumes rather than re-downloading.
 - Python resolves to **3.14** (workspace requires ≥3.13); the compiled modules
   build as `cpython-314-darwin`.
 - `uv` at `~/.local/bin/uv`. No Makefile — `scripts/cb.py` is the only runner.

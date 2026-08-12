@@ -1,17 +1,17 @@
 {
   "generated_at": "2026-08-12",
-  "commit": "89505bb",
+  "commit": "ec02920",
   "test_summary": "not run",
   "totals": {
     "features": 62,
-    "done": 53,
+    "done": 54,
     "partial": 3,
     "planned": 3,
-    "blocked": 3,
+    "blocked": 2,
     "spec_scenarios": 63,
-    "ported": 154,
+    "ported": 161,
     "spec_files": 31,
-    "spec_files_covered": 29,
+    "spec_files_covered": 30,
     "new_specs": 95,
     "green": 0,
     "failing": 0
@@ -32,7 +32,7 @@
     {
       "id": "M2",
       "title": "Fun and utility commands",
-      "done": 12,
+      "done": 13,
       "total": 15
     },
     {
@@ -620,18 +620,18 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M2",
-      "status": "blocked",
+      "status": "done",
       "triggers": [
         "/death",
         "/morte",
         "/muerte"
       ],
       "v1_source": "Miscellaneous.py:335-357",
-      "notes": "image pool only ever lived in v1's private GCS bucket, never checked in - see .specs/features/fun_death/spec.md",
-      "contract": null,
+      "notes": "unblocked by cb_worker.bucket_export + cb.py legacy-catalog, which turned v1's GCS Death/ prefix into a small package-data catalog (cb_core.legacy_assets) over content-addressed bytes in cb_core.storage - fun_meme's split, not fun_complaint's vendoring, since 21.5MB is past what belongs in the wheel. gif-vs-photo dispatch reads the catalog's source_path (v1's original filename), not the storage key's own extension, on purpose - see death.py. D-DE-1 (dropped skull-emoji prefix for a target with no username) preserved verbatim; D-DE-3 (v1's ValueError on an empty bucket listing) fixed - legacy_assets.choose() returns None and the handler answers nothing, the only state a real deployment can still be in before legacy-catalog has run. See docs/contracts/fun_death.md",
+      "contract": "docs/contracts/fun_death.md",
       "scenarios": {
         "spec": 2,
-        "ported": 0,
+        "ported": 7,
         "green": 0,
         "failing": 0
       },
@@ -1894,10 +1894,10 @@
     {
       "stem": "fun_death",
       "spec": 2,
-      "ported": 0,
+      "ported": 7,
       "green": 0,
       "failing": 0,
-      "state": "not ported"
+      "state": "no step definitions"
     },
     {
       "stem": "fun_dice",
@@ -2223,6 +2223,7 @@
     "core_botskins: marked done but no scenario executed green",
     "fun_dice: marked done but no scenario executed green",
     "fun_ship: marked done but no scenario executed green",
+    "fun_death: marked done but no scenario executed green",
     "fun_meme: marked done but no scenario executed green",
     "fun_random: marked done but no scenario executed green",
     "fun_firecracker: marked done but no scenario executed green",

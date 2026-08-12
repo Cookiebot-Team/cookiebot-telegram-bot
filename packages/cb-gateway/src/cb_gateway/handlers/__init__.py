@@ -22,6 +22,7 @@ from cb_gateway.handlers import (
     chat_ai,
     complaint,
     config_menu,
+    death,
     deletereposts,
     destroy,
     dice,
@@ -81,6 +82,7 @@ def build_router() -> Router:
     root.include_router(rules.router)
     root.include_router(calladms.router)
     root.include_router(complaint.router)
+    root.include_router(death.router)
     root.include_router(dice.router)
     root.include_router(ship.router)
     root.include_router(firecracker.router)
