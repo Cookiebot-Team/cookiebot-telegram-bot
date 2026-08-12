@@ -81,7 +81,10 @@ FEATURES: tuple[Feature, ...] = (
             "group_admins is never populated; must handle anonymous admins"),
     Feature("platform_migration_etl", "platform", "Mongo -> Citus backfill", "M4", Status.PARTIAL,
             Layer.WORKER, "COOKIEBOT-backend/core/domains/*.java", (),
-            "configs/rules/welcomes/users/blacklist/groups import, idempotent; randomdatabase needs a Telegram-download backfill"),
+            "configs/rules/welcomes/users/blacklist/groups/stickerdatabase import, idempotent "
+            "(stickerdatabase -> the new global sticker_pool reference table, migration 0009); "
+            "randomdatabase alone still needs a Telegram-download backfill - its rows have no "
+            "content_hash/blob_key and media_objects requires both NOT NULL"),
     Feature("util_isalive", "util", "Health check from chat", "M0", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:65-69", ("/isalive", "/tavivo")),
     Feature("core_listcommand", "core", "List available commands", "M1", Status.DONE,
@@ -282,10 +285,21 @@ FEATURES: tuple[Feature, ...] = (
             "dispatches it (COOKIEBOT.py:202); truncates at 4000 chars, where v1 sent the "
             "whole dump and Telegram rejected anything over 4096 - so the command did "
             "nothing on exactly the messages worth analysing. QA authored, not ported"),
-    Feature("x_sticker_autoreply", "fun", "Sticker DB auto-reply", "M3", Status.PLANNED,
+    Feature("x_sticker_autoreply", "fun", "Sticker DB auto-reply", "M3", Status.DONE,
             Layer.GATEWAY, "SocialContent.py:208-222", (),
-            "passive: builds a sticker DB from sfw-group stickers, replies to any "
-            "doc/sticker sent in reply to the bot; no QA scenario exists - write one"),
+            "passive: pools an sfw group's alphanumeric-set-name, non-banned-emoji stickers "
+            "into a new GLOBAL sticker_pool reference table (migration 0009, not per-group like "
+            "fun_random - full reasoning in that migration's docstring), then replies with one "
+            "at random to any sticker/document/animation sent in reply to the bot. Deviations: "
+            "(1) 'reply is from the bot' now checks reply_to_message.from_user.id == bot.id, not "
+            "v1's literal first_name == 'Cookiebot' (wrong for every other persona this codebase "
+            "ships); (2) pooling has no funfunctions gate, matching v1's real asymmetry exactly "
+            "(only sfw + sender-has-username) - only the reply side is fun-gated; (3) write is a "
+            "Valkey-fronted ON CONFLICT DO NOTHING upsert, since a reference-table write is 2PC "
+            "replicated to every node and most sends repeat a pack already pooled. Also unblocks "
+            "the stickerdatabase importer collection (map_stickerdatabase mapped it to skip "
+            "for want of a destination table; now maps every row - see platform_migration_etl). "
+            "QA authored, not ported"),
     Feature("x_webhub_login", "platform", "Telegram-login JWT for the web console", "M4", Status.DONE,
             Layer.API, "Server.py:25-52", (),
             "D7 fixed: the RSA key is configured or generated once into signing_keys "

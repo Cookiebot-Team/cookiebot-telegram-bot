@@ -1,8 +1,8 @@
 # platform_migration_etl — Specify
 
 **Feature id:** `platform_migration_etl` · **Milestone:** M4 · **Kind:** state report
-**Status:** `partial` — six of eight v1 Mongo collections import fully and
-idempotently; the other two are a reasoned, permanent skip, not a gap
+**Status:** `partial` — seven of eight v1 Mongo collections import fully and
+idempotently; the remaining one is a reasoned, permanent skip, not a gap
 anyone forgot.
 
 This is not a build spec. It records what exists, what doesn't, and why.
@@ -14,9 +14,14 @@ Java backend's MongoDB into the v2 Citus schema, from a live server
 (`CB_MONGO_URI`) or a `mongodump` directory (`CB_MONGO_DUMP_DIR`) —
 `importer/source.py`. Driven via `python scripts/cb.py import-mongo --dry-run`.
 
-- Six collections have a working mapper and load fully:
-  `configs`, `rules`, `welcomes`, `users`, `blacklist`, `groups` —
-  `importer/mappers.py:141-335` (`map_configs` … `map_groups`).
+- Seven collections have a working mapper and load fully:
+  `configs`, `rules`, `welcomes`, `users`, `blacklist`, `groups`,
+  `stickerdatabase` — `importer/mappers.py:141-335,366-390` (`map_configs` …
+  `map_groups`, `map_stickerdatabase`). `stickerdatabase` is the newest of the
+  seven: it lands in `sticker_pool` (migration `0009_sticker_pool.py`), the
+  global reference table `x_sticker_autoreply` reads from — see "What is
+  missing" below for why this one is a reference table and `randomdatabase`'s
+  target could never be.
 - Every write is an idempotent upsert on the natural key.
   `importer/loader.py`'s module docstring states the per-table
   `update_columns` contract precisely: which columns a re-run is allowed to
@@ -51,26 +56,42 @@ Java backend's MongoDB into the v2 Citus schema, from a live server
   placeholder hash to satisfy the constraint would silently corrupt that
   dedupe for every future write to the same group — worse than not
   importing at all.
-- **`stickerdatabase` — same treatment, same reasoning category**
-  (`mappers.py:363-380`). v1's sticker `file_id` pool feeds a different
-  feature (`reply_sticker`, `SocialContent.py:218-221`) than the photo/video
-  `/random` pool, and `docs/contracts/fun_random.md` already scopes it out
-  explicitly: "a different feature and a different table." No v2 table for a
-  sticker `file_id` pool exists yet, so there is nowhere for these rows to
-  go even if they could be written safely.
 - No worker job triggers an import automatically. This is deliberate, not an
   omission — the import is meant to run manually and repeatedly while v1
   still serves, and once more at cutover to catch the delta
   (HANDOFF.md:144-158), not on a schedule.
 
-## Why it stopped there
+## Why `stickerdatabase` could be finished and `randomdatabase` could not
+
+Both collections looked identical at first glance — `{_id: <string>}`-shaped
+Mongo pointers with no v2 destination — but the two `_id`s mean different
+things, and that difference is the whole reason one now imports and the
+other still cannot. `RandomDatabase.java`'s `_id` is a chat id; the actual
+payload (`idMessage`, `idMedia`) is a *reference* to a still-live Telegram
+message, never bytes, and `media_objects.content_hash`/`blob_key`/`byte_size`
+are `NOT NULL` because the whole media layer dedupes by content hash —
+writing a row here without ever downloading the referenced file would mean
+inventing a hash, which would silently corrupt dedupe for every future write
+to the same group. `StickerDatabase.java`'s `_id` is different in kind, not
+just in content: it *is* the payload already, a Telegram sticker `file_id`
+requiring no further download and no content hash at all — `sticker_pool`
+(migration `0009`) has exactly one column, `file_id`, so there was never a
+`NOT NULL` constraint standing between this collection and a working mapper,
+only the missing table. `x_sticker_autoreply` built that table (a global
+reference table, not a per-group one like `media_objects` — see the
+migration's own docstring for why a sticker pool does not carry the same
+cross-group leak risk a photo pool does, and why a per-group table would
+have had nowhere to put a collection whose v1 rows carry no `group_id` at
+all), which is what unblocked the mapper here.
+
+## Why `randomdatabase` stopped there
 
 The `randomdatabase` skip is already fully reasoned in two places —
 `mappers.py`'s own docstring and HANDOFF.md:167-171 — and both predate this
-document. `platform_migration_etl` is correctly `Status.PARTIAL`: 6 of 8
+document. `platform_migration_etl` is correctly `Status.PARTIAL`: 7 of 8
 collections work and are verified against a real dump and a real cluster,
-and the 2 that don't are skipped because writing them would violate a `NOT
-NULL` constraint that protects real data, not because nobody got to them.
+and the 1 that doesn't is skipped because writing it would violate a `NOT
+NULL` constraint that protects real data, not because nobody got to it.
 Nothing here is nobody-has-got-to-it — it's a decision with a paper trail.
 
 ## What it would take to finish, and what blocks it
@@ -82,10 +103,6 @@ Nothing here is nobody-has-got-to-it — it's a decision with a paper trail.
   (`mappers.py:339-355`'s own conclusion). Not blocked on anything external;
   it just hasn't been built, and `docs/contracts/fun_random.md`'s
   re-architecture notes are the design starting point.
-- **`stickerdatabase`**: needs a schema decision and migration for a sticker
-  `file_id` pool before any import work makes sense — a product/design
-  question (does this pool matter enough to build a table for?), not an
-  engineering blocker.
 
 ## v1 equivalent
 
@@ -95,4 +112,7 @@ Nothing here is nobody-has-got-to-it — it's a decision with a paper trail.
 (`random_media`, which forwards the still-live source message rather than
 resending stored content — the same feature as v2's `fun_random`, which is
 `Status.DONE` and does not need this import to work today). `StickerDatabase.java`
-similarly, consumed by `SocialContent.py:208-222`.
+similarly, consumed by `SocialContent.py:208-222` (`add_to_sticker_database`/
+`reply_sticker`, now `x_sticker_autoreply`, also `Status.DONE` and likewise
+independent of whether this import has ever run — the importer backfills v1's
+history into the same table the live handler writes to going forward).

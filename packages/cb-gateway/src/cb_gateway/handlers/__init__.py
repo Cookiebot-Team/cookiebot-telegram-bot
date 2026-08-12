@@ -50,6 +50,7 @@ from cb_gateway.handlers import (
     rules,
     setlang,
     ship,
+    sticker_autoreply,
     stickerspam,
     transcribe,
     unearth,
@@ -134,6 +135,14 @@ def build_router() -> Router:
     root.include_router(welcome.router)
 
     # ---- content rules ----
+    # x_sticker_autoreply's sticker branch (pooling + reply-to-bot). Must sit
+    # ahead of stickerspam.router: that handler never raises SkipHandler (its
+    # own docstring), so anything registered after it never sees a sticker
+    # update at all. This router always raises SkipHandler itself so
+    # core_stickerspam still runs next — see sticker_autoreply.py's own
+    # docstring for why that reordering has no observable effect versus v1's
+    # in-process order (antispam, then pool, then reply).
+    root.include_router(sticker_autoreply.router)
     # mediarestrict is registered above and yields when it does not act, so a new
     # member's sticker is judged as restricted media first and only then as one
     # more sticker in the flood counter. v1 never faced the overlap: Telegram
@@ -176,6 +185,14 @@ def build_router() -> Router:
     # which is what reproduces the `elif`. Registered after it, every ad
     # silently joins the pool and nothing errors.
     root.include_router(postgetter.router)
+    # x_sticker_autoreply's document/animation branch (reply-to-bot only, no
+    # pooling). Registered after postgetter for the same reason postgetter is
+    # registered after the ad-check's sibling branches in v1: the dispatcher's
+    # `ask_publisher` check runs *before* the document/animation branches
+    # (COOKIEBOT.py:165-166,174,181), so an auto-forwarded ad never also
+    # triggers reply_sticker. postgetter only stops propagation when it
+    # actually prompts, so every other document/animation still reaches this.
+    root.include_router(sticker_autoreply.reply_router)
     # Pools every photo/video into the per-group random library, then yields — it
     # is ingestion, not a reply, so it must never consume the update.
     root.include_router(fun_random.router)

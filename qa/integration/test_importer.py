@@ -81,6 +81,7 @@ class IdFactory:
     def __init__(self) -> None:
         self.group_ids: list[int] = []
         self.user_ids: list[int] = []
+        self.sticker_file_ids: list[str] = []
 
     def group(self) -> int:
         group_id = _RUN_BASE - next(_group_seq) * 10
@@ -91,6 +92,16 @@ class IdFactory:
         user_id = _USER_BASE + next(_user_seq)
         self.user_ids.append(user_id)
         return user_id
+
+    def sticker(self) -> str:
+        # sticker_pool has no group_id/user_id to key cleanup off of (module
+        # docstring: it is a reference table with no distribution column at
+        # all) -- disjoint from any real Telegram file_id by construction, so
+        # this suite's rows never collide with a real one a manual test run
+        # might have left behind.
+        file_id = f"AgADimporttest{_RUN_BASE}{next(_group_seq)}"
+        self.sticker_file_ids.append(file_id)
+        return file_id
 
 
 @pytest.fixture
@@ -120,6 +131,14 @@ def ids(run: Run) -> Iterator[IdFactory]:
                 "DELETE FROM blacklist WHERE subject_id = ANY($1::bigint[])",
                 factory.user_ids,
                 name="test_importer_cleanup_blacklist",
+            )
+        )
+    if factory.sticker_file_ids:
+        run(
+            db.execute(
+                "DELETE FROM sticker_pool WHERE file_id = ANY($1::text[])",
+                factory.sticker_file_ids,
+                name="test_importer_cleanup_sticker_pool",
             )
         )
 
@@ -186,6 +205,14 @@ def _blacklist_doc(subject_id: int) -> Document:
     return {"_id": str(subject_id)}
 
 
+def _sticker_doc(file_id: str) -> Document:
+    """`StickerDatabase.java` is nothing but an `@Id` too, but unlike every
+    other collection that `_id` *is* the payload (the Telegram sticker
+    `file_id`), not a chat/user id — `mappers.map_stickerdatabase`'s own
+    docstring."""
+    return {"_id": file_id}
+
+
 # ------------------------------------------------------------------- clean import
 
 
@@ -197,6 +224,7 @@ class TestCleanImport:
         admin_id = ids.user()
         user_id = ids.user()
         blacklisted_id = ids.user()
+        sticker_file_id = ids.sticker()
 
         source = FakeMongoSource(
             {
@@ -206,6 +234,7 @@ class TestCleanImport:
                 "welcomes": [_welcome_doc(group_id, "Welcome to the group!")],
                 "users": [_user_doc(user_id)],
                 "blacklist": [_blacklist_doc(blacklisted_id)],
+                "stickerdatabase": [_sticker_doc(sticker_file_id)],
             }
         )
 
@@ -218,6 +247,7 @@ class TestCleanImport:
             "welcomes": 1,
             "users": 1,
             "blacklist": 1,
+            "stickerdatabase": 1,
         }
         assert report.written == {
             "groups": 1,
@@ -227,6 +257,7 @@ class TestCleanImport:
             "group_welcomes": 1,
             "users": 1,
             "blacklist": 1,
+            "sticker_pool": 1,
         }
         assert report.skipped == []
 
@@ -326,6 +357,16 @@ class TestCleanImport:
         assert blacklist_row["kind"] == "user"  # positive id -> user, per mapper
         assert blacklist_row["reason"] is None
         assert blacklist_row["source"] == "manual"
+
+        sticker_row = run(
+            pg.fetchrow(
+                "SELECT file_id FROM sticker_pool WHERE file_id = $1",
+                sticker_file_id,
+                name="test_importer_read_sticker",
+            )
+        )
+        assert sticker_row is not None
+        assert sticker_row["file_id"] == sticker_file_id
 
     def test_a_document_with_an_unparseable_id_is_skipped_not_fatal(
         self, run: Run, ids: IdFactory
@@ -474,6 +515,32 @@ class TestReRun:
         assert row is not None
         assert row["sticker_spam_window_s"] == 120
         assert row["doomlist_enabled"] is False
+
+    def test_rerun_of_a_sticker_never_duplicates_the_row(
+        self, run: Run, pg: ModuleType, ids: IdFactory
+    ) -> None:
+        """`sticker_pool.file_id` is both the only column and the conflict
+        key (`loader.TABLE_LOADS["sticker_pool"]`) — a re-run is a true
+        `DO NOTHING`, proven here against a real table rather than just the
+        SQL text `test_importer_loader.py`'s unit test inspects."""
+        file_id = ids.sticker()
+        source = FakeMongoSource({"stickerdatabase": [_sticker_doc(file_id)]})
+
+        report_first = run(run_import(source, batch_size=500))
+        report_second = run(run_import(source, batch_size=500))
+
+        assert report_first.written == {"sticker_pool": 1}
+        assert report_second.written == {"sticker_pool": 1}
+
+        row = run(
+            pg.fetchrow(
+                "SELECT count(*) AS n FROM sticker_pool WHERE file_id = $1",
+                file_id,
+                name="test_importer_rerun_count_sticker_pool",
+            )
+        )
+        assert row is not None
+        assert row["n"] == 1
 
 
 # -------------------------------------------------------------- missing groups doc

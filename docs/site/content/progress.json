@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-08-11",
-  "commit": "a76b481",
+  "generated_at": "2026-08-12",
+  "commit": "89505bb",
   "test_summary": "not run",
   "totals": {
     "features": 62,
-    "done": 52,
+    "done": 53,
     "partial": 3,
-    "planned": 4,
+    "planned": 3,
     "blocked": 3,
     "spec_scenarios": 63,
-    "ported": 153,
+    "ported": 154,
     "spec_files": 31,
     "spec_files_covered": 29,
-    "new_specs": 89,
+    "new_specs": 95,
     "green": 0,
     "failing": 0
   },
@@ -38,7 +38,7 @@
     {
       "id": "M3",
       "title": "Publisher, AI, giveaways, owner tooling",
-      "done": 15,
+      "done": 16,
       "total": 19
     },
     {
@@ -286,7 +286,7 @@
       "status": "partial",
       "triggers": [],
       "v1_source": "COOKIEBOT-backend/core/domains/*.java",
-      "notes": "configs/rules/welcomes/users/blacklist/groups import, idempotent; randomdatabase needs a Telegram-download backfill",
+      "notes": "configs/rules/welcomes/users/blacklist/groups/stickerdatabase import, idempotent (stickerdatabase -> the new global sticker_pool reference table, migration 0009); randomdatabase alone still needs a Telegram-download backfill - its rows have no content_hash/blob_key and media_objects requires both NOT NULL",
       "contract": null,
       "scenarios": {
         "spec": 0,
@@ -505,7 +505,7 @@
       "contract": "docs/contracts/util_config.md",
       "scenarios": {
         "spec": 2,
-        "ported": 4,
+        "ported": 5,
         "green": 0,
         "failing": 0
       },
@@ -1312,14 +1312,14 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [],
       "v1_source": "SocialContent.py:208-222",
-      "notes": "passive: builds a sticker DB from sfw-group stickers, replies to any doc/sticker sent in reply to the bot; no QA scenario exists - write one",
+      "notes": "passive: pools an sfw group's alphanumeric-set-name, non-banned-emoji stickers into a new GLOBAL sticker_pool reference table (migration 0009, not per-group like fun_random - full reasoning in that migration's docstring), then replies with one at random to any sticker/document/animation sent in reply to the bot. Deviations: (1) 'reply is from the bot' now checks reply_to_message.from_user.id == bot.id, not v1's literal first_name == 'Cookiebot' (wrong for every other persona this codebase ships); (2) pooling has no funfunctions gate, matching v1's real asymmetry exactly (only sfw + sender-has-username) - only the reply side is fun-gated; (3) write is a Valkey-fronted ON CONFLICT DO NOTHING upsert, since a reference-table write is 2PC replicated to every node and most sends repeat a pack already pooled. Also unblocks the stickerdatabase importer collection (map_stickerdatabase mapped it to skip for want of a destination table; now maps every row - see platform_migration_etl). QA authored, not ported",
       "contract": null,
       "scenarios": {
         "spec": 0,
-        "ported": 0,
+        "ported": 6,
         "green": 0,
         "failing": 0
       },
@@ -1966,7 +1966,7 @@
     {
       "stem": "util_config",
       "spec": 2,
-      "ported": 4,
+      "ported": 5,
       "green": 0,
       "failing": 0,
       "state": "no step definitions"
@@ -2124,6 +2124,14 @@
       "state": "v2-only spec"
     },
     {
+      "stem": "x_sticker_autoreply",
+      "spec": 0,
+      "ported": 6,
+      "green": 0,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
       "stem": "x_unearth",
       "spec": 0,
       "ported": 5,
@@ -2239,6 +2247,7 @@
     "x_gender_guess: marked done but no scenario executed green",
     "x_unearth: marked done but no scenario executed green",
     "x_fortune_cookie: marked done but no scenario executed green",
-    "x_analysis: marked done but no scenario executed green"
+    "x_analysis: marked done but no scenario executed green",
+    "x_sticker_autoreply: marked done but no scenario executed green"
   ]
 }

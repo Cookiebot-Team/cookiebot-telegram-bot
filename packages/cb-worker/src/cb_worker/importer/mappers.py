@@ -364,22 +364,35 @@ def map_randomdatabase(doc: Document, out: MappedRows) -> None:
 
 
 def map_stickerdatabase(doc: Document, out: MappedRows) -> None:
-    """`stickerdatabase` has no v2 destination — every document is skipped.
+    """`stickerdatabase` -> `sticker_pool`. Row: (file_id,).
 
-    `StickerDatabase.java` stores only a Telegram sticker `file_id`, feeding a
-    different v1 feature (`reply_sticker`, `SocialContent.py:218-221` — replying
-    to the bot gets a random pooled sticker back) than the photo/video
-    `/random` pool. `docs/contracts/fun_random.md` explicitly scopes
-    `add_to_sticker_database` out as "a different feature and a different
-    table"; no v2 table for a sticker `file_id` pool exists yet, so every
-    document is skipped and counted rather than silently dropped or written
-    somewhere that doesn't fit.
+    Unlike every other collection mapped here, `StickerDatabase.java`'s `_id`
+    (`@Id private String id`) is not a Telegram chat/user id transcribed as a
+    string — it *is* the payload, the Telegram sticker `file_id` itself
+    (`add_to_sticker_database`, `../COOKIEBOT-Telegram-Group-Bot/Bot/
+    SocialContent.py:208-218`). So this is the one mapper that does not call
+    `_parse_bigint` on `_id`: there is no integer to parse, and doing so would
+    reject every legitimate row. It is kept verbatim as text instead, and
+    only an empty/non-string value (Mongo has no schema to enforce this) is
+    treated as unmappable.
+
+    `sticker_pool` (`packages/cb-api/migrations/versions/0009_sticker_pool.py`)
+    is a reference table, not distributed on `group_id` like `media_objects` —
+    that migration's own docstring has the full reasoning, but the short
+    version is the one this collection's shape already forces: v1's write
+    path never recorded a `chat_id` alongside the sticker, so a per-group
+    table would have nowhere to put these rows at all (the exact problem
+    `randomdatabase` still has, immediately below). A reference table has no
+    such column to fill.
     """
-    out.skip(
-        "stickerdatabase",
-        _doc_id_str(doc),
-        "no v2 table for a sticker file_id pool exists yet (see docs/contracts/fun_random.md)",
-    )
+    file_id = doc.get("_id")
+    if not isinstance(file_id, str) or not file_id:
+        out.skip(
+            "stickerdatabase", _doc_id_str(doc), "_id is missing or not a non-empty string file_id"
+        )
+        return
+
+    out.add("sticker_pool", (file_id,))
 
 
 # ----------------------------------------------------------------------------- registry

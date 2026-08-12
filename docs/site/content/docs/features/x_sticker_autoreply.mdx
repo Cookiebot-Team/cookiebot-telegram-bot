@@ -3,8 +3,8 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Sticker DB auto-reply"
-description: "passive: builds a sticker DB from sfw-group stickers, replies to any doc/sticker sent in reply to the bot; no QA scenario exists - write one"
-status: planned
+description: "passive: pools an sfw group's alphanumeric-set-name, non-banned-emoji stickers into a new GLOBAL sticker_pool reference table (migration 0009, not per-group like fun_random - full reasoning in that migration's docstring), then replies with one at random to any sticker/document/animation sent in reply to the bot. Deviations: (1) 'reply is from the bot' now checks reply_to_message.from_user.id == bot.id, not v1's literal first_name == 'Cookiebot' (wrong for every other persona this codebase ships); (2) pooling has no funfunctions gate, matching v1's real asymmetry exactly (only sfw + sender-has-username) - only the reply side is fun-gated; (3) write is a Valkey-fronted ON CONFLICT DO NOTHING upsert, since a reference-table write is 2PC replicated to every node and most sends repeat a pack already pooled. Also unblocks the stickerdatabase importer collection (map_stickerdatabase mapped it to skip for want of a destination table; now maps every row - see platform_migration_etl). QA authored, not ported"
+status: done
 milestone: M3
 area: fun
 layer: gateway

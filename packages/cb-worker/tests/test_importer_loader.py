@@ -35,6 +35,7 @@ EXPECTED_TABLES = {
     "group_admins",
     "users",
     "blacklist",
+    "sticker_pool",
 }
 
 #: Tables distributed on group_id — every conflict key on these must carry it
@@ -71,6 +72,17 @@ def test_distributed_tables_key_on_group_id(table: str) -> None:
 def test_reference_tables_key_on_their_own_primary_key() -> None:
     assert loader.TABLE_LOADS["users"].conflict_columns == ("user_id",)
     assert loader.TABLE_LOADS["blacklist"].conflict_columns == ("subject_id",)
+    assert loader.TABLE_LOADS["sticker_pool"].conflict_columns == ("file_id",)
+
+
+def test_sticker_pool_has_nothing_left_to_reassert_on_conflict() -> None:
+    """`file_id` is both the only column and the key — a re-run is `DO
+    NOTHING`, never a `DO UPDATE`, because there is no other field a re-run
+    could legitimately overwrite."""
+    load = loader.TABLE_LOADS["sticker_pool"]
+    assert load.columns == ("file_id",)
+    assert load.update_columns == ()
+    assert "DO NOTHING" in loader._upsert_sql(load)  # noqa: SLF001
 
 
 def test_group_configs_never_reasserts_its_two_v2_only_columns() -> None:

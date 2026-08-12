@@ -425,8 +425,26 @@ def test_map_randomdatabase_always_skipped(doc: Document) -> None:
 # ------------------------------------------------------------------ stickerdatabase
 
 
-@pytest.mark.parametrize("doc", [{}, {"_id": "AgADBAADsticker"}])
-def test_map_stickerdatabase_always_skipped(doc: Document) -> None:
+def test_map_stickerdatabase_maps_the_file_id_verbatim() -> None:
+    """Unlike every other collection, `_id` here *is* the payload (a Telegram
+    sticker `file_id`), not a chat/user id — so it is never run through
+    `_parse_bigint` (see the mapper's own docstring)."""
+    out = MappedRows()
+    map_stickerdatabase({"_id": "AgADBAADsticker"}, out)
+    assert out.rows == {"sticker_pool": [("AgADBAADsticker",)]}
+    assert out.skipped == []
+
+
+@pytest.mark.parametrize(
+    "doc",
+    [
+        {},
+        {"_id": None},
+        {"_id": ""},
+        {"_id": 12345},  # a raw BSON int, never a real v1 shape, still not a string
+    ],
+)
+def test_map_stickerdatabase_skips_a_missing_or_non_string_id(doc: Document) -> None:
     out = MappedRows()
     map_stickerdatabase(doc, out)
     assert out.rows == {}

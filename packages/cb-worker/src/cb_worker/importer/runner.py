@@ -56,11 +56,16 @@ _TABLE_WRITE_ORDER: tuple[str, ...] = (
     "group_admins",
     "users",
     "blacklist",
+    "sticker_pool",
 )
 
 #: Collection read order. `groups` first so real `groups` rows (with title and
 #: image_url) tend to exist before `configs`/`rules`/`welcomes` need a `groups`
 #: row at all — belt alongside `ensure_group_stubs`'s braces, not a substitute.
+#: `stickerdatabase` has no FK to `groups` at all (`sticker_pool` is a
+#: reference table, migration 0009), so its own position here is arbitrary —
+#: listed last because, unlike every other entry, nothing downstream depends
+#: on when it runs.
 _COLLECTION_ORDER: tuple[str, ...] = (
     "groups",
     "configs",
@@ -68,6 +73,7 @@ _COLLECTION_ORDER: tuple[str, ...] = (
     "welcomes",
     "users",
     "blacklist",
+    "stickerdatabase",
 )
 
 
