@@ -1,24 +1,27 @@
 # fun_death — Tasks
 
-Every task below is blocked on the same prerequisite: someone with access to
-v1's `cookiebot-bucket` GCS bucket exports the `Death/` prefix so its files
-can be vendored byte-identical into
-`packages/cb-core/src/cb_core/asset_data/death/` (`spec.md`'s "The blocker",
-`design.md`'s module-placement table). Nothing here can start until that
-export exists locally. `T0` is the prerequisite itself, tracked so it shows
-up in `python scripts/cb.py status` rather than living only in prose.
+**Update — T0 landed.** `cb_worker.bucket_export` + `cb.py legacy-catalog`
+replaced the vendoring plan this file originally described: the `Death/`
+prefix is not copied byte-identical into
+`packages/cb-core/src/cb_core/asset_data/death/` (too large — 21.5 MB across
+34 files, `spec.md`'s "Update" paragraph and `design.md`'s R2 correction).
+Instead the bytes live in `cb_core.storage` under content-addressed keys and
+a small per-prefix catalog ships as package data, read through
+`cb_core.legacy_assets.choose("Death", rng)`. T1-T5 below were executed
+against that corrected shape, not the original vendoring plan — see
+`docs/contracts/fun_death.md` for what actually shipped.
 
 ## Status
 
 | Task | Status | Notes |
 |------|--------|-------|
-| T0 — Vendor the `Death/` asset export | 🚫 blocked: no access to v1's `cookiebot-bucket` GCS bucket from this environment | prerequisite for every task below |
-| T1 — Handler: gate, target resolution, caption | 🚫 blocked: depends on T0 | |
-| T2 [P] — Nested-catalog reader (`_death_strings`) | 🚫 blocked: depends on T0 | mechanical once T0 lands; no dependency on the asset bytes themselves, only listed after T0 because there is nothing to wire it into without T1 |
-| T3 — Router registration | 🚫 blocked: depends on T1 | |
-| T4 [P] — Unit tests | 🚫 blocked: depends on T1, T2 | |
-| T5 — Acceptance: `qa/features/fun_death.feature`, `qa/test_fun_death.py` | 🚫 blocked: depends on T1, T3 | copy `../Cookiebot-QA/features/fun_death.feature` verbatim per spec.md's QA section — no conflict to reconcile |
-| T-final — Close out | 🚫 blocked: depends on T1-T5 | |
+| T0 — Unblock the asset pool | ✅ done | not vendoring (see the update note above) — `cb_worker.bucket_export` + `cb.py legacy-catalog` land the `Death/` prefix in `cb_core.storage` behind `cb_core.legacy_assets` instead |
+| T1 — Handler: gate, target resolution, caption | ✅ done | `packages/cb-gateway/src/cb_gateway/handlers/death.py` |
+| T2 [P] — Nested-catalog reader | ✅ done, superseded | `locales.get_nested`/`nested_value` landed in `cb_core/locales.py` since this task was written and already solve R1 generically — no local `_death_strings` needed, unlike `groupguardian.py`'s `_captcha_strings` precedent this task originally pointed at |
+| T3 — Router registration | ✅ done | `packages/cb-gateway/src/cb_gateway/handlers/__init__.py`, next to `complaint`/`dice`/`ship` |
+| T4 [P] — Unit tests | ✅ done | `packages/cb-gateway/tests/test_death.py` — trigger resolution, target resolution (all three branches + D-DE-1), caption rendering in `en`/`pt`/`es`, `is_gif`, and the empty-pool degrade (D-DE-3) via the `_deliver` seam |
+| T5 — Acceptance: `qa/features/fun_death.feature`, `qa/test_fun_death.py` | ✅ done | the two upstream scenarios copied verbatim, plus the fun-off gate, every trigger spelling, the reply-based target, the still-image dispatch and the empty-pool degrade |
+| T-final — Close out | ✅ done | `docs/contracts/fun_death.md`, `scripts/spec.py` flipped to `Status.DONE`, `docs-sync` run, this file's status table updated |
 
 ## T0 — Vendor the `Death/` asset export
 

@@ -134,9 +134,18 @@ FEATURES: tuple[Feature, ...] = (
             Layer.GATEWAY, "UserRegisters.py:216-250", ("/ship", "/shippar", "/shipp"),
             "landed the member registry (cb_core/members.py) it needs; QA's single-tagged-user "
             "scenario describes behaviour v1 never had - see docs/contracts/fun_ship.md"),
-    Feature("fun_death", "fun", "Random cause of death", "M2", Status.BLOCKED,
+    Feature("fun_death", "fun", "Random cause of death", "M2", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:335-357", ("/death", "/morte", "/muerte"),
-            "image pool only ever lived in v1's private GCS bucket, never checked in - see .specs/features/fun_death/spec.md"),
+            "unblocked by cb_worker.bucket_export + cb.py legacy-catalog, which turned v1's "
+            "GCS Death/ prefix into a small package-data catalog (cb_core.legacy_assets) over "
+            "content-addressed bytes in cb_core.storage - fun_meme's split, not fun_complaint's "
+            "vendoring, since 21.5MB is past what belongs in the wheel. gif-vs-photo dispatch "
+            "reads the catalog's source_path (v1's original filename), not the storage key's "
+            "own extension, on purpose - see death.py. D-DE-1 (dropped skull-emoji prefix for "
+            "a target with no username) preserved verbatim; D-DE-3 (v1's ValueError on an "
+            "empty bucket listing) fixed - legacy_assets.choose() returns None and the handler "
+            "answers nothing, the only state a real deployment can still be in before "
+            "legacy-catalog has run. See docs/contracts/fun_death.md"),
     Feature("fun_meme", "fun", "Meme generator", "M2", Status.DONE,
             Layer.WORKER, "SocialContent.py:224-277", ("/meme",),
             "v1's 97kB metadata CSV ships as package data, its 110MB of templates go to "

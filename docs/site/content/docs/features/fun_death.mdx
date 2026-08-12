@@ -3,48 +3,62 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Random cause of death"
-description: "image pool only ever lived in v1's private GCS bucket, never checked in - see .specs/features/fun_death/spec.md"
-status: blocked
+description: "unblocked by cb_worker.bucket_export + cb.py legacy-catalog, which turned v1's GCS Death/ prefix into a small package-data catalog (cb_core.legacy_assets) over content-addressed bytes in cb_core.storage - fun_meme's split, not fun_complaint's vendoring, since 21.5MB is past what belongs in the wheel. gif-vs-photo dispatch reads the catalog's source_path (v1's original filename), not the storage key's own extension, on purpose - see death.py. D-DE-1 (dropped skull-emoji prefix for a target with no username) preserved verbatim; D-DE-3 (v1's ValueError on an empty bucket listing) fixed - legacy_assets.choose() returns None and the handler answers nothing, the only state a real deployment can still be in before legacy-catalog has run. See docs/contracts/fun_death.md"
+status: done
 milestone: M2
 area: fun
 layer: gateway
 triggers: ["/death", "/morte", "/muerte"]
 v1_source: "Miscellaneous.py:335-357"
+contract: "docs/contracts/fun_death.md"
 ---
 <FeatureHeader id="fun_death" />
 
 ## What it does
 
-In v1, `/death` (also `/morte`, `/muerte`) posts a random image or gif —
-someone's tag or a random "cause of death" — captioned with a randomised
-"is dead!"-style line and a silly reason pulled from an 81-line pool. It
-can target the caller, a tagged name, or whoever they replied to.
+`/death` (also `/morte`, `/muerte`) posts a random image or gif — captioned
+with a randomised "is dead!"-style line and a silly reason pulled from an
+81-line pool — as a "cause of death" for the caller, a tagged name, or
+whoever they replied to.
 
-## Why this one is blocked, not just unstarted
+## Unblocked: where the images live now
 
-v1's image pool is not a file checked into its repository — it is a live
+v1's image pool was never a file checked into its repository — it was a live
 listing of a private Google Cloud Storage bucket
 (`bloblist_death = list(storage_bucket.list_blobs(prefix="Death"))`,
-`Miscellaneous.py:17`), fetched fresh at process start and read with
-15-minute signed URLs. Nothing in `../COOKIEBOT-Telegram-Group-Bot`'s
-checked-in static tree carries those files, and nothing in this repository
-or environment has a credential for that bucket. `fun_complaint` and
-`fun_meme`'s templates are the counter-example: those *are* checked into
-v1's static tree, which is why they could be vendored byte-identical the way
-`cb_core/asset_data/complaint/` already is.
+`Miscellaneous.py:17`), read with 15-minute signed URLs. `cb_worker.bucket_export`
+has since copied that prefix (and every other v1 prefix) into `cb_core.storage`
+under content-addressed keys, and `cb.py legacy-catalog` turns the export
+manifest into the small per-prefix catalog `cb_core.legacy_assets` reads. At
+21.5 MB across 34 files, `Death/` is past what belongs vendored into the
+wheel the way `fun_complaint`'s 3.4 MB is — this feature follows `fun_meme`'s
+split instead: a tiny catalog as package data, the bytes in object storage.
 
-The everything-else of this feature — the target resolution, the caption
-assembly, the gate, the locale strings (the `death.txt` reason pool and the
-`death` catalog block are both already ported byte-identical) — is fully
-specified and ready to build. The full behaviour contract and evidence for
-the blocker live in
-[`.specs/features/fun_death/spec.md`](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/blob/main/.specs/features/fun_death/spec.md);
-a design and task breakdown are written ahead of time in the same directory
-so the port is mechanical the moment someone exports the bucket's `Death/`
-prefix.
+## Behaviour that must not change
+
+Target resolution is v1's three branches, in order: a tagged word (the raw
+second token, never resolved against the group's members) beats a reply
+(the replied-to sender's first name, never their username) beats the
+caller's own name. A caller with no Telegram username loses the leading
+skull-emoji prefix entirely — an operator-precedence bug in v1's own caption
+string, preserved rather than fixed, the same category as `fun_ship`'s
+`@@alice + @@bob`. The chosen image is sent as an animation when its v1
+filename ends in `.gif`, and as a plain photo otherwise; the "uploading
+photo" chat action fires either way, matching v1's own unconditional call.
+
+If the deployment's asset catalog has never been generated (`cb.py
+legacy-catalog` not yet run), the bot answers nothing rather than crashing —
+v1 itself had no such guard and would have raised on an empty bucket
+listing, but that never happened in production. This port makes the
+degrade real, since a fresh v2 checkout can actually be in that state.
+
+The full behaviour contract, including the three preserved/fixed v1 defects,
+lives in
+[`docs/contracts/fun_death.md`](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/blob/main/docs/contracts/fun_death.md).
 
 ## How to verify it
 
-Nothing to verify yet — there is no code. Once unblocked:
-`qa/features/fun_death.feature`, copied verbatim from
-`../Cookiebot-QA/features/fun_death.feature`.
+`qa/features/fun_death.feature` — the two scenarios copied from
+`../Cookiebot-QA/features/fun_death.feature`, plus the fun-off gate, every
+trigger spelling, the reply-based target, the still-image dispatch and the
+empty-pool degrade — run with `python scripts/cb.py test`.
