@@ -220,6 +220,14 @@ object, not bandwidth, so do not wrap it in a short `timeout`: the first UAT
 attempt was killed at 50 minutes having done 6,039 of 6,912, with `Fight/*`
 still outstanding.
 
+**The local copy predates `Countdown/Trex`.** That prefix was added to
+`PREFIXES` after the local download had already started (see PR #8 — 67 images
+under a folder v1 never reads, which `fun_partneredcons`'s spec had concluded
+did not exist), so a run that began before it finishes 67 objects short.
+Re-running picks them up in seconds; everything else is skipped. Both copies
+should end at **6,910** objects — the bucket's own listing says 6,912, and the
+two extra are folder placeholder objects rather than files.
+
 **Count unique `source_path`s, not manifest lines.** A resumed run appends a
 fresh row for every blob it checks, skips included, so the file grows past the
 object count and `wc -l` stops meaning anything. That is by design — the
