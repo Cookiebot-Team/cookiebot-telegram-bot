@@ -82,3 +82,9 @@ where = ["src"]
 # a packaging change.
 "cb_core.asset_data.doomlist" = ["*.jpg"]
 "cb_core.asset_data.skins" = ["*/*", "*/*/*"]
+# cb_core/legacy_assets.py: `bucket_export`'s cutover manifest, regrouped by
+# `cb.py legacy-catalog` into one small CSV per v1 prefix. Empty in a fresh
+# checkout (see cb_core/asset_data/legacy/__init__.py) until that generator
+# has run against a finished bucket-export manifest. `*/*.csv` covers
+# `Countdown/*`, `Fight/*` and `Custom/<command>`'s one level of nesting.
+"cb_core.asset_data.legacy" = ["*.csv", "*/*.csv"]

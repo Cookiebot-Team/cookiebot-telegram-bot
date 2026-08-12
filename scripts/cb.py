@@ -313,6 +313,24 @@ def meme_seed(extra: list[str]) -> int:
 
 
 @task(
+    "legacy-catalog", "turn a finished bucket-export manifest into cb_core.legacy_assets' catalogs"
+)
+def legacy_catalog(extra: list[str]) -> int:
+    """Reads `bucket-export`'s manifest and regroups it by v1 prefix into the
+    small per-prefix CSV catalogs `cb_core.legacy_assets` ships as package
+    data — the metadata half of the split `cb_core/meme_templates.py`
+    established for `fun_meme`: a tiny catalog in the wheel, the bytes it
+    describes already in `cb_core.storage` from `bucket-export` itself.
+    `--dry-run` prints the per-prefix row counts without writing. Run this
+    once, by hand, after `bucket-export` has finished a real run — see
+    `cb_worker.bucket_export.catalog`'s module docstring for the full
+    contract, including why a `"failed"` manifest row never reaches a
+    catalog.
+    """
+    return run("uv", "run", "python", "-m", "cb_worker.bucket_export.catalog", *extra)
+
+
+@task(
     "cutover",
     "run the full v1 -> v2 migration with progress (schema, mongo, bucket, memes, verify)",
 )

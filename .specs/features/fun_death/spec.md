@@ -65,14 +65,32 @@ out. QA's own scenario also only describes "reply with a meme and a random
 skull gif" — the image is the feature, not decoration on top of a caption.
 
 **Recommendation:** treat this as infrastructure-blocked, `Status.BLOCKED` in
-`scripts/spec.py`, not `Status.PLANNED`. The smallest prerequisite: someone
-with access to v1's `cookiebot-bucket` exports the `Death/` prefix (`gsutil -m
-cp -r gs://cookiebot-bucket/Death <local dir>`, or equivalent console
-download) so the files can be vendored byte-identical into
-`packages/cb-core/src/cb_core/asset_data/death/`, exactly the pattern
-`fun_complaint` already established for `Bot/Static/reclamacao/`. Once that
-lands, `design.md` below is ready to execute as-is — nothing else about this
-feature depends on the export.
+`scripts/spec.py`, not `Status.PLANNED`.
+
+**Update — the prerequisite has landed, and it is not the one this section
+originally described.** The export exists: `cb.py gcs-auth provision` mints a
+read-only, bucket-scoped credential from the operator's own Google account and
+`cb.py cutover --only bucket` copies every prefix — `Death/` among them — into
+`cb_core.storage`. So the blocker is gone, but the *shape* of the answer
+changed with it, and this paragraph's original recommendation is superseded:
+
+- **Not vendored into the repository.** This section proposed copying the
+  bytes into `packages/cb-core/src/cb_core/asset_data/death/`, following
+  `fun_complaint`'s 3.4 MB precedent. `Death/` is 34 objects and 21.5 MB, and
+  the bucket as a whole is 1.34 GB — past what belongs in a wheel, and
+  `fun_meme` already established the alternative for exactly this size
+  problem: a small catalog ships as package data while the bytes live in
+  `cb_core.storage`.
+- **The pool comes from `cb_core.legacy_assets`.** The export writes
+  content-addressed keys, so the v1 prefix a blob came from survives only in
+  the export manifest; `cb.py legacy-catalog` turns that manifest into
+  per-prefix catalogs under `asset_data/legacy/`, and
+  `legacy_assets.choose("Death", rng)` is what this feature calls. Bytes are
+  read through the entry's `storage_key`, never a key derived at the call
+  site.
+
+`design.md`'s asset-pool section (R2) and `tasks.md`'s `T0` still describe the
+vendoring approach and should be read with this correction in mind.
 
 ## Behaviour contract (Phase 2)
 
