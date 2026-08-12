@@ -287,3 +287,70 @@ class TestFailingStepDoesNotAbortOthers:
         code = cutover_main.main(["--only", "bucket,memes", "--source", str(checkout), "--yes"])
 
         assert code == 1
+
+
+class TestGcsExportPreflight:
+    """`_check_gcs_export` — the row `run_preflight` gained alongside the GCS
+    provisioning tooling. No real Google credentials or network: the
+    credential lookup and the listability probe are each monkeypatched at
+    the exact seam `cutover_runner` calls through (`gcp_auth.export_credentials`,
+    `open_bucket_source`), the same style every other preflight check in this
+    file already uses for its own dependency.
+    """
+
+    def test_skip_when_no_bucket_configured(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("CB_BUCKET_EXPORT_SOURCE_BUCKET", raising=False)
+
+        check = cutover_runner._check_gcs_export()  # noqa: SLF001 - the check under test
+
+        assert check.status == "skip"
+        assert "CB_BUCKET_EXPORT_SOURCE_BUCKET" in check.detail
+
+    def test_ok_when_credentials_resolve_and_the_bucket_lists(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("CB_BUCKET_EXPORT_SOURCE_BUCKET", "v1-legacy-bucket")
+        monkeypatch.setattr(
+            cutover_runner.gcp_auth, "export_credentials", lambda: (object(), "fake-project")
+        )
+        monkeypatch.setattr(
+            cutover_runner,
+            "open_bucket_source",
+            lambda bucket_name: FakeBucketSource({"Death/a.png": b"AAA"}),
+        )
+
+        check = cutover_runner._check_gcs_export()  # noqa: SLF001 - the check under test
+
+        assert check.status == "ok"
+        assert "v1-legacy-bucket" in check.detail
+
+    def test_fail_when_no_credentials_are_available(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("CB_BUCKET_EXPORT_SOURCE_BUCKET", "v1-legacy-bucket")
+
+        def _raise() -> tuple[object, str | None]:
+            raise cutover_runner.gcp_auth.GcsAuthError(
+                "no Google credentials found. Run `gcloud auth application-default login`."
+            )
+
+        monkeypatch.setattr(cutover_runner.gcp_auth, "export_credentials", _raise)
+
+        check = cutover_runner._check_gcs_export()  # noqa: SLF001 - the check under test
+
+        assert check.status == "fail"
+        assert "gcloud auth application-default login" in check.detail
+
+    def test_fail_when_the_bucket_does_not_list(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("CB_BUCKET_EXPORT_SOURCE_BUCKET", "v1-legacy-bucket")
+        monkeypatch.setattr(
+            cutover_runner.gcp_auth, "export_credentials", lambda: (object(), "fake-project")
+        )
+
+        def _raise(bucket_name: str) -> FakeBucketSource:
+            raise GcsSourceError("simulated: permission denied")
+
+        monkeypatch.setattr(cutover_runner, "open_bucket_source", _raise)
+
+        check = cutover_runner._check_gcs_export()  # noqa: SLF001 - the check under test
+
+        assert check.status == "fail"
+        assert "permission denied" in check.detail
