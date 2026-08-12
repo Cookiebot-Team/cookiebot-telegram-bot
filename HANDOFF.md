@@ -235,10 +235,14 @@ manifest is an append-only audit log and `manifest.latest_by_source` is what
 resolves it, which is also what `legacy-catalog` reads:
 
 ```python
-import json, pathlib, collections
+import collections
+import json
+import pathlib
+
 seen = {}
 for line in pathlib.Path("manifest.jsonl").read_text().splitlines():
-    d = json.loads(line); seen[d["source_path"]] = d
+    d = json.loads(line)
+    seen[d["source_path"]] = d
 print(len(seen), collections.Counter(d["prefix"] for d in seen.values()))
 ```
 
