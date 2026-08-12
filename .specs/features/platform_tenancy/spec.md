@@ -1,8 +1,9 @@
 # platform_tenancy — Specify
 
 **Feature id:** `platform_tenancy` · **Milestone:** M1 · **Kind:** state report
-**Status:** `partial` — schema and read path landed, everything that would
-*act* on a tenant beyond config defaults has no consumer yet.
+**Status:** `partial` — schema, read path, per-tenant command enforcement,
+per-tenant LLM task overrides and per-tenant storage key prefixing landed;
+`handler_pack` and the tenant cost rollup still have no consumer.
 
 This is not a build spec. It records what exists, what doesn't, and why —
 per `scripts/status.py`'s rule that a `partial` needs a written reason, not a
@@ -29,9 +30,58 @@ plan.
   per persona (`get_bot_token`, `is_alternate_bot`,
   `../COOKIEBOT-Telegram-Group-Bot/Bot/universal_funcs.py:39-52`,
   `COOKIEBOT.py:24-32`).
-- `tenancy.registry.by_skin` is consulted in exactly one place outside
-  `group_config`: `cb_gateway/handlers/listcommand.py:65-116`, to hide a
-  tenant-disabled command from `/commands`' own listing.
+- `tenancy.registry.by_skin` is consulted in two places outside
+  `group_config`, both sharing one predicate. `command_available_for_tenant`
+  and the `command_catalog` fetch used to live only in `listcommand.py`; they
+  now live in `cb_gateway/command_catalog.py:1-58` so both callers read the
+  same rule instead of risking two copies drifting apart.
+- **`disabled_commands` is enforced at dispatch, not just in `/commands`'
+  listing.** `TenantCommandGateMiddleware` (`cb_gateway/middlewares.py`,
+  registered last of the three outer middlewares in `cb_gateway/main.py`) runs
+  on every update, reads the command `TelemetryMiddleware` already parsed into
+  `data["parsed_command"]`, and drops the update — silently, matching how a
+  v1 persona without a given handler simply produced no reply — when
+  `command_available_for_tenant` says no. A plain message, join or callback
+  with no command costs it nothing: the tenant/catalog lookups only run when
+  there is a command to check. It fails open on a registry or catalog outage
+  (same rule `DedupeMiddleware`'s cache branch follows), counts a drop under
+  `metrics.updates_dropped_total{reason="tenant_disabled"}`, and logs
+  `tenant_gate.command_disabled`. Unit tested end to end, including the
+  fail-open path: `packages/cb-gateway/tests/test_tenant_command_gate.py`.
+- **`llm_overrides` is consulted in `LLMRouter.config_for`/`provider_for`**
+  (`cb_core/llm/router.py:117-198`, `_merge_task_config`/`config_for`).
+  `complete()`/`transcribe()` (`router.py:207-329`) resolve the tenant once
+  per call — the same `TenantRegistry.by_id` lookup `ensure_within_budget`
+  already needed (`llm/budget.py:193`, now takes an optional pre-resolved
+  `tenant` so the two don't each pay their own lookup) — and layer
+  `tenant.llm_overrides[task]` field-by-field over the global `TaskConfig`
+  via `msgspec.structs.replace`, so a tenant naming only `model` keeps the
+  global `max_tokens`/`system`/`temperature`/`timeout`. `tenant_id=None`
+  (every caller before this landed) skips the registry lookup entirely — no
+  behaviour change for them. A malformed override (an unknown field, a
+  non-mapping value) or one naming a provider this deployment has no
+  credentials for logs a warning (`llm.tenant_override_invalid` /
+  `llm.tenant_override_unconfigured_provider`) and falls back to the global
+  config for that task rather than failing the call. Unit tested:
+  `packages/cb-core/tests/test_llm.py` (`TestRouterTenantOverrides`).
+- **`storage_prefix` is applied in key derivation**
+  (`cb_core/storage/keys.py:44-89`'s `blob_key`/`hash_and_key`/`derived_key`,
+  each taking an optional `prefix` that defaults to `""`) and threaded
+  through `MediaService.put`'s optional `tenant_id` parameter
+  (`cb_core/storage/media.py:83-95`), which resolves `Tenant.storage_prefix`
+  through the same `TenantRegistry.by_id` seam and prepends it ahead of the
+  whole content-addressed key. The empty-string default — every tenant row
+  today — reproduces the pre-tenancy key byte-for-byte, which is what keeps
+  every already-written `media_objects.blob_key` resolving; a non-empty
+  prefix deliberately opts a tenant out of the cross-tenant content dedupe
+  `keys.py`'s own docstring describes, trading it for isolation. Meme
+  templates (`cb_core/meme_templates.py:78-92`) deliberately do **not** get a
+  prefix — they are global, bot-owned assets seeded once by `cb.py
+  meme-seed` with no `group_id`/tenant in scope, and both the seeder and
+  `cb_worker.jobs.meme` already share one `storage_key` property, which is
+  what keeps them from drifting apart. Unit tested:
+  `packages/cb-core/tests/test_storage.py` (`TestKeys`,
+  `TestMediaServiceStoragePrefix`).
 
 ## What is missing
 
@@ -42,17 +92,6 @@ plan.
   router" mechanism `multi-tenant.mdx`'s "Custom implementations: handler
   packs" section describes is documented, not built — no `packs/` directory
   exists in the repo.
-- **`disabled_commands` doesn't actually disable anything.** It is checked
-  in exactly the one place cited above — filtering `/commands`' help text —
-  and nowhere else. Grepping every file in `cb_gateway/handlers/` for a
-  `tenancy` import turns up only `listcommand.py`. A command a tenant has
-  "disabled" still runs if a user sends it directly; there is no dispatch-level
-  or per-handler enforcement.
-- **`llm_overrides` and `storage_prefix` are schema-only**, same as
-  `handler_pack`: `cb_core/llm/router.py` never looks at a tenant when
-  resolving a task's model, and `cb_core/storage.py` never applies a prefix
-  to a key. Grepping the whole tree for either name outside `tenancy.py`
-  itself and its own test/migration finds nothing.
 - **`owner_ids` is unconsumed** — the feature that would read it,
   `x_owner_commands`, is still `Status.PLANNED`.
 - **`tenant_monthly_cost` has no writer.** The table exists
@@ -75,31 +114,27 @@ plan.
 The schema and the read path landed as a **shared prerequisite** other M1
 work needed (`group_config`, `core_setlang`), not as a feature being built
 for its own sake — the same "build the plumbing once" order `platform_llm`
-and `platform_storage` followed at M0. Past the config-merge point, every
-remaining piece (handler packs, budget enforcement, `disabled_commands`
-enforcement, the owner model) is explicitly scheduled for M3, in
-`multi-tenant.mdx`'s own rollout table, *alongside* the feature that would be
-its first real consumer (`x_custom_commands` for packs, `x_owner_commands`
-for `owner_ids`). Nobody has built a pack or an enforcement path because
-nothing yet needs one badly enough to justify the design work — this is
-unscheduled, not stuck.
+and `platform_storage` followed at M0. `disabled_commands` enforcement was the
+one piece of the remainder concrete and small enough to close outside that
+schedule — a predicate that already existed (`command_available_for_tenant`)
+plus one outer middleware, no design work required. Everything else (handler
+packs, budget enforcement, the owner model) is still explicitly scheduled for
+M3, in `multi-tenant.mdx`'s own rollout table, *alongside* the feature that
+would be its first real consumer (`x_custom_commands` for packs,
+`x_owner_commands` for `owner_ids`). Nobody has built a pack because nothing
+yet needs one badly enough to justify the design work — this is unscheduled,
+not stuck.
 
 ## What it would take to finish, and what blocks it
 
 Nothing here is blocked on an external dependency; it is unscheduled work:
 
-1. A dispatch-level or per-handler check for `tenant.command_enabled()` — the
-   smallest, most concrete gap, and the one most likely to surprise someone
-   (a tenant admin who "disables" a command via config and finds it still
-   works).
-2. At least one real handler pack, to prove the `build(core_router) -> Router`
+1. At least one real handler pack, to prove the `build(core_router) -> Router`
    interface `multi-tenant.mdx` designs — `x_custom_commands` is the natural
    first consumer per the rollout table.
-3. `llm_overrides` consulted in `LLMRouter.config_for`/`provider_for`, and
-   `storage_prefix` applied in `cb_core/storage.py`'s key derivation.
-4. A worker job rolling `llm_usage` into `tenant_monthly_cost`, before budget
+2. A worker job rolling `llm_usage` into `tenant_monthly_cost`, before budget
    enforcement can mean anything.
-5. Tenant rows + tokens for the 3 missing personas, if they're still wanted —
+3. Tenant rows + tokens for the 3 missing personas, if they're still wanted —
    that's a product question, not an engineering one.
 
 ## v1 equivalent

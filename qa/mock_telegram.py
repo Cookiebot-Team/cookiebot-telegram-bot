@@ -63,6 +63,11 @@ class MockTelegram:
         # method -> Telegram error description. Lets a scenario say "cas.chat is
         # down" or "the bot lost its admin rights" without patching our own code.
         self.failures: dict[str, str] = {}
+        # method -> how many more calls fail before the method starts working.
+        # A scenario about a *retry* needs "fails once, then succeeds", which a
+        # permanent failure cannot express: with `failures` alone, either every
+        # attempt fails or none does, and the retry itself is never exercised.
+        self.transient_failures: dict[str, tuple[int, str]] = {}
         # chat_id -> getChatMemberCount result. util_everyone's `known = min(len
         # (usernames), get_chat_member_count(...))` (design R4.6) needs a real
         # int back, not the mock's generic `{}` fallback (which aiogram cannot
@@ -101,8 +106,15 @@ class MockTelegram:
     def fail(self, method: str, description: str = "Bad Request: test failure") -> None:
         self.failures[method] = description
 
+    def fail_times(
+        self, method: str, times: int, description: str = "Bad Request: test failure"
+    ) -> None:
+        """Fail the next `times` calls to `method`, then behave normally."""
+        self.transient_failures[method] = (times, description)
+
     def clear_failures(self) -> None:
         self.failures.clear()
+        self.transient_failures.clear()
 
     @property
     def base_url(self) -> str:
@@ -150,6 +162,16 @@ class MockTelegram:
             return web.json_response(
                 {"ok": False, "error_code": 400, "description": self.failures[method]},
                 status=400,
+            )
+        remaining = self.transient_failures.get(method)
+        if remaining is not None:
+            count, description = remaining
+            if count > 1:
+                self.transient_failures[method] = (count - 1, description)
+            else:
+                del self.transient_failures[method]
+            return web.json_response(
+                {"ok": False, "error_code": 400, "description": description}, status=400
             )
         return web.json_response({"ok": True, "result": self._result(method, payload)})
 

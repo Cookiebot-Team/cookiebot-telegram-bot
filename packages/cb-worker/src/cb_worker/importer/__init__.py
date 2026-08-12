@@ -28,10 +28,13 @@ source of truth for stored data:
     blacklist       _id=subject_id(str)
     groups          groupId, name, imageUrl, adminUsers[]
     randomdatabase  _id=chat_id(str)  idMessage, idMedia
-    stickerdatabase _id=sticker_id(str)
+    stickerdatabase _id=file_id(str)  -- the Telegram sticker file_id itself, not a chat/user id
 
-Every id is a **string** in Mongo and a `bigint` here; a document whose id will
-not parse is skipped and counted, never guessed at.
+Every id is a **string** in Mongo and a `bigint` here, with one exception:
+`stickerdatabase`'s `_id` is not a Telegram chat/user id at all, it *is* the
+sticker `file_id` (`mappers.map_stickerdatabase`'s own docstring), so it is
+kept as text rather than parsed. Every other collection's id that will not
+parse as an integer is skipped and counted, never guessed at.
 """
 
 from __future__ import annotations

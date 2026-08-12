@@ -30,7 +30,11 @@ from cb_gateway import queue
 from cb_gateway.bots import registry
 from cb_gateway.handlers import build_router
 from cb_gateway.ingest import build_ingest
-from cb_gateway.middlewares import DedupeMiddleware, TelemetryMiddleware
+from cb_gateway.middlewares import (
+    DedupeMiddleware,
+    TelemetryMiddleware,
+    TenantCommandGateMiddleware,
+)
 
 settings = get_settings()
 settings.service_name = "cb-gateway"
@@ -41,6 +45,13 @@ log = get_logger("cb.gateway")
 dp = Dispatcher()
 dp.update.outer_middleware(DedupeMiddleware())
 dp.update.outer_middleware(TelemetryMiddleware())
+# Must come after TelemetryMiddleware: that middleware is what parses the
+# update's text into `data["parsed_command"]`, and TenantCommandGateMiddleware
+# only reads that field rather than re-parsing it. Outer middlewares nest in
+# registration order (first registered = outermost), so this being last makes
+# it the innermost of the three — it runs right before the router, which is
+# exactly where a per-tenant "does this command even exist" check belongs.
+dp.update.outer_middleware(TenantCommandGateMiddleware())
 dp.include_router(build_router())
 
 

@@ -190,15 +190,24 @@ async def _query_month_to_date_usd(tenant_id: str) -> float:
     return rolled_total + today_total
 
 
-async def ensure_within_budget(tenant_id: str) -> None:
+async def ensure_within_budget(tenant_id: str, *, tenant: tenancy.Tenant | None = None) -> None:
     """Raise `LLMBudgetExceededError` if `tenant_id` is over its monthly cap.
 
     A tenant with no `monthly_llm_budget_usd` configured is never checked — no
     cache read, no query (R2.5). On a cache or database failure while computing
     the spend, this allows the call through instead of raising: an
     infrastructure outage is not evidence of overspend (R2.4).
+
+    `tenant`, when given, is trusted as the row already resolved for `tenant_id`.
+    `LLMRouter.complete()`/`transcribe()` now need the same tenant row for their
+    `llm_overrides` merge (`router.py`'s `config_for`), so they fetch it once and
+    pass it here rather than this function paying a second `TenantRegistry.by_id`
+    call — cheap once L1-cached, but not free, and not needed twice for one
+    completion. Every other caller passes only `tenant_id`, exactly as before,
+    and this resolves it itself.
     """
-    tenant = await tenancy.registry.by_id(tenant_id)
+    if tenant is None:
+        tenant = await tenancy.registry.by_id(tenant_id)
     if tenant.monthly_llm_budget_usd is None:
         return
 

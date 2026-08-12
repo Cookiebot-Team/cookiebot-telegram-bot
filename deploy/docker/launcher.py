@@ -12,6 +12,7 @@ that a compiler can actually follow.
     CB_SERVICE=cb-api     python -m cb_launcher     # granian, ASGI, :8000
     CB_SERVICE=cb-worker  python -m cb_launcher     # arq consumer
     CB_SERVICE=migrate    python -m cb_launcher     # alembic upgrade head, then exit
+    python -m cb_launcher cutover --only mongo --yes # the v1 -> v2 migration, then exit
 """
 
 from __future__ import annotations
@@ -81,6 +82,22 @@ def run_migrations() -> int:
     return 0
 
 
+def run_cutover(args: list[str]) -> int:
+    """The v1 -> v2 migration, in the image, so it can run as a Job in the
+    cluster it is migrating into.
+
+    The alternative is running it from an operator's laptop over a port-forward,
+    which works and is what `scripts/cb.py cutover` is for — but it means the
+    database credential and the bucket credential leave the cluster, and on
+    cutover day the Mongo source is usually reachable from inside it and not
+    from outside. This is the only launcher branch that takes arguments,
+    because which steps to run is the whole question a cutover asks.
+    """
+    from cb_worker.cutover.__main__ import main as cutover_main
+
+    return cutover_main(args)
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
     service = (argv[0] if argv else os.environ.get("CB_SERVICE", "")).strip()
@@ -92,8 +109,12 @@ def main(argv: list[str] | None = None) -> int:
         return run_worker()
     if service == "migrate":
         return run_migrations()
+    if service == "cutover":
+        # Everything after the service name is the cutover's own argv, so a Job
+        # can say `args: ["cutover", "--only", "mongo,verify", "--yes"]`.
+        return run_cutover(argv[1:])
 
-    known = ", ".join([*SERVICES, "cb-worker", "migrate"])
+    known = ", ".join([*SERVICES, "cb-worker", "migrate", "cutover"])
     print(f"unknown service {service!r}; set CB_SERVICE to one of: {known}", file=sys.stderr)
     return 2
 

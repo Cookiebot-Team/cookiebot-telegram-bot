@@ -20,10 +20,9 @@ COMPILED: bool = cython.compiled
 # fmt: off
 COMMAND_ALIASES: dict[str, str] = {
     # Accented spellings are separate v1 triggers, not decoration: the dispatcher
-    # lists "/aleatório", "/aniversário", "/cumpleaños", "/reclamação" and
-    # "/rojão" alongside their unaccented forms, and a Portuguese or Spanish
-    # keyboard produces the accented one by default. ("/gênero" is also a v1
-    # trigger; its feature is not ported yet, so it has no canonical name here.)
+    # lists "/aleatório", "/aniversário", "/cumpleaños", "/reclamação", "/rojão"
+    # and "/gênero" alongside their unaccented forms, and a Portuguese or
+    # Spanish keyboard produces the accented one by default.
     # core
     "commands": "commands", "comandos": "commands",
     "privacy": "privacy", "privacidade": "privacy", "privacidad": "privacy",
@@ -58,6 +57,19 @@ COMMAND_ALIASES: dict[str, str] = {
     "everyone": "everyone",
     "adm": "calladms", "admin": "calladms", "report": "calladms",
     "youtube": "youtube",
+    # x_analysis. All three spellings are v1 triggers (COOKIEBOT.py:202).
+    "analysis": "analysis", "analise": "analysis", "analisis": "analysis",
+    # x_unearth. Two spellings, both v1 triggers (COOKIEBOT.py:236).
+    "unearth": "unearth", "desenterrar": "unearth",
+    # x_age_guess. All three spellings are v1 triggers (COOKIEBOT.py:226).
+    "age": "age", "idade": "age", "edad": "age",
+    # x_gender_guess. All three spellings are v1 triggers (COOKIEBOT.py:228).
+    "gender": "gender", "genero": "gender", "gênero": "gender",
+    # x_fortune_cookie. All three spellings are v1 triggers (COOKIEBOT.py:240).
+    "sorte": "fortune", "fortunecookie": "fortune", "suerte": "fortune",
+    # core_reload. Both v1 triggers (COOKIEBOT.py:197); still advertised in the
+    # help text this repo ships verbatim, so the command has to exist.
+    "reload": "reload", "recarregar": "reload",
     # x_giveaways. v1 has exactly one spelling (COOKIEBOT.py:249,262) — no
     # PT/ES alias was ever shipped, so inventing one here would be a new
     # trigger, not a preserved one.

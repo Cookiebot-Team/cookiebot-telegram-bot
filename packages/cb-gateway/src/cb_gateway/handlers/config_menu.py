@@ -28,10 +28,14 @@ Design differences from v1, each recorded in `docs/contracts/util_config.md`:
   `except Exception` (silent to the user, a traceback mailed to the bot owner). v2 catches the parse
   failure and reuses v1's own "ERROR: invalid input\nTry again" text (already the message v1 sends
   for an empty reply, `Configurations.py:211`), just for every parse failure, not only the empty one.
-- **The `setMyCommands` side effect of changing `language` is not reproduced.** v1's `set_language`
-  path also relabels the group's Telegram command menu in three languages
-  (`Configurations.py:79-98`), which is a `core_setlang`/command-menu concern, not a `group_configs`
-  write; out of scope for the files this port owns.
+- **The `setMyCommands` side effect of changing `language` is reproduced, by calling the function
+  `core_setlang` wrote for it.** v1's `set_language` path also relabels the group's Telegram command
+  menu in three languages (`Configurations.py:79-98,176-177`). This module's port declared it out of
+  scope because the command menu is `core_setlang`'s concern rather than a `group_configs` write —
+  right about the implementation, which is why `setlang.set_group_commands` exists and is tested, but
+  it left the side effect with no caller at all: an admin who changed the language here saw every
+  reply switch and the command menu stay in the old one. `apply_language_side_effect` below is the
+  call, and it is never fatal — the write has already landed and been confirmed.
 - **No locale catalog entries exist yet for this menu.** v1's menu text, prompts and per-field labels
   are hardcoded English regardless of group language (only the three group-facing confirmation/error
   strings are machine-translated at send time via `translate()`, `universal_funcs.py:139-163`, an
@@ -64,6 +68,7 @@ from cb_core.settings import get_settings
 from cb_core.telemetry import current_trace_id
 from cb_gateway.context import context_for
 from cb_gateway.filters import CommandName
+from cb_gateway.handlers import setlang
 from cb_gateway.telemetry import error_reason_for_chat, mark_outcome
 
 log = get_logger("cb.config_menu")
@@ -397,6 +402,30 @@ async def apply_change(group_id: int, field: ConfigField, value: object) -> Grou
     return await group_config.set_config(group_id, **{field.column: value})
 
 
+async def apply_language_side_effect(bot: Bot, group_id: int, language: object) -> None:
+    """Relabel the group's Telegram command menu after a language change.
+
+    v1 does this on the same path (`set_language` → `set_language_commands`,
+    `Configurations.py:79-98,176-177`): changing the language repoints the
+    chat-scoped command list so the menu Telegram itself shows reads in the
+    group's chosen language. This module's docstring used to list it as
+    deliberately-not-reproduced, on the grounds that the command menu is
+    `core_setlang`'s concern rather than a `group_configs` write — which is
+    true of the *implementation* and was the right call for that port, but left
+    the side effect with no owner at all: `setlang.set_group_commands` was
+    written, tested and never called from here, so an admin who changed the
+    language through `/config` saw every reply change and the command menu stay
+    in the old one.
+
+    Never fatal. The write already landed and the admin has been told so; a
+    `setMyCommands` failure (Telegram rate limit, a bot without the rights)
+    must not turn a successful save into an error message. `set_group_commands`
+    already swallows and reports its own failures with `silent=True`, which is
+    exactly the shape this call site needs.
+    """
+    await setlang.set_group_commands(bot, group_id, str(language), silent=True)
+
+
 def _is_config_reply(message: Message) -> bool:
     reply_to = message.reply_to_message
     return bool(reply_to is not None and reply_to.text and _MAGIC_MARKER in reply_to.text)
@@ -525,6 +554,9 @@ async def apply_config_reply(message: Message) -> None:
         await message.answer(await _write_failed_text(group_id, exc))
         return
 
+    if field.kind == "language" and message.bot is not None:
+        await apply_language_side_effect(message.bot, group_id, value)
+
     try:
         await message.react([ReactionTypeEmoji(emoji="👍")])
     except Exception as exc:  # noqa: BLE001 - a cosmetic reaction must not break the confirmation
@@ -538,6 +570,7 @@ __all__ = [
     "FIELD_BY_LETTER",
     "ConfigField",
     "apply_change",
+    "apply_language_side_effect",
     "build_callback_data",
     "build_menu_keyboard",
     "build_prompt",

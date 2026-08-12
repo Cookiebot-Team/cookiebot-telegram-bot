@@ -3,7 +3,7 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Mongo -> Citus backfill"
-description: "configs/rules/welcomes/users/blacklist/groups import, idempotent; randomdatabase needs a Telegram-download backfill"
+description: "configs/rules/welcomes/users/blacklist/groups/stickerdatabase import, idempotent (stickerdatabase -> the new global sticker_pool reference table, migration 0009); randomdatabase alone still needs a Telegram-download backfill - its rows have no content_hash/blob_key and media_objects requires both NOT NULL"
 status: partial
 milestone: M4
 area: platform

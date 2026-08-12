@@ -91,7 +91,11 @@ config:
   ownerId: 0
   defaultLanguage: en
 
-  # memory:// | s3://bucket | gs://bucket — cb_core.storage (obstore)
+  # memory:// | s3://bucket | gs://bucket — cb_core.storage (obstore).
+  # Left at the default while objectStorage.enabled is true, the bundled MinIO
+  # wins and this resolves to s3://<objectStorage.bucket> (see _helpers.tpl):
+  # a deployment that asks for a bucket and gets an in-process dictionary is
+  # the failure this avoids, and it is invisible until a restart loses media.
   storageUri: "memory://"
 
   otlpEndpoint: http://alloy.observability.svc:4317
@@ -115,6 +119,39 @@ config:
 #   telegram-api-id    local Bot API server only
 #   telegram-api-hash  local Bot API server only
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Bundled S3 endpoint (MinIO), for a cluster with no cloud bucket.
+#
+# The application speaks S3 either way — obstore's S3Store reads its endpoint
+# and credentials from AWS_* in the environment, so pointing it at MinIO is
+# configuration, not a second code path. Enable this in UAT; in production
+# leave it off and set config.storageUri to the real bucket.
+#
+# The credential is NOT created here (see objectstore.yaml for why). Create the
+# Secret out of band with the two keys named below.
+# ---------------------------------------------------------------------------
+objectStorage:
+  enabled: false
+  image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+  clientImage: quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z
+  bucket: cookiebot
+  port: 9000
+  consolePort: 9001
+  # obstore signs every request, so a region has to be *a* value; MinIO ignores
+  # which one. us-east-1 is what every S3 client defaults to.
+  region: us-east-1
+  credentialsSecret:
+    name: cookiebot-object-storage
+    accessKeyKey: access-key
+    secretKeyKey: secret-key
+  persistence:
+    enabled: true
+    size: 8Gi
+    storageClass: ""
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 768Mi }
+
 secrets:
   name: cookiebot-secrets
   # Optional keys; left empty they are simply not injected.

@@ -47,3 +47,12 @@ Feature: /config command that allows the Admins to configure the bot's settings 
             | Thread Posts            | thread_posts            |
             | Max Posts               | max_posts               |
             | Publisher Members Only  | publisher_members_only  |
+
+    # Added while closing the gap HANDOFF.md §4.3 named: `setlang.set_group_commands`
+    # was written and tested for exactly this and never called, so an admin who
+    # changed the language saw every reply switch and the command menu stay in
+    # the old one. v1 does both on the same path (Configurations.py:176-177).
+    Scenario: Changing the language also relabels the group's command menu
+        Given the admin has been prompted for the new language
+        When the admin replies with "pt"
+        Then the bot relabels the group's Telegram command menu

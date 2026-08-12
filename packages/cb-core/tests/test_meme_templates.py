@@ -1,8 +1,8 @@
 """`cb_core.meme_templates` — v1's selection rules, against v1's own CSV.
 
-The catalog is a byte-for-byte copy of `Bot/Static/Meme/meme_metadata.csv`, so
-these assert the *rules* v1 applies to it (`SocialContent.py:234-243`) rather
-than restating its contents.
+The catalog is a copy of `Bot/Static/Meme/meme_metadata.csv` with one row
+removed (see the module docstring), so these assert the *rules* v1 applies to it
+(`SocialContent.py:234-243`) rather than restating its contents.
 """
 
 from __future__ import annotations
@@ -16,6 +16,20 @@ from cb_core import meme_templates as templates
 
 def test_the_catalog_loaded() -> None:
     assert len(templates.all_templates()) > 500
+
+
+def test_the_template_v1_deleted_is_not_in_the_catalog() -> None:
+    """v1 deleted this image (`cf87b052`) and left its CSV row behind.
+
+    Named explicitly rather than checked by "does every file exist", because
+    the images are not in the repository — the only place that comparison can
+    run is against a v1 checkout, which CI does not have. This is the guard for
+    the one thing that would silently undo the fix: re-copying the CSV verbatim
+    from v1 in some later port.
+    """
+    assert all(
+        t.filename != "photo_1893@29-11-2019_02-34-09.jpg" for t in templates.all_templates()
+    )
 
 
 def test_zero_blob_templates_are_excluded() -> None:

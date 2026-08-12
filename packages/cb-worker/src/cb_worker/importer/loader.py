@@ -33,6 +33,10 @@ worth stating once, here, rather than at each call site:
   costs nothing; `reason`/`source` are the mapper's best guess, not real data,
   and a v2-side moderator who later annotated a blacklist entry must keep that
   annotation across a re-run.
+* `sticker_pool`: `file_id` is both the only column and the conflict key, so
+  there is nothing left for `update_columns` to own — a re-run of a row
+  already present is a true no-op (`DO NOTHING`), never a reassertion of any
+  field, because the whole row *is* the natural key (`mappers.map_stickerdatabase`).
 * `users.created_at`, `groups.joined_at` and `blacklist.created_at` are "when we
   first saw this" — deliberately absent from `columns` entirely, so Postgres's
   own `DEFAULT now()` fires once, on the row's real first insert, and a re-run
@@ -168,6 +172,12 @@ TABLE_LOADS: dict[str, TableLoad] = {
         table="blacklist",
         columns=("subject_id", "kind", "reason", "source"),
         conflict_columns=("subject_id",),
+        update_columns=(),
+    ),
+    "sticker_pool": TableLoad(
+        table="sticker_pool",
+        columns=("file_id",),
+        conflict_columns=("file_id",),
         update_columns=(),
     ),
 }

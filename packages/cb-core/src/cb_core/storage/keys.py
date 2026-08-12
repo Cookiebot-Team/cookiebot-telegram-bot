@@ -41,28 +41,49 @@ def extension_for(kind: str) -> str:
     return _EXTENSIONS.get(kind, ".bin")
 
 
-def blob_key(kind: str, content_hash: str) -> str:
-    """`media/<kind>/<hh>/<hash><ext>` — stable, immutable, cacheable forever."""
+def blob_key(kind: str, content_hash: str, *, prefix: str = "") -> str:
+    """`media/<kind>/<hh>/<hash><ext>` — stable, immutable, cacheable forever.
+
+    `prefix`, when non-empty, is `Tenant.storage_prefix` (`cb_core/tenancy.py`)
+    prepended ahead of the whole content-addressed path (`<prefix>/media/...`).
+    That is a deliberate trade, not a neutral namespacing knob: this module's
+    docstring is what makes "the same sticker uploaded in fifty groups stores
+    once" true, and giving two tenants two different prefixes means the same
+    bytes now hash to two different keys and get stored twice — cross-tenant
+    dedupe traded away for per-tenant isolation (separate lifecycle rules,
+    separate buckets), exactly what `storage_prefix`'s own comment in
+    `tenancy.py` says it exists for.
+
+    The default `prefix=""` must keep returning **exactly** the key this
+    function returned before `storage_prefix` had a reader — every tenant row
+    shipped so far has `storage_prefix=""` (`0003_tenants.py`), and
+    `media_objects.blob_key` (`storage/media.py`) stores the key string itself,
+    not a formula to recompute it from. Change what an empty prefix produces
+    here and every already-stored row stops resolving.
+    """
     if kind not in _EXTENSIONS:
         raise ValueError(f"unknown media kind {kind!r}")
     if len(content_hash) < 4:
         raise ValueError("content hash too short")
-    return f"media/{kind}/{content_hash[:2]}/{content_hash}{extension_for(kind)}"
+    key = f"media/{kind}/{content_hash[:2]}/{content_hash}{extension_for(kind)}"
+    return f"{prefix}/{key}" if prefix else key
 
 
-def hash_and_key(kind: str, data: bytes) -> tuple[str, str]:
+def hash_and_key(kind: str, data: bytes, *, prefix: str = "") -> tuple[str, str]:
     """blake3 the bytes and derive the key in one pass."""
     digest = fingerprint(data)
-    return digest, blob_key(kind, digest)
+    return digest, blob_key(kind, digest, prefix=prefix)
 
 
-def derived_key(source_hash: str, variant: str, ext: str = ".png") -> str:
+def derived_key(source_hash: str, variant: str, ext: str = ".png", *, prefix: str = "") -> str:
     """Key for something we generated from a source blob (thumbnail, distorted copy).
 
     Deterministic, so regenerating the same variant overwrites rather than
     accumulating — v1 left `distorted.jpg` debris that startup had to sweep
-    (`COOKIEBOT.py:27-29`).
+    (`COOKIEBOT.py:27-29`). `prefix` follows the same rule as `blob_key`'s: empty
+    by default, byte-identical to the pre-tenancy key when omitted.
     """
     if not variant.isidentifier():
         raise ValueError(f"variant must be an identifier, got {variant!r}")
-    return f"derived/{variant}/{source_hash[:2]}/{source_hash}{ext}"
+    key = f"derived/{variant}/{source_hash[:2]}/{source_hash}{ext}"
+    return f"{prefix}/{key}" if prefix else key

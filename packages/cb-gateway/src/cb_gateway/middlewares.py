@@ -14,13 +14,14 @@ from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject, Update
 from opentelemetry.trace import SpanKind
 
-from cb_core import cache, errors, groups, locales, metrics
+from cb_core import cache, errors, groups, locales, metrics, tenancy
 from cb_core.dedupe import RecentIds, idempotency_key
 from cb_core.events import recorder
 from cb_core.logging import get_logger
 from cb_core.telemetry import current_trace_id, record_error, span
-from cb_core.textmatch import parse_command
-from cb_gateway.telemetry import OUTCOME_ATTR, error_reason_for_chat
+from cb_core.textmatch import ParsedCommand, parse_command
+from cb_gateway.command_catalog import command_blocked_for_tenant, fetch_catalog_row
+from cb_gateway.telemetry import OUTCOME_ATTR, error_reason_for_chat, mark_outcome
 
 log = get_logger("cb.gateway.mw")
 
@@ -283,3 +284,69 @@ class TelemetryMiddleware(BaseMiddleware):
                         handler=utype,
                         skin=skin,
                     )
+
+
+class TenantCommandGateMiddleware(BaseMiddleware):
+    """Dispatch-level enforcement of `tenant.disabled_commands` — the gap
+    `.specs/features/platform_tenancy/spec.md` named as the one most likely to
+    surprise a tenant admin: before this, `disabled_commands` was consulted in
+    exactly one place (`listcommand.py`, to hide a command from `/commands`'
+    own listing), so a "disabled" command still ran for anyone who typed it.
+
+    Registered last of the three outer middlewares (`main.py`), i.e. innermost
+    — it must run *after* `TelemetryMiddleware` has populated
+    `data["parsed_command"]`, since it reads that field instead of parsing the
+    text a second time. Non-commands (a plain message, a join, a callback with
+    no command) leave `parsed_command` `None`, so they fall straight through to
+    `handler(event, data)` with no tenant or catalog lookup at all — the
+    per-update cost this adds is exactly zero unless the update is a command.
+
+    The catalog fetch is the same seam `/commands` uses, but the *rule* applied
+    to its result is `command_blocked_for_tenant`, not the listing's
+    `command_available_for_tenant`. Read that function's docstring before
+    changing either: listing is an allowlist (advertise only what the catalog
+    describes) and dispatch is a denylist (drop only what is explicitly off).
+    Collapsing them deletes every command the 29-row seed does not mention —
+    `/giveaway`, `/transcribe`, `/destroy`, every owner command — from the bot.
+
+    Fails open: a tenant-registry or catalog outage must run the command, not
+    drop it — the same rule `DedupeMiddleware`'s cache branch above follows for
+    a Valkey outage, and `core_stickerspam`'s "cache outage fails open not
+    closed" scenario. `tenancy.registry.by_skin` already never raises (falls
+    back to `tenancy.FALLBACK`); only the catalog read can raise here, same as
+    in `listcommand._commands_available`.
+    """
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
+        parsed: ParsedCommand | None = data.get("parsed_command")
+        if parsed is None:
+            return await handler(event, data)
+
+        skin: str = data.get("skin", tenancy.DEFAULT_TENANT)
+        try:
+            tenant = await tenancy.registry.by_skin(skin)
+            row = await fetch_catalog_row(parsed.name)
+        except Exception as exc:  # noqa: BLE001 - a lookup outage must not drop a command
+            log.warning("tenant_gate.lookup_failed", skin=skin, command=parsed.name, error=str(exc))
+            return await handler(event, data)
+
+        if not command_blocked_for_tenant(parsed.name, row, tenant):
+            return await handler(event, data)
+
+        # Silent, matching how v1's absent handler behaved: a persona that
+        # never had a given command simply produced no reply, never an error
+        # message (module docstring; do not invent one here).
+        metrics.updates_dropped_total.labels(reason="tenant_disabled").inc()
+        log.info(
+            "tenant_gate.command_disabled",
+            skin=skin,
+            tenant_id=tenant.tenant_id,
+            command=parsed.name,
+        )
+        mark_outcome("silent")
+        return None
