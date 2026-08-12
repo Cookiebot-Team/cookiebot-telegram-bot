@@ -29,7 +29,7 @@ byte at exit.
 
 | Step | Writes | What it does |
 |---|---|---|
-| `preflight` | never | Postgres reachable, storage URI usable, Mongo source configured, v1 checkout present |
+| `preflight` | never | Postgres reachable, storage URI usable, Mongo source configured, GCS export credential configured and the bucket listable, v1 checkout present |
 | `schema` | Postgres | `alembic upgrade head`, reporting the revision before and after |
 | `mongo` | Postgres | v1 MongoDB (or a `mongodump` directory) → Citus |
 | `bucket` | object storage | v1's private GCS bucket → v2 object storage |

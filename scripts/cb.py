@@ -281,6 +281,21 @@ def bucket_export(extra: list[str]) -> int:
     return run("uv", "run", "python", "-m", "cb_worker.bucket_export", *extra)
 
 
+@task("gcs-auth", "authenticate/provision/revoke the temporary GCS bucket-export credential")
+def gcs_auth(extra: list[str]) -> int:
+    """`status` (read-only), `provision --bucket <name>` and `revoke
+    --service-account <email> --bucket <name>` for the credential
+    `bucket-export`/`cutover`'s `bucket` step reads the v1 bucket with.
+
+    `provision` creates a short-lived service account scoped to read exactly
+    one bucket, grants the operator the right to impersonate it, and prints
+    the `CB_GCS_EXPORT_SERVICE_ACCOUNT=...` line to export — no service-account
+    key ever needs to touch disk. See
+    `docs/site/content/docs/cutover-bucket-export.mdx` for the full contract.
+    """
+    return run("uv", "run", "python", "-m", "cb_worker.bucket_export.gcp_auth_cli", *extra)
+
+
 @task("meme-seed", "copy v1's meme templates into v2 object storage")
 def meme_seed(extra: list[str]) -> int:
     """fun_meme's 110 MB of templates, out of the v1 checkout and into

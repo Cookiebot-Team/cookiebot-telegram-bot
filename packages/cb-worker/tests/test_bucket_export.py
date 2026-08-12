@@ -26,13 +26,26 @@ from google.cloud import storage as gcs_storage
 
 from cb_core.dedupe import fingerprint
 from cb_core.storage import store_from_uri
-from cb_worker.bucket_export import PREFIXES, ManifestEntry, SourceBlob
+from cb_worker.bucket_export import PREFIXES, ManifestEntry, SourceBlob, gcp_auth
 from cb_worker.bucket_export import manifest as manifest_io
 from cb_worker.bucket_export.keys import destination_key
 from cb_worker.bucket_export.runner import run_export, verify_manifest
 from cb_worker.bucket_export.source import GcsReadOnlySource, GcsSourceError, open_source
 
 _READ_ONLY_SCOPE = "https://www.googleapis.com/auth/devstorage.read_only"
+
+
+@pytest.fixture(autouse=True)
+def _clean_gcp_export_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every credential-path test below assumes a clean environment for the
+    two variables `gcp_auth.export_credentials` branches on. A real
+    `GOOGLE_APPLICATION_CREDENTIALS` or `CB_GCS_EXPORT_SERVICE_ACCOUNT`
+    leaking in from the developer's own shell (or from `gcloud auth
+    application-default login` having been run on this machine) must not
+    silently change which credential path a test exercises.
+    """
+    monkeypatch.delenv(gcp_auth.KEY_FILE_ENV, raising=False)
+    monkeypatch.delenv(gcp_auth.SERVICE_ACCOUNT_ENV, raising=False)
 
 
 class FakeBucketSource:
@@ -438,6 +451,20 @@ class TestReadOnlyEnforcement:
         with pytest.raises(GcsSourceError, match="GOOGLE_APPLICATION_CREDENTIALS"):
             open_source("cookiebot-bucket")
 
+    def test_open_source_error_names_gcs_auth_provision(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The way out of a missing credential is no longer only "set an env
+        var" — it is also `gcs-auth provision`, and the error message says so."""
+
+        def fake_default(scopes: list[str] | None = None) -> tuple[object, str]:
+            raise DefaultCredentialsError("no credentials here")
+
+        monkeypatch.setattr(google.auth, "default", fake_default)
+
+        with pytest.raises(GcsSourceError, match="gcs-auth provision"):
+            open_source("cookiebot-bucket")
+
     def test_list_prefix_wraps_backend_errors(self) -> None:
         source = GcsReadOnlySource(_BrokenGcsClient(), "cookiebot-bucket")
 
@@ -449,3 +476,82 @@ class TestReadOnlyEnforcement:
 
         with pytest.raises(GcsSourceError, match="downloading"):
             source.download("Death/a.png")
+
+    # ---- the read-only scope survives every credential path gcp_auth offers ----
+    # (extends the enforcement above, which only exercised `open_source`'s own
+    # default-ADC path; these three prove the same guarantee for the other two
+    # paths `export_credentials` can take, per its own module docstring.)
+
+    def test_export_credentials_adc_path_is_read_only_scope(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        captured: dict[str, object] = {}
+
+        def fake_default(scopes: list[str] | None = None) -> tuple[object, str | None]:
+            captured["scopes"] = scopes
+            return object(), "fake-project"
+
+        monkeypatch.setattr(google.auth, "default", fake_default)
+
+        gcp_auth.export_credentials()
+
+        assert captured["scopes"] == [gcp_auth.READ_ONLY_SCOPE]
+
+    def test_export_credentials_key_file_path_is_read_only_scope(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        captured: dict[str, object] = {}
+
+        class _FakeServiceAccountCredentials:
+            def __init__(self, scopes: object) -> None:
+                self.scopes = scopes
+                self.project_id = "fake-project"
+
+        def fake_from_service_account_file(filename: str, scopes: object = None) -> object:
+            captured["filename"] = filename
+            captured["scopes"] = scopes
+            return _FakeServiceAccountCredentials(scopes)
+
+        monkeypatch.setattr(
+            gcp_auth.service_account.Credentials,
+            "from_service_account_file",
+            fake_from_service_account_file,
+        )
+
+        key_path = tmp_path / "key.json"
+        credentials, _ = gcp_auth.export_credentials(key_file=str(key_path))
+
+        assert captured["scopes"] == [gcp_auth.READ_ONLY_SCOPE]
+        assert credentials.scopes == [gcp_auth.READ_ONLY_SCOPE]  # type: ignore[attr-defined]
+
+    def test_export_credentials_impersonation_path_is_read_only_scope(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        captured: dict[str, object] = {}
+
+        def fake_default(scopes: list[str] | None = None) -> tuple[object, str | None]:
+            return object(), "fake-project"
+
+        class _FakeImpersonatedCredentials:
+            def __init__(
+                self,
+                *,
+                source_credentials: object,
+                target_principal: str,
+                target_scopes: list[str],
+                lifetime: int,
+            ) -> None:
+                captured["target_principal"] = target_principal
+                captured["target_scopes"] = target_scopes
+                self.service_account_email = target_principal
+
+        monkeypatch.setattr(google.auth, "default", fake_default)
+        monkeypatch.setattr(
+            gcp_auth.impersonated_credentials, "Credentials", _FakeImpersonatedCredentials
+        )
+        monkeypatch.setenv(gcp_auth.SERVICE_ACCOUNT_ENV, "export-sa@proj.iam.gserviceaccount.com")
+
+        gcp_auth.export_credentials()
+
+        assert captured["target_scopes"] == [gcp_auth.READ_ONLY_SCOPE]
+        assert captured["target_principal"] == "export-sa@proj.iam.gserviceaccount.com"

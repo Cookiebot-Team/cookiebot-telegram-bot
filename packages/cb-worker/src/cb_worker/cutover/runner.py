@@ -41,8 +41,10 @@ from cb_core.migrations import ensure_schema, head_revision, migrations_dir
 from cb_core.settings import Settings
 from cb_core.storage import BlobStore, store_from_uri
 from cb_worker import meme_seed
+from cb_worker.bucket_export import gcp_auth
 from cb_worker.bucket_export import manifest as bucket_manifest_io
 from cb_worker.bucket_export.runner import run_export
+from cb_worker.bucket_export.source import GcsSourceError
 from cb_worker.bucket_export.source import open_source as open_bucket_source
 from cb_worker.cutover import (
     CheckStatus,
@@ -206,6 +208,44 @@ def _check_mongo(settings: Settings) -> PreflightCheck:
     return PreflightCheck("mongo source", "ok", f"{len(names)} collection(s) reachable")
 
 
+def _check_gcs_export() -> PreflightCheck:
+    """Which identity `bucket` would read v1's GCS bucket as, and whether that
+    identity can actually list it — or a clean skip when no source bucket is
+    configured at all.
+
+    Unconditional skip, not "fail only if `bucket` was explicitly selected"
+    like `_check_meme_source` below: `_step_bucket` itself already treats a
+    missing `CB_BUCKET_EXPORT_SOURCE_BUCKET` as "not configured" and skips
+    cleanly (module docstring), so a preflight run against an environment that
+    has never provisioned a GCS credential — every environment, before
+    `gcs-auth provision` has been run once — must not call that gap a failure.
+    """
+    bucket_name = os.environ.get("CB_BUCKET_EXPORT_SOURCE_BUCKET", "").strip()
+    if not bucket_name:
+        return PreflightCheck(
+            "gcs export credential", "skip", "CB_BUCKET_EXPORT_SOURCE_BUCKET is not set"
+        )
+    try:
+        credentials, _ = gcp_auth.export_credentials()
+    except gcp_auth.GcsAuthError as exc:
+        return PreflightCheck(
+            "gcs export credential",
+            "fail",
+            f"{exc} (run `python scripts/cb.py gcs-auth status` for detail)",
+        )
+
+    identity = gcp_auth.describe_credentials(credentials)
+    try:
+        source = open_bucket_source(bucket_name)
+        try:
+            next(iter(source.list_prefix("")), None)
+        finally:
+            source.close()
+    except GcsSourceError as exc:
+        return PreflightCheck("gcs export credential", "fail", f"{identity}: {exc}")
+    return PreflightCheck("gcs export credential", "ok", f"{bucket_name} listable as {identity}")
+
+
 def _check_meme_source(source: Path, selected: frozenset[StepName]) -> PreflightCheck:
     v1_dir = source / meme_seed.V1_SUBPATH
     if not v1_dir.is_dir():
@@ -219,14 +259,16 @@ def _check_meme_source(source: Path, selected: frozenset[StepName]) -> Preflight
 async def run_preflight(
     settings: Settings, *, selected: frozenset[StepName], meme_source: Path
 ) -> list[PreflightCheck]:
-    """The four checks cutover day needs before anything writes: Postgres,
-    object storage, the Mongo source, and the v1 meme checkout. Every check
-    here is a read (`SELECT 1`, a `listCollections`, a directory stat) — never
-    a write, per the module's own contract."""
+    """The five checks cutover day needs before anything writes: Postgres,
+    object storage, the Mongo source, the GCS export credential, and the v1
+    meme checkout. Every check here is a read (`SELECT 1`, a
+    `listCollections`, a `list_blobs(max_results=1)`, a directory stat) —
+    never a write, per the module's own contract."""
     return [
         await _check_postgres(settings),
         _check_storage(settings, selected),
         _check_mongo(settings),
+        _check_gcs_export(),
         _check_meme_source(meme_source, selected),
     ]
 

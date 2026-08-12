@@ -52,6 +52,131 @@ just by convention:**
    client is built with exactly the read-only scope. If a future change adds a
    write path back, this test fails the build, not just review.
 
+## Getting a credential
+
+Nobody on this team holds a standing key for `cookiebot-bucket`. What the
+operator running cutover *does* have is their own Google account, already
+granted access — the tooling in `cb_worker.bucket_export.gcp_auth`
+(`python scripts/cb.py gcs-auth ...`) is what turns that into a credential
+`open_source` can actually use, without a key ever touching disk.
+
+### 1. Authenticate as yourself
+
+```bash
+gcloud auth application-default login
+```
+
+This is Application Default Credentials (ADC), not a project-specific step —
+the same login every other `gcloud`/client-library tool on this machine
+shares. `python scripts/cb.py gcs-auth status` reads it back read-only (no
+write, ever) and reports exactly what it found: whether ADC exists, who it
+resolves to (a service-account key names itself; a personal account is
+resolved with one `userinfo` call, since the ADC file for a personal account
+is a bare refresh token with no email in it), which project it defaults to,
+and whether the configured bucket is actually listable with it. Missing ADC
+is reported, not raised — the row names the exact command above as the fix.
+
+### 2. Provision a temporary, bucket-scoped account
+
+```bash
+python scripts/cb.py gcs-auth provision --bucket cookiebot-bucket
+```
+
+Creates a service account named for what it is
+(`cb-bucket-export-<timestamp>`) and grants it exactly two things, both
+resource-scoped, never project-wide:
+
+| Grant | Resource | Why |
+|---|---|---|
+| `roles/storage.objectViewer` | `cookiebot-bucket` only | read access to the source bucket, nothing else — not `objectAdmin`, not the project |
+| `roles/iam.serviceAccountTokenCreator` | the new service account itself | lets the operator impersonate it — see "Why impersonation" below |
+
+Both grants are read-modify-write against the *current* policy of their
+resource: an existing binding — the bucket's pre-existing `legacyBucketOwner`/
+`legacyBucketReader`/`legacyObjectOwner`/`legacyObjectReader` entries from
+uniform-bucket-level-access migration, another team's prior grant — is never
+dropped, only added to. `provision` prints the plan (the exact account,
+grants and resources) and asks for confirmation before doing anything;
+`--yes` skips the prompt and `--dry-run` makes zero mutating calls, printing
+only what *would* happen — useful for previewing on a machine with no
+credentials at all.
+
+**The bucket grant retries on its own for up to about half a minute.** A
+service account is not immediately visible to every Google API the moment it
+is created — this is documented GCP behaviour, and it is the normal case
+here, not an edge one. Measured against a real project: Cloud Storage's
+bucket `setIamPolicy` can 400 with `"...Service account ... does not
+exist"` for a few tens of seconds after the account is created.
+`provision`'s progress line says what it is waiting for during that window
+so it reads as progress, not a hang. The retry is narrowly scoped to that
+exact, verified error phrase, so a genuinely wrong account name or a real
+permission error still fails immediately — a bare HTTP status code is
+deliberately not enough to trigger it (a `GET` sent to an IAM endpoint that
+only accepts `POST` also 404s, permanently, and status-code-only retry logic
+spent real debugging time being mistaken for propagation lag on exactly that
+bug before this module started calling it correctly).
+
+**If a grant still fails after retrying**, the service account was already
+created and is left in place rather than auto-deleted (deleting it right
+after a failed grant would race the same propagation lag that likely caused
+the failure). `provision` prints the account's email and the exact
+`gcs-auth revoke` command to clean it up — nothing is left silently behind.
+
+**`provision` also waits for the impersonation grant to actually take
+effect before declaring success**, separately from the retry above: the API
+call granting `serviceAccountTokenCreator` returning success does not mean
+impersonation works yet. Measured against a real project, it started working
+22 seconds after the grant call returned — `provision` polls (about a minute
+of budget) rather than handing back a `CB_GCS_EXPORT_SERVICE_ACCOUNT=...`
+line whose very next use would fail. If the window is exceeded, the account
+and both grants genuinely exist (`provision` still prints them) but the exit
+code is `1` and the message says to re-check with `gcs-auth status` in a
+minute or two rather than assuming something is actually broken.
+
+The last line `provision` prints on success is the one thing to keep:
+
+```
+CB_GCS_EXPORT_SERVICE_ACCOUNT=cb-bucket-export-<timestamp>@<project>.iam.gserviceaccount.com
+```
+
+Export it (or set it in whatever environment runs `bucket-export`/`cutover`)
+and `source.open_source` picks it up automatically.
+
+### Why impersonation, not a key file
+
+`export_credentials` — what `open_source` actually calls — prefers, in
+order: impersonating `CB_GCS_EXPORT_SERVICE_ACCOUNT` if set, else a key file
+at `GOOGLE_APPLICATION_CREDENTIALS`, else the operator's own ADC. Every one
+of those three ends up scoped to exactly `devstorage.read_only` before it is
+handed back — the impersonation path pins this with
+`impersonated_credentials.Credentials(target_scopes=[...])`, regardless of
+what the operator's own token backing the impersonation can do.
+
+Impersonation is the default because a key file is the thing to avoid, not a
+convenience with a downside: a key outlives this process, has to be rotated
+and deleted by hand, and is a standing credential the moment it exists,
+whether or not it is ever used again. An impersonated token is minted fresh
+per session and expires on its own even if nobody ever runs `revoke`.
+`create_export_key` exists only for the one environment that cannot
+impersonate at all (no `gcloud` session to impersonate *from*, a CI runner
+holding only a key secret) — `provision --key-file PATH` opts into it, with
+a loud warning, and it is not what a normal cutover run should reach for.
+
+### 3. Revoke it when the export is done
+
+```bash
+python scripts/cb.py gcs-auth revoke \
+  --service-account cb-bucket-export-<timestamp>@<project>.iam.gserviceaccount.com \
+  --bucket cookiebot-bucket
+```
+
+Removes the bucket binding and deletes the service account. Safe to run more
+than once, or after half of it was already cleaned up by hand: a binding
+that is already gone is reported as `already absent`, not an error, and
+likewise a service account that is already deleted is reported as
+`already gone`. `--project` is accepted for the same reason `provision`
+does — pass the one it printed if it is not the operator's own ADC default.
+
 ## The prefix inventory
 
 Not a list handed down from anywhere — every prefix below was found by
@@ -116,19 +241,23 @@ export CB_BUCKET_EXPORT_SOURCE_BUCKET=cookiebot-bucket
 export CB_BUCKET_EXPORT_DEST_URI=s3://cookiebot-legacy-assets
 export CB_BUCKET_EXPORT_DEST_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 export CB_BUCKET_EXPORT_DEST_REGION=auto
-export GOOGLE_APPLICATION_CREDENTIALS=/path/to/a-read-only-service-account-key.json
+export CB_GCS_EXPORT_SERVICE_ACCOUNT=cb-bucket-export-<timestamp>@<project>.iam.gserviceaccount.com
 ```
 
-The service account behind `GOOGLE_APPLICATION_CREDENTIALS` needs at least
-`storage.objectViewer` on `cookiebot-bucket` — nothing more, and the read-only
-scope above means nothing more would help even if granted. The destination
-credentials (R2's S3-compatible access key/secret) are read the same way any
-`s3://` destination reads them elsewhere in this codebase — `AWS_ACCESS_KEY_ID`
-/ `AWS_SECRET_ACCESS_KEY` in the environment.
+The last line is the output of `gcs-auth provision` — see "Getting a
+credential" above for how to get one and why impersonation, not a key file,
+is the default. `GOOGLE_APPLICATION_CREDENTIALS` still works as a fallback
+(a service-account key needs at least `storage.objectViewer` on
+`cookiebot-bucket`, nothing more, and the read-only scope means nothing more
+would help even if granted) for the one case that cannot impersonate at all.
+The destination credentials (R2's S3-compatible access key/secret) are read
+the same way any `s3://` destination reads them elsewhere in this codebase —
+`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` in the environment.
 
 If any of the source/destination configuration is missing, the tool fails
 immediately with a one-line, actionable message and exit code `2` — never a
-stack trace. Same for missing Google credentials.
+stack trace. Same for missing Google credentials, and that message now names
+`gcs-auth provision` as the way out.
 
 ### 2. Dry run
 
