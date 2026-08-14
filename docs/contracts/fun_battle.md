@@ -11,16 +11,16 @@ line), `packages/cb-gateway/tests/test_battle.py` (new), `qa/mock_telegram.py`
 added to the generic Message-response set), `qa/features/fun_battle.feature`
 (new), `qa/test_fun_battle.py` (new), this file.
 
-## This slice ships one of v1's three shapes
+## All three of v1's shapes ship
 
 v1's `battle` (`../COOKIEBOT-Telegram-Group-Bot/Bot/SocialContent.py:294-379`)
 hides three completely different code paths behind one trigger — two people,
 one tagged person vs. a random "fighter" character, or the caller vs. a
-random fighter. Only the **two-people** shape ships in this slice
-(`Status.PARTIAL` in `scripts/spec.py`). The other two need a private GCS
-bucket export this environment cannot reach — see "What's still blocked"
-below, and `docs/contracts/fun_death.md` / `.specs/features/fun_death/spec.md`
-for the identical prerequisite already documented there.
+random fighter. The **two-people** shape shipped first; the two fighter
+shapes were `Status.PARTIAL` while v1's private GCS bucket was unreachable
+and answered `battle_no_picture` in the meantime. That bucket has since been
+exported (`cb_worker.bucket_export`) and catalogued (`cb.py legacy-catalog`),
+so both now do what v1 does — see "The fighter shapes" below.
 
 ## Phase 1 — where v1 lives
 
@@ -44,7 +44,12 @@ for the identical prerequisite already documented there.
 | Shape selection | `len(tags) > 1 or "random" in text.lower()` ⇒ two-people; `"random"` wins over explicit tags when both are present (v1 re-checks it once shape is already decided, `:298-299`); else `len(tags) == 1` ⇒ one-tag; else ⇒ self. Only the first two tags are ever used; a third+ is silently ignored. |
 | Two-people success | `sendMediaGroup` (two photos, first captioned `"{a} VS {b}"` or `"@{a} VS @{b}"` for `"random"` picks + flavour suffix), then `sendPoll(is_anonymous=False, allows_multiple_answers=False)`, both as replies to the trigger — v1's exact shape (`:328-343`) |
 | Two-people failure | fewer than two eligible `"random"` candidates ⇒ `battle_no`; either side's photo extraction fails ⇒ `battle_extract` naming that side, checked in order (first side before the second is even attempted) |
-| One-tag / self | pit that person (or the caller) against a random "fighter" image from a private GCS bucket — see "What's still blocked" |
+| One-tag success | that person's photo vs. a random `Fight/` fighter, coin-flipped order, `sendMediaGroup` + `sendPoll` as replies (`:346-357,366-379`). Caption is a bare `"{a} VS {b}"` — **no flavour suffix**, unlike the two-people shape |
+| One-tag failure | the tagged user's photo could not be fetched ⇒ `battle_private` — a *different* string from the two-people shape's `battle_extract` (`:352`) |
+| Self success | the caller's own photo vs. a random `Fight/` fighter, same tail. The caller is named `username` or, with none, `first_name` — **without** an `@` (`:359`) |
+| Self failure | `getUserProfilePhotos` returns nothing (v1: `IndexError`) ⇒ `battle_no_picture` (`:361-364`) |
+| Fighter pool | `pt` draws from *either* pool (`random.choice(random.choice([eng, pt]))`, `:367`) so both are equally likely regardless of size (711 English, 114 Portuguese); every other language draws English only (`:370`). The fighter's name comes from its filename, not a locale string: `.split('/')[-1]`, `.png`/`.jpg`/`.jpeg` stripped, `_` → space, `.capitalize()` (`:373`) |
+| Poll title (fighter shapes) | `pt` gets `battle_title_plus` with a random `battle_title_list` suffix; every other language gets the plain `battle_title` (`:368,371`) |
 | What closes the poll | Nothing. No `stopPoll` anywhere in v1 — a `/battle` poll stays open until a human closes it by hand. Vote tallies live entirely inside Telegram (a genuine native poll, `is_anonymous=False`), never in v1's process or a backend table — **no vote-state defect of the `core_stickerspam`-in-process-counter shape exists here**, because the state was never in v1's process to begin with. |
 | Persistence | None — no table, no row |
 | External calls (v1) | `telegram.me` HTML scrape (BeautifulSoup) for two-people/one-tag photos, GCS signed-URL read for the fighter image, Bot API `getUserProfilePhotos` for the self case only |
@@ -76,28 +81,29 @@ message, the same string a failed scrape would already have produced, naming
 the same tagged text. A user only notices *that* the battle failed, never a
 difference in *how*.
 
-## What's still blocked — one-tag and self shapes
+## The fighter shapes
 
-Both need a "fighter" opponent image from `bloblist_fighters_eng`/
-`bloblist_fighters_pt` (`SocialContent.py:24-25`,
-`storage_bucket.list_blobs(prefix="Fight/English"|"Fight/Portuguese")`) — the
-same private `cookiebot-bucket` GCS bucket `fun_death`'s `bloblist_death`
-reads from, a different prefix. Confirmed (same evidence
-`fun_death`'s contract already gives for its own prefix): no `Fight`/
-`fighter`-named asset anywhere in the `../COOKIEBOT-Telegram-Group-Bot`
-checkout, no credential anywhere in this environment.
+`bloblist_fighters_eng`/`bloblist_fighters_pt` (`SocialContent.py:24-25`) were
+`storage_bucket.list_blobs(prefix="Fight/English"|"Fight/Portuguese")` against
+v1's private `cookiebot-bucket` — the same bucket `fun_death`'s `Death/` prefix
+reads from. Both prefixes are exported now (711 + 114 objects), and this port
+reads them the way `death.py` reads its own pool: `legacy_assets.choose` for the
+catalog row, `cb_core.storage` for the bytes, a `BufferedInputFile` into the
+media group. v1's 15-minute signed URL has no equivalent and needs none — the
+bytes are ours now.
 
-**Temporary route, not final behaviour**: rather than inventing a new
-"not implemented yet" string, both shapes reply `battle_no_picture` —
-v1's own, already-ported "you need a profile picture (or it's private)"
-string, repurposed for "there is no fighter image to use" (also literally
-true). No roster lookup, no Bot API call, no photo resolution is attempted
-for these two shapes at all — the branch is detected and answered
-immediately (`cb_gateway/handlers/battle.py`'s `battle` function, the
-`shape is not BattleShape.TWO_PEOPLE` branch). This is replaced once the
-`Fight/` prefix is exported and vendored into `cb_core/asset_data/fight/`
-(mirroring `fun_death`'s still-blocked plan for its own pool) — tracked as
-the same `HANDOFF.md` gap as `fun_death`, not a separate one.
+Only the *human* half changed mechanism: the one-tag shape resolves its tag
+through the roster and `get_user_profile_photos` rather than scraping
+`telegram.me`, exactly as the two-people shape already does, and both the
+unresolvable-tag case and the no-visible-photo case answer v1's own
+`battle_private`. The self shape's photo lookup is byte-for-byte v1's, because
+v1 already used the Bot API there.
+
+**An un-catalogued pool sends nothing.** `legacy_assets.choose` returns `None`
+in a deployment where `cb.py legacy-catalog` has never run; the handler logs
+`battle.fighter_pool_empty` and stops, after the reaction and chat action have
+already gone out. v1 had no equivalent — an empty bucket listing crashed in
+`random.choice(...)`. Same decision, same reasoning as `fun_death`'s D-DE-3.
 
 ## Phase 6 — parity table
 
@@ -114,26 +120,30 @@ the same `HANDOFF.md` gap as `fun_death`, not a separate one.
 | What closes the poll | **same** — nothing, in both v1 and v2 |
 | Local temp-file race (D-BT-1) | **fixed** — no local file exists to race over |
 | `battle_extract` naming bug on `"random"` extraction failure (D-BT-3) | **fixed** — no equivalent code path exists |
-| One-tag / self shapes | **not yet ported** — temporary `battle_no_picture` reuse, blocked on the `Fight/` GCS export, same prerequisite as `fun_death` |
+| One-tag / self shapes | **same** — both ship, reading the exported `Fight/English` and `Fight/Portuguese` pools |
+| Fighter name derivation (`.capitalize()` lower-casing the rest, only three extensions stripped) | **same, warts included** — a `.gif` fighter still carries its extension in the poll option |
+| `pt` drawing from either fighter pool, and its `battle_title_plus` poll title | **same** |
+| Fighter image transport | **changed (mechanism only)** — bytes from `cb_core.storage` instead of a 15-minute GCS signed URL; the user sees the same photo |
+| Empty fighter pool | **changed (fixed)** — logs and sends nothing, where v1 raised `ValueError` inside `random.choice` |
 
 ## QA
 
 `../Cookiebot-QA/features/fun_battle.feature` has one scenario, and it targets
-v1's **one-tag** path ("tags another user", singular) — the shape this slice
-does not ship. `qa/features/fun_battle.feature` copies it wording-unchanged;
-its step definition (`qa/test_fun_battle.py::qa_scenario_not_yet_reachable`)
-calls `pytest.skip()` with the same reason rather than asserting an outcome
-that doesn't exist yet or silently repurposing the wording to check something
-else. Six net-new scenarios cover what this slice actually ships: two explicit
-tags, `"random"` (enough and too-few members), an unresolvable tag, the bare
-`/battle` temporary route, and the `fun_off` gate.
+v1's **one-tag** path ("tags another user", singular). It was skipped while
+that shape was blocked and runs for real now; its wording is unchanged, and
+its "Option A"/"Option B" phrasing still does not name the real poll options
+(the two display names) — recorded as a QA-vs-v1 conflict rather than
+reconciled, per AGENTS.md §1. Nine net-new scenarios cover the rest: two
+explicit tags, `"random"` (enough and too-few members), an unresolvable tag,
+the caller-vs-fighter shape, a caller with no photo, a tagged member with no
+visible photo, an un-catalogued fighter pool, and the `fun_off` gate.
 
 ## Tests
 
 | Layer | File |
 |---|---|
 | Unit — target parsing, shape selection, roster resolution, catalog reads, caption assembly | `packages/cb-gateway/tests/test_battle.py` |
-| Acceptance — one skipped (QA's one-tag scenario) + six net-new | `qa/features/fun_battle.feature`, `qa/test_fun_battle.py` |
+| Acceptance — QA's own one-tag scenario + nine net-new | `qa/features/fun_battle.feature`, `qa/test_fun_battle.py` |
 
 No integration-layer test: this feature has no persistence and no Citus-hot
 query of its own (`members.roster`'s own single-shard plan is already

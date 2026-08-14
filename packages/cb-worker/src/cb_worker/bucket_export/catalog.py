@@ -80,6 +80,29 @@ DEFAULT_OUTPUT_ROOT = (
 _DEFAULT_MANIFEST = "bucket_export_manifest.jsonl"
 
 
+def is_folder_placeholder(source_path: str) -> bool:
+    """A GCS "folder" object rather than a file — a zero-byte object whose
+    name ends in `/`, which the Cloud Console creates when someone makes a
+    folder by hand and which `list_blobs` returns like any other blob.
+
+    v1 never had to care: `random.choice(bloblist_x)` could draw one, and
+    `generate_signed_url` on a zero-byte object still produced a URL
+    Telegram would then refuse — a rare, invisible failure in a fun command.
+    Here it would be a pool entry `legacy_assets.choose` hands a handler,
+    which then sends an empty `BufferedInputFile`. Five of them came out of
+    the real export (`Countdown/Furcamp/`, `Countdown/Pawstral/`,
+    `Custom/{akiiny,dragoonie,meleys}/`) — and they are the same two "extra"
+    objects the bucket's own listing count (6,912) has over the file count
+    (6,910), plus three inside `Custom/`.
+
+    Dropped at catalog time rather than at read time: the export itself
+    should keep copying them (the manifest is an audit log of what the
+    bucket held, not of what a feature can use), and every consumer would
+    otherwise have to re-derive the same rule.
+    """
+    return source_path.endswith("/")
+
+
 @dataclass(frozen=True, slots=True)
 class CatalogRow:
     """One row of a generated catalog — the exact fields
@@ -117,6 +140,11 @@ class CatalogReport:
 
     catalogs: dict[str, CatalogStats] = field(default_factory=dict)
     unknown_prefixes: tuple[str, ...] = ()
+    #: How many manifest rows `is_folder_placeholder` dropped. Counted and
+    #: printed rather than silently skipped, for the same reason
+    #: `unknown_prefixes` is: a number that changes between two exports of
+    #: the same bucket is worth someone noticing.
+    placeholders: int = 0
 
     def total_rows(self) -> int:
         return sum(stats.rows for stats in self.catalogs.values())
@@ -148,10 +176,11 @@ def build_catalogs(
     manifest_path: Path,
     *,
     known_prefixes: Sequence[str] = PREFIXES,
-) -> tuple[dict[str, list[CatalogRow]], tuple[str, ...]]:
+) -> tuple[dict[str, list[CatalogRow]], tuple[str, ...], int]:
     """Group `manifest_path`'s latest-per-source entries into per-catalog row
     lists, keyed the same way `catalog_relpath` expects. Returns
-    `(catalogs, unknown_prefixes)` — see `CatalogReport` for what each means.
+    `(catalogs, unknown_prefixes, placeholders)` — see `CatalogReport` for
+    what each means.
 
     Deterministic: each catalog's rows are sorted by `source_path` before
     this function returns, so two builds from the same manifest produce
@@ -162,6 +191,7 @@ def build_catalogs(
     known = set(known_prefixes)
     groups: dict[str, list[CatalogRow]] = defaultdict(list)
     unknown: set[str] = set()
+    placeholders = 0
 
     for entry in manifest_io.latest_by_source(manifest_path).values():
         if entry.outcome not in ("copied", "skipped"):
@@ -170,6 +200,11 @@ def build_catalogs(
             # Never true for "copied"/"skipped" per `ManifestEntry`'s own
             # contract, but a manifest is an external file on disk — trust
             # nothing at that seam, even a shape mypy already believes.
+            continue
+        if is_folder_placeholder(entry.source_path):
+            # Not a file — a folder marker no feature can send (see
+            # `is_folder_placeholder`). Counted, not silently dropped.
+            placeholders += 1
             continue
 
         if entry.prefix != _CUSTOM_PREFIX and entry.prefix not in known:
@@ -187,7 +222,7 @@ def build_catalogs(
     for rows in groups.values():
         rows.sort(key=lambda row: row.source_path)
 
-    return dict(groups), tuple(sorted(unknown))
+    return dict(groups), tuple(sorted(unknown)), placeholders
 
 
 def render_csv(rows: Sequence[CatalogRow]) -> str:
@@ -218,8 +253,8 @@ def write_catalogs(
     `Path.write_text` call, same "predict exactly, write nothing" contract
     `bucket_export.runner.run_export`'s own `dry_run` keeps.
     """
-    groups, unknown = build_catalogs(manifest_path, known_prefixes=known_prefixes)
-    report = CatalogReport(unknown_prefixes=unknown)
+    groups, unknown, placeholders = build_catalogs(manifest_path, known_prefixes=known_prefixes)
+    report = CatalogReport(unknown_prefixes=unknown, placeholders=placeholders)
 
     for key in sorted(groups):
         rows = groups[key]
@@ -237,6 +272,7 @@ def write_catalogs(
         catalogs=len(report.catalogs),
         rows=report.total_rows(),
         unknown_prefixes=len(report.unknown_prefixes),
+        placeholders=report.placeholders,
     )
     return report
 
@@ -254,6 +290,10 @@ def render_summary(report: CatalogReport) -> Table:
         table.add_row(stats.key, stats.relpath, str(stats.rows))
     table.add_section()
     table.add_row("TOTAL", "", str(report.total_rows()), style="bold")
+    if report.placeholders:
+        table.add_row(
+            "folder placeholders", "dropped (not files)", str(report.placeholders), style="dim"
+        )
     return table
 
 
@@ -323,6 +363,7 @@ __all__ = [
     "CatalogRow",
     "CatalogStats",
     "build_catalogs",
+    "is_folder_placeholder",
     "main",
     "render_csv",
     "render_summary",

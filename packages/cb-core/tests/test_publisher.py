@@ -228,3 +228,13 @@ def test_no_author_means_no_author_button() -> None:
     """v1's `origin_user is not None` (`:197`) — `getChatMember` failed."""
     buttons, _ = _keyboard()
     assert len(buttons) == 2  # origin + Mural
+
+
+def test_number_to_emojis() -> None:
+    """`universal_funcs.py:346-351` — every digit becomes its keycap."""
+    assert publisher.number_to_emojis(121) == "1️⃣2️⃣1️⃣"
+    assert publisher.number_to_emojis(0) == "0️⃣"
+
+
+def test_number_to_emojis_round_trips_through_its_inverse() -> None:
+    assert publisher.emojis_to_numbers(publisher.number_to_emojis(2026)) == "2026"

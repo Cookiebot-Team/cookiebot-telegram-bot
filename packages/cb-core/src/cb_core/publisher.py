@@ -55,6 +55,10 @@ _KEYCAP_DIGITS = {
 }
 _KEYCAP_PATTERN = re.compile("|".join(map(re.escape, _KEYCAP_DIGITS)))
 
+# The same table the other way round (`universal_funcs.py:346-351`), derived
+# rather than written out twice.
+_DIGIT_KEYCAPS = {digit: keycap for keycap, digit in _KEYCAP_DIGITS.items()}
+
 # `Publisher.py:146-163`. Ported as written, including the two quirks below.
 _CURRENCY_CODES: tuple[tuple[tuple[str, ...], str], ...] = (
     (("$", "US$", "USD", "U$"), "USD"),
@@ -114,6 +118,28 @@ def resolve_pending_media(
 def emojis_to_numbers(text: str) -> str:
     """Keycap emoji to the ASCII digit (`universal_funcs.py:353-356`)."""
     return _KEYCAP_PATTERN.sub(lambda m: _KEYCAP_DIGITS[m.group()], text)
+
+
+def number_to_emojis(number: int) -> str:
+    """The inverse: every digit of `number` as its keycap emoji
+    (`universal_funcs.py:346-351`).
+
+    v1 keeps both directions in the same module and this port keeps them in
+    the same place for the same reason — one keycap table, not two. It lives
+    in `publisher.py` because that is where the table already was, even
+    though its only caller today is `fun_partneredcons`' countdown caption
+    (`Miscellaneous.py:274` and its four siblings); moving the table to a new
+    shared module for one function would be the second way to do something
+    that already has one.
+
+    v1 indexes a dict per character and would raise `KeyError` on a minus
+    sign. Unreachable there (`daysremaining` is looped up past `-5` before
+    any caption is built) and unreachable here for the same reason, so the
+    signature takes `int` and formats `abs()`-free: a negative input would
+    render `-` unchanged rather than crash, which is strictly less bad and
+    changes nothing observable.
+    """
+    return "".join(_DIGIT_KEYCAPS.get(character, character) for character in str(number))
 
 
 def remove_emojis_from_ends(value: str) -> str:

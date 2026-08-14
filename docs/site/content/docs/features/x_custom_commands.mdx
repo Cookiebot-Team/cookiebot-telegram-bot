@@ -3,24 +3,43 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Per-group custom commands"
-description: "same GCS blocker as fun_death, and worse: the command *names* are the bucket's Custom/ folder names (Miscellaneous.py:23), so without the export there is not even a trigger list. Still the seed of tenant handler packs once the assets land"
-status: blocked
+description: "53 exported Custom/ folders are the trigger list, matched by a filter rather than COMMAND_ALIASES because the names are data; gated per tenant by cb_gateway/packs.py, which is what finally reads tenants.handler_pack"
+status: done
 milestone: M3
 area: fun
 layer: gateway
 v1_source: "Miscellaneous.py:145-158"
+contract: "docs/contracts/x_custom_commands.md"
 ---
 <FeatureHeader id="x_custom_commands" />
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+Some names are commands. `/louie`, `/momo`, `/mekhy` and 50 others each reply
+with a picture from a collection named after that command, captioned with the
+collection's name and the picture's number. Add a number — `/louie 3` — and you
+get that exact picture instead of a random one.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+The 53 names are **data, not code**. In v1 they were folder names in a private
+cloud bucket, listed once when the bot started; here they come from the same
+folders, exported and shipped with the release. That means adding a command is
+now a release rather than a file upload — a deliberate trade, since it makes the
+names reviewable, testable and switchable per brand, none of which a bucket
+listing ever was.
+
+Asking for a picture that does not exist (`/louie 999`) sends nothing, which is
+what v1 did too, though v1 got there by crashing.
+
+These commands are the first thing a **handler pack** controls: a brand running
+the bot can turn the whole family off with one field on its tenant row rather
+than listing 53 command names.
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/features/x_custom_commands.feature` — the random draw, the numbered pick, an
+out-of-range number, a name with no collection, the fun switch and a brand that
+has the family turned off; run with `python scripts/cb.py test`. By hand in the
+sandbox: `/louie` twice and check you get different pictures, then `/louie 0`
+twice and check you get the same one.

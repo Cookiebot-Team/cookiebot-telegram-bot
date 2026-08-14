@@ -157,6 +157,13 @@ secrets:
   # Optional keys; left empty they are simply not injected.
   anthropicApiKeyKey: ""
   openaiApiKeyKey: ""
+  # x_image_search (v1's catch-all: every unrecognised /command is a Google
+  # image search). Both are needed together — the API key and the
+  # search-engine id — and with either absent the feature answers "I couldn't
+  # find an image" instead of erroring, so leaving these empty is a supported
+  # deployment, not a broken one.
+  googleSearchApiKeyKey: ""
+  googleSearchCxKey: ""
 
 # ---------------------------------------------------------------------------
 # Self-hosted Telegram Bot API server (tdlib/telegram-bot-api).

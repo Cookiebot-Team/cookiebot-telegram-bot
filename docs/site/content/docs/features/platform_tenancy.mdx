@@ -3,8 +3,8 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Multi-tenant registry and schema"
-description: "tenants table + registry landed; handler packs not wired"
-status: partial
+description: "tenants table + registry + dispatch gate + llm_overrides/storage_prefix; handler packs read per update by cb_gateway/packs.py, first family legacy_custom"
+status: done
 milestone: M1
 area: platform
 layer: core
@@ -13,13 +13,35 @@ layer: core
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+Nothing, from a group's side — and that is the point. One deployment serves
+several bot brands (Cookiebot, Bombot, Pawsy, Tarinbot, Connectbot), each with
+its own token, owners, language, command set, LLM budget and storage prefix,
+out of one process and one database. v1 did this with five copies of the bot
+running five divergent caches.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+A brand's command set is enforced in two places, and both matter. `/commands`
+lists only what that brand advertises, and dispatch **refuses** what it has
+turned off — before this, a "disabled" command was merely hidden and still ran
+for anyone who typed it. Every lookup fails open: if the tenant registry or the
+command catalog cannot be reached, the command runs. Dropping commands during a
+database blip would be a far worse failure than briefly honouring one a brand
+disabled.
+
+`handler_pack` is the other half, and it is read now: a pack names the command
+*families* a brand receives on top of the core ones, and v1's `Custom/` picture
+pools ([`x_custom_commands`](/docs/features/x_custom_commands)) are the first.
+A brand that wants none of them sets `handler_pack = 'minimal'` rather than
+listing 53 command names.
+
+The shard key stays `group_id`. Tenancy is a logical boundary on top of the
+physical one, never a second distribution column.
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/features/x_custom_commands.feature`'s last scenario drives a brand on the
+`minimal` pack; `packages/cb-gateway/tests/test_custom_command.py` covers the
+pack registry, including the fail-open path and an unknown pack name.
+`qa/integration/` exercises the registry against a real database. Read
+`docs/multi-tenant` for the rollout and the isolation table.

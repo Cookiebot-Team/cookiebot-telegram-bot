@@ -99,3 +99,18 @@ def world(pg: ModuleType, run: Callable[[Coroutine[Any, Any, Any]], Any]) -> Ite
     w.setup()
     yield w
     w.teardown()
+
+
+@pytest.fixture
+def second_world(pg: ModuleType, run: Callable[[Coroutine[Any, Any, Any]], Any]) -> Iterator[World]:
+    """A second, unrelated group — for the assertions that are *about* the
+    boundary between two of them (per-tenant dedupe, cross-group isolation)
+    rather than about one group's contents. `World` allocates its own id, so
+    this is simply the same fixture again under a name a test can ask for
+    alongside `world`."""
+    from qa.integration.factories import World
+
+    w = World(run)
+    w.setup()
+    yield w
+    w.teardown()

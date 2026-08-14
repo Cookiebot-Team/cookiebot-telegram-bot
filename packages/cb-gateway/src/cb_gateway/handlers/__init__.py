@@ -22,11 +22,13 @@ from cb_gateway.handlers import (
     chat_ai,
     complaint,
     config_menu,
+    custom_command,
     death,
     deletereposts,
     destroy,
     dice,
     doomlist,
+    drawing_idea,
     embedder,
     everyone,
     firecracker,
@@ -35,6 +37,7 @@ from cb_gateway.handlers import (
     gender,
     giveaway,
     groupguardian,
+    image_search,
     isalive,
     listcommand,
     mediarestrict,
@@ -43,6 +46,7 @@ from cb_gateway.handlers import (
     musicdetection,
     nextbirthday,
     owner,
+    partneredcons,
     postgetter,
     privacy,
     publisher,
@@ -90,12 +94,20 @@ def build_router() -> Router:
     root.include_router(battle.router)
     root.include_router(meme.router)
     root.include_router(unearth.router)
+    # fun_partneredcons. Six disjoint triggers, and the one block in v1's chain
+    # that is gated on neither functionsFun nor functionsUtility
+    # (COOKIEBOT.py:248-251 sits above the utility check at :253) — the handler
+    # therefore consults no gate at all.
+    root.include_router(partneredcons.router)
     # x_age_guess / x_gender_guess / x_fortune_cookie all sit in the same
     # funfunctions-gated block as /random, /unearth and friends
     # (COOKIEBOT.py:214-241) and are disjoint triggers like the rest of it.
     root.include_router(age.router)
     root.include_router(gender.router)
     root.include_router(fortune.router)
+    # x_drawing_idea sits in the same utilityfunctions-gated stretch as
+    # /dado and /youtube (COOKIEBOT.py:253-257); disjoint trigger.
+    root.include_router(drawing_idea.router)
     root.include_router(youtube.router)
     root.include_router(birthday.router)
     root.include_router(nextbirthday.router)
@@ -119,6 +131,19 @@ def build_router() -> Router:
     # block because a DM never reaches the join chain or the content rules at
     # all (`.specs/features/private_dispatch/`).
     root.include_router(owner.router)
+
+    # x_custom_commands. Registered last of the command routers on purpose:
+    # its trigger list is *data* (the exported Custom/ folder names), so a
+    # folder that happens to be named after a real command must never shadow
+    # the real one. Everything above claims its own trigger first.
+    root.include_router(custom_command.router)
+
+    # x_image_search's catch-all: literally "no other command matched", so it
+    # is the last command router of all, after even custom_command's data-driven
+    # triggers. v1's own position is the final elif of the same chain
+    # (COOKIEBOT.py:283-289), ahead of the passive handlers below, which is why
+    # this sits here rather than at the very end of the file.
+    root.include_router(image_search.router)
 
     # ---- join chain: order matters, see the module docstring ----
     # 1. Bookkeeping first. `group_members.joined_at` is recorded even for a

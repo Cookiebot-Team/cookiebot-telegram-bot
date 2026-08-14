@@ -13,6 +13,7 @@ from aiogram import Bot
 from aiogram.filters import BaseFilter
 from aiogram.types import Message
 
+from cb_core import legacy_assets
 from cb_core.textmatch import ParsedCommand, parse_command
 
 
@@ -59,6 +60,52 @@ class AdminOnly(BaseFilter):
 
         ctx = await context_for(cast(Bot, bot or message.bot), message)
         return ctx.is_admin
+
+
+class CustomCommandName(BaseFilter):
+    """Matches a command whose name is a **pool**, not a canonical alias.
+
+    v1's `Custom/` commands have no place in `COMMAND_ALIASES` and cannot get
+    one: their names are folder names in a bucket
+    (`Miscellaneous.py:23,147`), the pool is data rather than code, and
+    `AGENTS.md` §2.1's "no new command name without an alias" is about not
+    dropping a v1 trigger — these are v1 triggers precisely *because* the data
+    says so. `parse_command` therefore returns `None` for them, which is why
+    this filter reads the head itself.
+
+    Head extraction deliberately mirrors `parse_command`'s
+    (`textmatch.py:161-181`) rather than v1's own
+    `text.replace('/', '').replace('@CookieMWbot', '').split()[0]`: v1's chain
+    strips *every* slash anywhere in the word and knows only two of its own
+    five bot usernames, so `/foo/bar` and `/foo@SCTarinBot` resolved to
+    `foobar` and `foo@SCTarinBot`. Neither reaches a real folder name, so
+    neither is a behaviour a group can have depended on; matching the parser
+    the rest of the codebase uses is what keeps `@`-addressed commands working
+    for every skin.
+
+    Injects `custom` — `(name, args)` — into the handler.
+    """
+
+    async def __call__(
+        self,
+        message: Message,
+        bot_username: str = "",
+    ) -> bool | dict[str, tuple[str, str]]:
+        text = message.text or ""
+        if not text.startswith("/"):
+            return False
+        head, _, rest = text.partition(" ")
+        name = head[1:]
+        at = name.find("@")
+        if at >= 0:
+            target = name[at + 1 :]
+            name = name[:at]
+            if target and bot_username and target.lower() != bot_username.lower():
+                return False
+        name = name.lower()
+        if not name or not legacy_assets.entries_for_custom(name):
+            return False
+        return {"custom": (name, rest.strip())}
 
 
 class CommandName(BaseFilter):

@@ -269,6 +269,18 @@ def import_mongo(extra: list[str]) -> int:
     return run("uv", "run", "python", "-m", "cb_worker.importer", *extra)
 
 
+@task("backfill-random", "download v1's randomdatabase pointers into media_objects")
+def backfill_random(extra: list[str]) -> int:
+    """The one collection `import-mongo` cannot move: v1 stored a Telegram
+    pointer, v2 stores bytes, so each row needs a download before it can exist.
+
+    Idempotent and resumable like its two siblings — a pointer whose file id is
+    already recorded for that group is skipped without downloading anything.
+    Run `import-mongo` first: the group has to exist before its media can.
+    """
+    return run("uv", "run", "python", "-m", "cb_worker.backfill", *extra)
+
+
 @task("bucket-export", "copy v1's private GCS bucket into v2 object storage (cutover day)")
 def bucket_export(extra: list[str]) -> int:
     """Idempotent and resumable, same contract as `import-mongo`: a blob whose

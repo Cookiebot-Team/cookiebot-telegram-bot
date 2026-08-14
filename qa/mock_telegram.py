@@ -88,6 +88,14 @@ class MockTelegram:
     def set_profile_photo(self, user_id: int, file_id: str) -> None:
         self.profile_photos[user_id] = [file_id]
 
+    def clear_profile_photo(self, user_id: int) -> None:
+        """Telegram's answer for a user with no photo, or one only visible to
+        contacts: `photos` comes back empty rather than the call failing.
+        Explicit rather than leaving the key absent, because a shared
+        `MockTelegram` may have had one set by an earlier scenario.
+        """
+        self.profile_photos.pop(user_id, None)
+
     def set_admins(
         self, chat_id: int, admins: list[tuple[int, str]], *, is_anonymous: bool = False
     ) -> None:

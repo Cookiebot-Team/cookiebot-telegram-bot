@@ -36,6 +36,7 @@ from cb_worker.jobs.broadcast import broadcast_to_groups, deliver_broadcast
 from cb_worker.jobs.calladms import notify_admins_of_call
 from cb_worker.jobs.distortion import distort_media
 from cb_worker.jobs.everyone import everyone_fanout
+from cb_worker.jobs.image_search import image_search
 from cb_worker.jobs.meme import compose_meme
 from cb_worker.jobs.music import identify_music
 from cb_worker.jobs.publisher import deliver_scheduled_posts, publisher_approve
@@ -214,6 +215,7 @@ class WorkerSettings:
         everyone_fanout,  # first non-cron job: util_everyone's DM fan-out (design R5.1)
         notify_admins_of_call,  # util_calladms's DM fan-out (.specs/features/util_calladms)
         search_youtube,  # util_youtube's search + reply (.specs/features/util_youtube)
+        image_search,  # x_image_search's Google call + send loop
         post_birthday_collage,  # util_birthday's collage (.specs/features/util_birthday)
         next_birthdays_followup,  # the durable replacement for v1's threading.Timer
         broadcast_birthdays,  # util_birthday's daily every-group sweep

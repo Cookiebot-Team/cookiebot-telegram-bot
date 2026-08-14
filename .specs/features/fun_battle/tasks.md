@@ -11,6 +11,9 @@ decisions (redesign accepted, path A ships now) are settled there.
 | T2 — Handler and router registration | ✅ done | |
 | T3 — Acceptance scenarios | ✅ done | |
 | T-final — Close out | ✅ done | |
+| T4 — Fighter shapes (ONE_TAG / SELF) | ✅ done | design R7; unblocked by the Fight/ export + legacy-catalog |
+| T5 — Fighter acceptance scenarios | ✅ done | QA's own scenario un-skipped |
+| T-final-2 — Close out the fighter shapes | ✅ done | spec row flipped PARTIAL → DONE |
 
 ## Tasks
 
@@ -117,3 +120,61 @@ decisions (redesign accepted, path A ships now) are settled there.
 - **Done when:** `uv run python scripts/cb.py check` exits 0.
 - **Gate:** `uv run python scripts/cb.py check`
 - **Commit:** `docs(fun_battle): close out`
+
+
+---
+
+## The second slice — after the `Fight/` export landed
+
+### T4 — Fighter shapes (ONE_TAG / SELF)
+
+- **Skills:** /migrate-feature
+- **What:** Replace the temporary `battle_no_picture` branch with v1's real
+  shared tail (`SocialContent.py:346-379`): the human half (roster + Bot API
+  for a tag, the caller's own photo otherwise), a fighter drawn from the
+  exported `Fight/` pools through `legacy_assets.choose` + `cb_core.storage`,
+  the coin-flipped order, the bare `"{a} VS {b}"` caption with no flavour
+  suffix, and the language-dependent poll title. Pure helpers get unit tests.
+- **Where:** `packages/cb-gateway/src/cb_gateway/handlers/battle.py`,
+  `packages/cb-gateway/tests/test_battle.py`
+- **Depends on:** the `legacy-catalog` generation commit
+- **Reuses:** `cb_core.legacy_assets`, `cb_core.storage`,
+  `death.py`'s empty-pool degradation, this handler's existing
+  `_find_in_roster`
+- **Done when:** `/battle @someone` and bare `/battle` both post a media
+  group and a poll naming a real fighter.
+- **Gate:** `uv run pytest packages/cb-gateway/tests/test_battle.py -q`
+- **Commit:** `feat(fun_battle): the fighter shapes, off the exported pool`
+- **→ R7.1-R7.7**
+
+### T5 — Fighter acceptance scenarios
+
+- **Skills:** /migrate-feature (Phase 5)
+- **What:** Un-skip QA's own one-tag scenario and assert what it really
+  produces; add scenarios for the caller-vs-fighter shape, a caller with no
+  photo, a tagged member whose photo is not visible, and an un-catalogued
+  pool. `MockTelegram` grows `clear_profile_photo`.
+- **Where:** `qa/features/fun_battle.feature`, `qa/test_fun_battle.py`,
+  `qa/mock_telegram.py`
+- **Depends on:** T4
+- **Reuses:** `qa/test_fun_death.py`'s `legacy_assets.choose` + `memory://`
+  storage seam
+- **Done when:** every scenario in the feature file runs, none skipped.
+- **Gate:** `uv run pytest qa/test_fun_battle.py -q`
+- **Commit:** folded into T4's commit (one feature, one atomic change)
+- **→ R7.5, R7.7**
+
+### T-final-2 — Close out the fighter shapes
+
+- **Skills:** none
+- **What:** Rewrite `docs/contracts/fun_battle.md`'s "what's still blocked"
+  section as "the fighter shapes", extend the Phase-2 and Phase-6 tables with
+  the fighter rows, flip `scripts/spec.py` to `Status.DONE`, run
+  `cb.py docs-sync`, update `HANDOFF.md`.
+- **Where:** `docs/contracts/fun_battle.md`, `scripts/spec.py`,
+  `docs/site/content/docs/features/fun_battle.mdx`, `HANDOFF.md`, this file
+- **Depends on:** T5
+- **Done when:** `uv run python scripts/cb.py check` exits 0.
+- **Gate:** `uv run python scripts/cb.py check`
+- **Commit:** folded into T4's commit
+- **→ R7**

@@ -133,6 +133,20 @@ env:
         name: {{ .Values.secrets.name }}
         key: {{ .Values.secrets.openaiApiKeyKey }}
 {{- end }}
+{{- if .Values.secrets.googleSearchApiKeyKey }}
+  - name: CB_GOOGLE_SEARCH_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: {{ .Values.secrets.name }}
+        key: {{ .Values.secrets.googleSearchApiKeyKey }}
+{{- end }}
+{{- if .Values.secrets.googleSearchCxKey }}
+  - name: CB_GOOGLE_SEARCH_CX
+    valueFrom:
+      secretKeyRef:
+        name: {{ .Values.secrets.name }}
+        key: {{ .Values.secrets.googleSearchCxKey }}
+{{- end }}
 {{- if .Values.objectStorage.enabled }}
 {{- /*
      AWS_*, not CB_*: obstore's S3Store reads the ambient AWS environment the

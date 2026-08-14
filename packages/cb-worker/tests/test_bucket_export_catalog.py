@@ -81,10 +81,61 @@ class TestBuildCatalogsFiltering:
             ],
         )
 
-        groups, _ = build_catalogs(manifest_path)
+        groups, _, _ = build_catalogs(manifest_path)
 
         source_paths = {row.source_path for row in groups["Death"]}
         assert source_paths == {"Death/a.png", "Death/b.png"}
+
+    def test_folder_placeholders_are_dropped_and_counted(self, tmp_path: Path) -> None:
+        """The real export produced five of these (`Countdown/Furcamp/`,
+        `Countdown/Pawstral/`, `Custom/{akiiny,dragoonie,meleys}/`) — zero-byte
+        GCS folder markers that reached the catalogs on the first generation
+        run and would have been drawable by `legacy_assets.choose`, i.e. a
+        handler sending an empty file. See `catalog.is_folder_placeholder`.
+        """
+        manifest_path = tmp_path / "m.jsonl"
+        _write_manifest(
+            manifest_path,
+            [
+                _entry(
+                    prefix="Countdown/Pawstral",
+                    source_path="Countdown/Pawstral/",
+                    byte_size=0,
+                    content_hash="af1349b9f5f9a1a6a0404dea36dcc949",
+                ),
+                _entry(prefix="Countdown/Pawstral", source_path="Countdown/Pawstral/a.jpg"),
+                _entry(
+                    prefix="Custom/",
+                    source_path="Custom/akiiny/",
+                    byte_size=0,
+                    content_hash="af1349b9f5f9a1a6a0404dea36dcc949",
+                ),
+                _entry(prefix="Custom/", source_path="Custom/akiiny/a.jpg"),
+            ],
+        )
+
+        groups, _, placeholders = build_catalogs(manifest_path)
+
+        assert placeholders == 2
+        assert [row.source_path for row in groups["Countdown/Pawstral"]] == [
+            "Countdown/Pawstral/a.jpg"
+        ]
+        assert [row.source_path for row in groups["Custom/akiiny"]] == ["Custom/akiiny/a.jpg"]
+
+    def test_a_placeholder_is_the_only_row_leaves_no_catalog_at_all(self, tmp_path: Path) -> None:
+        """A command folder holding nothing but its own marker produces no
+        catalog file, so `custom_command_names()` never advertises a command
+        with an empty pool."""
+        manifest_path = tmp_path / "m.jsonl"
+        _write_manifest(
+            manifest_path,
+            [_entry(prefix="Custom/", source_path="Custom/ghost/", byte_size=0)],
+        )
+
+        groups, _, placeholders = build_catalogs(manifest_path)
+
+        assert groups == {}
+        assert placeholders == 1
 
     def test_latest_by_source_wins_over_an_older_failed_row(self, tmp_path: Path) -> None:
         """A resumed run can turn an earlier `"failed"` verdict into a later
@@ -110,7 +161,7 @@ class TestBuildCatalogsFiltering:
             ],
         )
 
-        groups, _ = build_catalogs(manifest_path)
+        groups, _, _ = build_catalogs(manifest_path)
 
         assert [row.source_path for row in groups["Death"]] == ["Death/a.png"]
 
@@ -138,7 +189,7 @@ class TestBuildCatalogsFiltering:
             ],
         )
 
-        groups, _ = build_catalogs(manifest_path)
+        groups, _, _ = build_catalogs(manifest_path)
 
         assert groups.get("Death", []) == []
 
@@ -157,7 +208,7 @@ class TestCustomGrouping:
             ],
         )
 
-        groups, unknown = build_catalogs(manifest_path)
+        groups, unknown, _ = build_catalogs(manifest_path)
 
         assert unknown == ()  # "Custom/" itself is a known PREFIXES entry
         assert {row.source_path for row in groups["Custom/emoji"]} == {
@@ -167,8 +218,15 @@ class TestCustomGrouping:
         assert [row.source_path for row in groups["Custom/skull"]] == ["Custom/skull/1.png"]
 
     def test_custom_entry_with_no_command_segment_raises(self, tmp_path: Path) -> None:
+        """`"Custom"` with no trailing slash and no sub-folder: not a folder
+        placeholder (`is_folder_placeholder` keys on the trailing `/`), so it
+        still reaches `_catalog_key` and is still a hard error rather than a
+        row filed under some invented command name. The `"Custom/"` spelling
+        of the same malformed row is now dropped one step earlier, as the
+        folder marker it is.
+        """
         manifest_path = tmp_path / "m.jsonl"
-        _write_manifest(manifest_path, [_entry(prefix="Custom/", source_path="Custom/")])
+        _write_manifest(manifest_path, [_entry(prefix="Custom/", source_path="Custom")])
 
         with pytest.raises(ValueError, match="no command sub-folder"):
             build_catalogs(manifest_path)
@@ -182,7 +240,7 @@ class TestUnknownPrefixes:
             [_entry(prefix="Mystery", source_path="Mystery/a.png")],
         )
 
-        groups, unknown = build_catalogs(manifest_path)
+        groups, unknown, _ = build_catalogs(manifest_path)
 
         assert unknown == ("Mystery",)
         # Reported *and* still catalogued — nothing exported is thrown away
@@ -196,7 +254,7 @@ class TestUnknownPrefixes:
             [_entry(prefix="Death", source_path="Death/a.png")],
         )
 
-        _, unknown = build_catalogs(manifest_path)
+        _, unknown, _ = build_catalogs(manifest_path)
 
         assert unknown == ()
 
@@ -213,7 +271,7 @@ class TestDeterministicOutput:
             ],
         )
 
-        groups, _ = build_catalogs(manifest_path)
+        groups, _, _ = build_catalogs(manifest_path)
 
         assert [row.source_path for row in groups["Death"]] == [
             "Death/a.png",
@@ -302,7 +360,7 @@ class TestRenderCsv:
             manifest_path,
             [_entry(prefix="Death", source_path="Death/a.png", byte_size=42)],
         )
-        groups, _ = build_catalogs(manifest_path)
+        groups, _, _ = build_catalogs(manifest_path)
         text = render_csv(groups["Death"])
 
         reader = csv.DictReader(io.StringIO(text))
@@ -322,7 +380,7 @@ class TestRealManifestSlice:
     these tests invented for their own convenience."""
 
     def test_real_slice_produces_one_catalog_with_every_row(self) -> None:
-        groups, unknown = build_catalogs(_FIXTURE_SLICE)
+        groups, unknown, _ = build_catalogs(_FIXTURE_SLICE)
 
         assert unknown == ()  # "IdeiaDesenho" is in PREFIXES
         assert set(groups) == {"IdeiaDesenho"}

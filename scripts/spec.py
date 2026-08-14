@@ -66,8 +66,9 @@ FEATURES: tuple[Feature, ...] = (
             Layer.CORE, notes="anthropic + openai-compatible; per-task routing; cost metering"),
     Feature("platform_selfhosted_api", "platform", "Self-hosted Telegram Bot API server", "M0", Status.DONE,
             Layer.GATEWAY, notes="local mode + polling ingest; websocket reserved"),
-    Feature("platform_tenancy", "platform", "Multi-tenant registry and schema", "M1", Status.PARTIAL,
-            Layer.CORE, notes="tenants table + registry landed; handler packs not wired"),
+    Feature("platform_tenancy", "platform", "Multi-tenant registry and schema", "M1", Status.DONE,
+            Layer.CORE, notes="tenants table + registry + dispatch gate + llm_overrides/storage_prefix; "
+            "handler packs read per update by cb_gateway/packs.py, first family legacy_custom"),
     # The three M1 prerequisites. Almost every M1 handler needs all three, so they
     # are built once rather than three-quarters of each inside three ports.
     Feature("platform_locales", "platform", "String catalog ported from v1 locales", "M1",
@@ -79,12 +80,12 @@ FEATURES: tuple[Feature, ...] = (
     Feature("platform_admin_resolution", "platform", "Admin resolution and cache", "M1",
             Status.DONE, Layer.CORE, "Configurations.py:104-114", (),
             "group_admins is never populated; must handle anonymous admins"),
-    Feature("platform_migration_etl", "platform", "Mongo -> Citus backfill", "M4", Status.PARTIAL,
+    Feature("platform_migration_etl", "platform", "Mongo -> Citus backfill", "M4", Status.DONE,
             Layer.WORKER, "COOKIEBOT-backend/core/domains/*.java", (),
-            "configs/rules/welcomes/users/blacklist/groups/stickerdatabase import, idempotent "
-            "(stickerdatabase -> the new global sticker_pool reference table, migration 0009); "
-            "randomdatabase alone still needs a Telegram-download backfill - its rows have no "
-            "content_hash/blob_key and media_objects requires both NOT NULL"),
+            "all 8 collections. 7 through the pure ETL mappers, idempotent upserts; "
+            "randomdatabase through cb.py backfill-random, which downloads what each v1 "
+            "pointer references and writes a real media_objects row - resumable by "
+            "telegram_file_id, so a second run costs a query per pointer, not a download"),
     Feature("util_isalive", "util", "Health check from chat", "M0", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:65-69", ("/isalive", "/tavivo")),
     Feature("core_listcommand", "core", "List available commands", "M1", Status.DONE,
@@ -124,7 +125,7 @@ FEATURES: tuple[Feature, ...] = (
             "one process serves every skin; cb_core/skins.py adds the two behavioural forks "
             "v1 keys on is_alternate_bot (intro animation, fun-override flair) plus the "
             "per-skin asset override tree; all 5 personas configured (0007). Handler packs "
-            "remain platform_tenancy's open item - see docs/contracts/core_botskins.md"),
+            "landed with x_custom_commands - see cb_gateway/packs.py"),
 
     # --------------------------------------------------------------------- fun
     Feature("fun_dice", "fun", "Roll an n-sided die", "M2", Status.DONE,
@@ -152,10 +153,10 @@ FEATURES: tuple[Feature, ...] = (
             "object storage via `cb.py meme-seed`; Pillow compositing in cb-worker; v1's "
             "roster fallback was dead code and its empty-pool branch a NameError, both "
             "fixed - see docs/contracts/fun_meme.md; QA authored (4 scenarios)"),
-    Feature("fun_battle", "fun", "Battle poll", "M2", Status.PARTIAL,
+    Feature("fun_battle", "fun", "Battle poll", "M2", Status.DONE,
             Layer.GATEWAY, "SocialContent.py:294-379", ("/battle", "/batalha", "/batalla"),
-            "two-people shape ships (roster + getUserProfilePhotos, no scrape); "
-            "one-tag/self shapes blocked on the Fight/ GCS export, same as fun_death"),
+            "all three shapes: two people (roster + getUserProfilePhotos, no scrape), "
+            "one tag and self against the exported Fight/ pools"),
     Feature("fun_random", "fun", "Random media from the group", "M2", Status.DONE,
             Layer.GATEWAY, "SocialContent.py:198-206", ("/random", "/aleatorio"),
             "MediaService.random() done and tested; handler not written"),
@@ -164,12 +165,11 @@ FEATURES: tuple[Feature, ...] = (
     Feature("fun_complaint", "fun", "Complaint bit", "M2", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:240-259",
             ("/complaint", "/milton", "/reclamacao", "/reclamação", "/queja")),
-    Feature("fun_partneredcons", "fun", "Partnered convention posters", "M2", Status.BLOCKED,
+    Feature("fun_partneredcons", "fun", "Partnered convention posters", "M2", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:261-323",
             ("/bff", "/patas", "/fursmeet", "/trex", "/furcamp", "/pawstral"),
-            "same GCS blocker as fun_death: every branch reads a Countdown/* prefix "
-            "(Miscellaneous.py:18-22) and the single send_photo is unconditional. "
-            "/trex is spec'd in QA but missing from v1 - net-new"),
+            "hardcoded dates and captions verbatim, +365 wraparound preserved, ungated "
+            "like v1; /trex is net-new and sends a Countdown/Trex poster with no caption"),
 
     # -------------------------------------------------------------------- util
     Feature("util_birthday", "util", "Today's birthdays", "M2", Status.DONE,
@@ -247,12 +247,11 @@ FEATURES: tuple[Feature, ...] = (
             "handler thread (D8); /stop and /restart answer a refusal rather than "
             "os._exit-ing one of N replicas - see docs/contracts/x_owner_commands.md; "
             "QA authored (9 scenarios)"),
-    Feature("x_custom_commands", "fun", "Per-group custom commands", "M3", Status.BLOCKED,
+    Feature("x_custom_commands", "fun", "Per-group custom commands", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:145-158", (),
-            "same GCS blocker as fun_death, and worse: the command *names* are the "
-            "bucket's Custom/ folder names (Miscellaneous.py:23), so without the "
-            "export there is not even a trigger list. Still the seed of tenant "
-            "handler packs once the assets land"),
+            "53 exported Custom/ folders are the trigger list, matched by a filter rather "
+            "than COMMAND_ALIASES because the names are data; gated per tenant by "
+            "cb_gateway/packs.py, which is what finally reads tenants.handler_pack"),
     Feature("x_age_guess", "fun", "Age guess (agify.io)", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:185-202", ("/idade", "/age", "/edad"),
             "GET agify.io?name=, timeout+Breaker per doomlist.py's pattern; fun-gated with "
@@ -282,12 +281,16 @@ FEATURES: tuple[Feature, ...] = (
             "whole process, so the delete-then-answer tail now runs as a background "
             "asyncio.Task (complaint.py's _schedule_tail idiom) instead, keeping v1's exact "
             "user-visible order without holding the reply path open. QA authored, not ported"),
-    Feature("x_image_search", "util", "Image search (qualquer coisa)", "M3", Status.PLANNED,
+    Feature("x_image_search", "util", "Image search (v1's catch-all)", "M3", Status.DONE,
             Layer.GATEWAY, "SocialContent.py:144-170", ("/qualquercoisa", "/anything", "/cualquiercosa"),
-            "Google Custom Search Image API, sfw-gated; no QA scenario exists - write one"),
-    Feature("x_drawing_idea", "fun", "Drawing idea prompt", "M3", Status.PLANNED,
+            "the three triggers only print the usage line; the feature is that every "
+            "unrecognised /command is a search. Search + sends in cb-worker, quotas in "
+            "Valkey (v1's dict was per-process), catch-all raises SkipHandler - it is "
+            "registered ahead of three routers that own real commands"),
+    Feature("x_drawing_idea", "fun", "Drawing idea prompt", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:137-143", ("/ideiadesenho", "/drawingidea", "/ideadibujo"),
-            "signed URL from a GCS blob pool; no QA scenario exists - write one"),
+            "3,435 exported references; the caption's id is the index drawn, so the "
+            "catalog's sort order is the contract. Scenarios authored locally - QA has none"),
     Feature("x_analysis", "util", "Message analysis (reply_to_message dump)", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:71-81", ("/analise", "/analisis", "/analysis"),
             "dumps the replied-to message's fields back to chat, ungated exactly as v1 "

@@ -212,6 +212,13 @@ The chart never creates a Secret holding a credential; it only references one.
 | `telegram-api-id`, `telegram-api-hash` | the Bot API server |
 | `bot-token` | tooling only |
 
+Plus, optionally, whatever keys `secrets.*Key` name — `anthropicApiKeyKey`,
+`openaiApiKeyKey`, and `googleSearchApiKeyKey`/`googleSearchCxKey` for
+`x_image_search`. Each is injected only when the *value name* is set, so an
+unset one is a deployment where that feature degrades (no LLM provider, or
+"I couldn't find an image") rather than a pod that will not start. Both Google
+keys are needed together: the API key and the Programmable Search engine id.
+
 With `objectStorage.enabled`, a second Secret
 (`objectStorage.credentialsSecret`, default `cookiebot-object-storage`) carries
 `access-key` / `secret-key`: MinIO's root credential, and what every pod signs

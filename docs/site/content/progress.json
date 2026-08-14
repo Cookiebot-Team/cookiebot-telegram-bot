@@ -1,19 +1,19 @@
 {
-  "generated_at": "2026-08-12",
-  "commit": "ec02920",
-  "test_summary": "not run",
+  "generated_at": "2026-08-14",
+  "commit": "ed82344",
+  "test_summary": "3243 passed, 44 skipped, 187 deselected, 2 warnings in 33.74s",
   "totals": {
     "features": 62,
-    "done": 54,
-    "partial": 3,
-    "planned": 3,
-    "blocked": 2,
+    "done": 61,
+    "partial": 0,
+    "planned": 1,
+    "blocked": 0,
     "spec_scenarios": 63,
-    "ported": 161,
+    "ported": 174,
     "spec_files": 31,
-    "spec_files_covered": 30,
-    "new_specs": 95,
-    "green": 0,
+    "spec_files_covered": 31,
+    "new_specs": 114,
+    "green": 369,
     "failing": 0
   },
   "milestones": [
@@ -26,25 +26,25 @@
     {
       "id": "M1",
       "title": "Survival core \u2014 moderation, config, captcha, tenancy",
-      "done": 15,
+      "done": 16,
       "total": 16
     },
     {
       "id": "M2",
       "title": "Fun and utility commands",
-      "done": 13,
+      "done": 15,
       "total": 15
     },
     {
       "id": "M3",
       "title": "Publisher, AI, giveaways, owner tooling",
-      "done": 16,
+      "done": 19,
       "total": 19
     },
     {
       "id": "M4",
       "title": "Analytics surface, web console, data migration",
-      "done": 1,
+      "done": 2,
       "total": 3
     }
   ],
@@ -207,10 +207,10 @@
       "area": "platform",
       "layer": "core",
       "milestone": "M1",
-      "status": "partial",
+      "status": "done",
       "triggers": [],
       "v1_source": "",
-      "notes": "tenants table + registry landed; handler packs not wired",
+      "notes": "tenants table + registry + dispatch gate + llm_overrides/storage_prefix; handler packs read per update by cb_gateway/packs.py, first family legacy_custom",
       "contract": null,
       "scenarios": {
         "spec": 0,
@@ -283,10 +283,10 @@
       "area": "platform",
       "layer": "worker",
       "milestone": "M4",
-      "status": "partial",
+      "status": "done",
       "triggers": [],
       "v1_source": "COOKIEBOT-backend/core/domains/*.java",
-      "notes": "configs/rules/welcomes/users/blacklist/groups/stickerdatabase import, idempotent (stickerdatabase -> the new global sticker_pool reference table, migration 0009); randomdatabase alone still needs a Telegram-download backfill - its rows have no content_hash/blob_key and media_objects requires both NOT NULL",
+      "notes": "all 8 collections. 7 through the pure ETL mappers, idempotent upserts; randomdatabase through cb.py backfill-random, which downloads what each v1 pointer references and writes a real media_objects row - resumable by telegram_file_id, so a second run costs a query per pointer, not a download",
       "contract": null,
       "scenarios": {
         "spec": 0,
@@ -313,7 +313,7 @@
       "scenarios": {
         "spec": 2,
         "ported": 4,
-        "green": 0,
+        "green": 4,
         "failing": 0
       },
       "url": "/docs/features/util_isalive"
@@ -335,7 +335,7 @@
       "scenarios": {
         "spec": 2,
         "ported": 4,
-        "green": 0,
+        "green": 6,
         "failing": 0
       },
       "url": "/docs/features/core_listcommand"
@@ -358,7 +358,7 @@
       "scenarios": {
         "spec": 1,
         "ported": 4,
-        "green": 0,
+        "green": 8,
         "failing": 0
       },
       "url": "/docs/features/core_privacy"
@@ -380,7 +380,7 @@
       "scenarios": {
         "spec": 0,
         "ported": 2,
-        "green": 0,
+        "green": 3,
         "failing": 0
       },
       "url": "/docs/features/core_reload"
@@ -404,7 +404,7 @@
       "scenarios": {
         "spec": 4,
         "ported": 9,
-        "green": 0,
+        "green": 14,
         "failing": 0
       },
       "url": "/docs/features/core_rules"
@@ -426,7 +426,7 @@
       "scenarios": {
         "spec": 3,
         "ported": 10,
-        "green": 0,
+        "green": 18,
         "failing": 0
       },
       "url": "/docs/features/core_welcome"
@@ -445,7 +445,7 @@
       "scenarios": {
         "spec": 2,
         "ported": 9,
-        "green": 0,
+        "green": 9,
         "failing": 0
       },
       "url": "/docs/features/core_groupguardian"
@@ -464,7 +464,7 @@
       "scenarios": {
         "spec": 2,
         "ported": 6,
-        "green": 0,
+        "green": 9,
         "failing": 0
       },
       "url": "/docs/features/core_stickerspam"
@@ -483,7 +483,7 @@
       "scenarios": {
         "spec": 2,
         "ported": 6,
-        "green": 0,
+        "green": 9,
         "failing": 0
       },
       "url": "/docs/features/core_mediarestrict"
@@ -506,7 +506,7 @@
       "scenarios": {
         "spec": 2,
         "ported": 5,
-        "green": 0,
+        "green": 6,
         "failing": 0
       },
       "url": "/docs/features/util_config"
@@ -525,7 +525,7 @@
       "scenarios": {
         "spec": 1,
         "ported": 6,
-        "green": 0,
+        "green": 4,
         "failing": 0
       },
       "url": "/docs/features/util_doomlist"
@@ -544,7 +544,7 @@
       "scenarios": {
         "spec": 3,
         "ported": 8,
-        "green": 0,
+        "green": 8,
         "failing": 0
       },
       "url": "/docs/features/core_setlang"
@@ -558,12 +558,12 @@
       "status": "done",
       "triggers": [],
       "v1_source": "universal_funcs.py:39-52",
-      "notes": "one process serves every skin; cb_core/skins.py adds the two behavioural forks v1 keys on is_alternate_bot (intro animation, fun-override flair) plus the per-skin asset override tree; all 5 personas configured (0007). Handler packs remain platform_tenancy's open item - see docs/contracts/core_botskins.md",
+      "notes": "one process serves every skin; cb_core/skins.py adds the two behavioural forks v1 keys on is_alternate_bot (intro animation, fun-override flair) plus the per-skin asset override tree; all 5 personas configured (0007). Handler packs landed with x_custom_commands - see cb_gateway/packs.py",
       "contract": "docs/contracts/core_botskins.md",
       "scenarios": {
         "spec": 3,
         "ported": 5,
-        "green": 0,
+        "green": 5,
         "failing": 0
       },
       "url": "/docs/features/core_botskins"
@@ -586,7 +586,7 @@
       "scenarios": {
         "spec": 3,
         "ported": 8,
-        "green": 0,
+        "green": 9,
         "failing": 0
       },
       "url": "/docs/features/fun_dice"
@@ -609,7 +609,7 @@
       "scenarios": {
         "spec": 3,
         "ported": 7,
-        "green": 0,
+        "green": 8,
         "failing": 0
       },
       "url": "/docs/features/fun_ship"
@@ -632,7 +632,7 @@
       "scenarios": {
         "spec": 2,
         "ported": 7,
-        "green": 0,
+        "green": 8,
         "failing": 0
       },
       "url": "/docs/features/fun_death"
@@ -653,7 +653,7 @@
       "scenarios": {
         "spec": 2,
         "ported": 4,
-        "green": 0,
+        "green": 4,
         "failing": 0
       },
       "url": "/docs/features/fun_meme"
@@ -664,19 +664,19 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M2",
-      "status": "partial",
+      "status": "done",
       "triggers": [
         "/battle",
         "/batalha",
         "/batalla"
       ],
       "v1_source": "SocialContent.py:294-379",
-      "notes": "two-people shape ships (roster + getUserProfilePhotos, no scrape); one-tag/self shapes blocked on the Fight/ GCS export, same as fun_death",
+      "notes": "all three shapes: two people (roster + getUserProfilePhotos, no scrape), one tag and self against the exported Fight/ pools",
       "contract": "docs/contracts/fun_battle.md",
       "scenarios": {
         "spec": 1,
-        "ported": 7,
-        "green": 0,
+        "ported": 10,
+        "green": 10,
         "failing": 0
       },
       "url": "/docs/features/fun_battle"
@@ -698,7 +698,7 @@
       "scenarios": {
         "spec": 1,
         "ported": 5,
-        "green": 0,
+        "green": 33,
         "failing": 0
       },
       "url": "/docs/features/fun_random"
@@ -721,7 +721,7 @@
       "scenarios": {
         "spec": 1,
         "ported": 2,
-        "green": 0,
+        "green": 2,
         "failing": 0
       },
       "url": "/docs/features/fun_firecracker"
@@ -746,7 +746,7 @@
       "scenarios": {
         "spec": 2,
         "ported": 4,
-        "green": 0,
+        "green": 4,
         "failing": 0
       },
       "url": "/docs/features/fun_complaint"
@@ -757,7 +757,7 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M2",
-      "status": "blocked",
+      "status": "done",
       "triggers": [
         "/bff",
         "/patas",
@@ -767,12 +767,12 @@
         "/pawstral"
       ],
       "v1_source": "Miscellaneous.py:261-323",
-      "notes": "same GCS blocker as fun_death: every branch reads a Countdown/* prefix (Miscellaneous.py:18-22) and the single send_photo is unconditional. /trex is spec'd in QA but missing from v1 - net-new",
-      "contract": null,
+      "notes": "hardcoded dates and captions verbatim, +365 wraparound preserved, ungated like v1; /trex is net-new and sends a Countdown/Trex poster with no caption",
+      "contract": "docs/contracts/fun_partneredcons.md",
       "scenarios": {
         "spec": 7,
-        "ported": 0,
-        "green": 0,
+        "ported": 10,
+        "green": 10,
         "failing": 0
       },
       "url": "/docs/features/fun_partneredcons"
@@ -795,7 +795,7 @@
       "scenarios": {
         "spec": 1,
         "ported": 3,
-        "green": 0,
+        "green": 3,
         "failing": 0
       },
       "url": "/docs/features/util_birthday"
@@ -817,7 +817,7 @@
       "scenarios": {
         "spec": 1,
         "ported": 2,
-        "green": 0,
+        "green": 2,
         "failing": 0
       },
       "url": "/docs/features/util_nextbirthday"
@@ -839,7 +839,7 @@
       "scenarios": {
         "spec": 2,
         "ported": 3,
-        "green": 0,
+        "green": 3,
         "failing": 0
       },
       "url": "/docs/features/util_everyone"
@@ -862,7 +862,7 @@
       "scenarios": {
         "spec": 1,
         "ported": 4,
-        "green": 0,
+        "green": 7,
         "failing": 0
       },
       "url": "/docs/features/util_calladms"
@@ -881,7 +881,7 @@
       "scenarios": {
         "spec": 2,
         "ported": 9,
-        "green": 0,
+        "green": 16,
         "failing": 0
       },
       "url": "/docs/features/util_embedder"
@@ -902,7 +902,7 @@
       "scenarios": {
         "spec": 1,
         "ported": 1,
-        "green": 0,
+        "green": 1,
         "failing": 0
       },
       "url": "/docs/features/util_youtube"
@@ -921,7 +921,7 @@
       "scenarios": {
         "spec": 1,
         "ported": 5,
-        "green": 0,
+        "green": 5,
         "failing": 0
       },
       "url": "/docs/features/core_musicdetection"
@@ -947,7 +947,7 @@
       "scenarios": {
         "spec": 2,
         "ported": 8,
-        "green": 0,
+        "green": 8,
         "failing": 0
       },
       "url": "/docs/features/util_postforwarder"
@@ -966,7 +966,7 @@
       "scenarios": {
         "spec": 1,
         "ported": 4,
-        "green": 0,
+        "green": 4,
         "failing": 0
       },
       "url": "/docs/features/util_postgetter"
@@ -989,7 +989,7 @@
       "scenarios": {
         "spec": 2,
         "ported": 2,
-        "green": 0,
+        "green": 2,
         "failing": 0
       },
       "url": "/docs/features/util_deletereposts"
@@ -1010,7 +1010,7 @@
       "scenarios": {
         "spec": 0,
         "ported": 10,
-        "green": 0,
+        "green": 10,
         "failing": 0
       },
       "url": "/docs/features/x_giveaways"
@@ -1029,7 +1029,7 @@
       "scenarios": {
         "spec": 0,
         "ported": 7,
-        "green": 0,
+        "green": 7,
         "failing": 0
       },
       "url": "/docs/features/x_conversational_ai"
@@ -1048,7 +1048,7 @@
       "scenarios": {
         "spec": 0,
         "ported": 6,
-        "green": 0,
+        "green": 6,
         "failing": 0
       },
       "url": "/docs/features/x_speech_to_text"
@@ -1071,7 +1071,7 @@
       "scenarios": {
         "spec": 0,
         "ported": 6,
-        "green": 0,
+        "green": 6,
         "failing": 0
       },
       "url": "/docs/features/x_reverse_search"
@@ -1094,7 +1094,7 @@
       "scenarios": {
         "spec": 0,
         "ported": 10,
-        "green": 0,
+        "green": 12,
         "failing": 0
       },
       "url": "/docs/features/x_distortion"
@@ -1122,7 +1122,7 @@
       "scenarios": {
         "spec": 0,
         "ported": 8,
-        "green": 0,
+        "green": 9,
         "failing": 0
       },
       "url": "/docs/features/x_owner_commands"
@@ -1133,15 +1133,15 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "blocked",
+      "status": "done",
       "triggers": [],
       "v1_source": "Miscellaneous.py:145-158",
-      "notes": "same GCS blocker as fun_death, and worse: the command *names* are the bucket's Custom/ folder names (Miscellaneous.py:23), so without the export there is not even a trigger list. Still the seed of tenant handler packs once the assets land",
-      "contract": null,
+      "notes": "53 exported Custom/ folders are the trigger list, matched by a filter rather than COMMAND_ALIASES because the names are data; gated per tenant by cb_gateway/packs.py, which is what finally reads tenants.handler_pack",
+      "contract": "docs/contracts/x_custom_commands.md",
       "scenarios": {
         "spec": 0,
-        "ported": 0,
-        "green": 0,
+        "ported": 6,
+        "green": 6,
         "failing": 0
       },
       "url": "/docs/features/x_custom_commands"
@@ -1164,7 +1164,7 @@
       "scenarios": {
         "spec": 0,
         "ported": 5,
-        "green": 0,
+        "green": 7,
         "failing": 0
       },
       "url": "/docs/features/x_age_guess"
@@ -1187,7 +1187,7 @@
       "scenarios": {
         "spec": 0,
         "ported": 6,
-        "green": 0,
+        "green": 8,
         "failing": 0
       },
       "url": "/docs/features/x_gender_guess"
@@ -1209,7 +1209,7 @@
       "scenarios": {
         "spec": 0,
         "ported": 5,
-        "green": 0,
+        "green": 6,
         "failing": 0
       },
       "url": "/docs/features/x_unearth"
@@ -1232,30 +1232,30 @@
       "scenarios": {
         "spec": 0,
         "ported": 3,
-        "green": 0,
+        "green": 5,
         "failing": 0
       },
       "url": "/docs/features/x_fortune_cookie"
     },
     {
       "id": "x_image_search",
-      "title": "Image search (qualquer coisa)",
+      "title": "Image search (v1's catch-all)",
       "area": "util",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/qualquercoisa",
         "/anything",
         "/cualquiercosa"
       ],
       "v1_source": "SocialContent.py:144-170",
-      "notes": "Google Custom Search Image API, sfw-gated; no QA scenario exists - write one",
-      "contract": null,
+      "notes": "the three triggers only print the usage line; the feature is that every unrecognised /command is a search. Search + sends in cb-worker, quotas in Valkey (v1's dict was per-process), catch-all raises SkipHandler - it is registered ahead of three routers that own real commands",
+      "contract": "docs/contracts/x_image_search.md",
       "scenarios": {
         "spec": 0,
-        "ported": 0,
-        "green": 0,
+        "ported": 10,
+        "green": 10,
         "failing": 0
       },
       "url": "/docs/features/x_image_search"
@@ -1266,19 +1266,19 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/ideiadesenho",
         "/drawingidea",
         "/ideadibujo"
       ],
       "v1_source": "Miscellaneous.py:137-143",
-      "notes": "signed URL from a GCS blob pool; no QA scenario exists - write one",
-      "contract": null,
+      "notes": "3,435 exported references; the caption's id is the index drawn, so the catalog's sort order is the contract. Scenarios authored locally - QA has none",
+      "contract": "docs/contracts/x_drawing_idea.md",
       "scenarios": {
         "spec": 0,
-        "ported": 0,
-        "green": 0,
+        "ported": 3,
+        "green": 5,
         "failing": 0
       },
       "url": "/docs/features/x_drawing_idea"
@@ -1301,7 +1301,7 @@
       "scenarios": {
         "spec": 0,
         "ported": 4,
-        "green": 0,
+        "green": 7,
         "failing": 0
       },
       "url": "/docs/features/x_analysis"
@@ -1320,7 +1320,7 @@
       "scenarios": {
         "spec": 0,
         "ported": 6,
-        "green": 0,
+        "green": 6,
         "failing": 0
       },
       "url": "/docs/features/x_sticker_autoreply"
@@ -1775,31 +1775,31 @@
       "stem": "core_botskins",
       "spec": 3,
       "ported": 5,
-      "green": 0,
+      "green": 5,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "core_groupguardian",
       "spec": 2,
       "ported": 9,
-      "green": 0,
+      "green": 9,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "core_listcommand",
       "spec": 2,
       "ported": 4,
-      "green": 0,
+      "green": 6,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "core_llm_provider",
       "spec": 0,
       "ported": 9,
-      "green": 0,
+      "green": 9,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -1807,7 +1807,7 @@
       "stem": "core_media_storage",
       "spec": 0,
       "ported": 8,
-      "green": 0,
+      "green": 8,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -1815,31 +1815,31 @@
       "stem": "core_mediarestrict",
       "spec": 2,
       "ported": 6,
-      "green": 0,
+      "green": 9,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "core_musicdetection",
       "spec": 1,
       "ported": 5,
-      "green": 0,
+      "green": 5,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "core_privacy",
       "spec": 1,
       "ported": 4,
-      "green": 0,
+      "green": 8,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "core_reload",
       "spec": 0,
       "ported": 2,
-      "green": 0,
+      "green": 3,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -1847,207 +1847,207 @@
       "stem": "core_rules",
       "spec": 4,
       "ported": 9,
-      "green": 0,
+      "green": 14,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "core_setlang",
       "spec": 3,
       "ported": 8,
-      "green": 0,
+      "green": 8,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "core_stickerspam",
       "spec": 2,
       "ported": 6,
-      "green": 0,
+      "green": 9,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "core_welcome",
       "spec": 3,
       "ported": 10,
-      "green": 0,
+      "green": 18,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "fun_battle",
       "spec": 1,
-      "ported": 7,
-      "green": 0,
+      "ported": 10,
+      "green": 10,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "fun_complaint",
       "spec": 2,
       "ported": 4,
-      "green": 0,
+      "green": 4,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "fun_death",
       "spec": 2,
       "ported": 7,
-      "green": 0,
+      "green": 8,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "fun_dice",
       "spec": 3,
       "ported": 8,
-      "green": 0,
+      "green": 9,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "fun_firecracker",
       "spec": 1,
       "ported": 2,
-      "green": 0,
+      "green": 2,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "fun_meme",
       "spec": 2,
       "ported": 4,
-      "green": 0,
+      "green": 4,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "fun_partneredcons",
       "spec": 7,
-      "ported": 0,
-      "green": 0,
+      "ported": 10,
+      "green": 10,
       "failing": 0,
-      "state": "not ported"
+      "state": "green"
     },
     {
       "stem": "fun_random",
       "spec": 1,
       "ported": 5,
-      "green": 0,
+      "green": 33,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "fun_ship",
       "spec": 3,
       "ported": 7,
-      "green": 0,
+      "green": 8,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "util_birthday",
       "spec": 1,
       "ported": 3,
-      "green": 0,
+      "green": 3,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "util_calladms",
       "spec": 1,
       "ported": 4,
-      "green": 0,
+      "green": 7,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "util_config",
       "spec": 2,
       "ported": 5,
-      "green": 0,
+      "green": 6,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "util_deletereposts",
       "spec": 2,
       "ported": 2,
-      "green": 0,
+      "green": 2,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "util_doomlist",
       "spec": 1,
       "ported": 6,
-      "green": 0,
+      "green": 4,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "util_embedder",
       "spec": 2,
       "ported": 9,
-      "green": 0,
+      "green": 16,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "util_everyone",
       "spec": 2,
       "ported": 3,
-      "green": 0,
+      "green": 3,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "util_isalive",
       "spec": 2,
       "ported": 4,
-      "green": 0,
+      "green": 4,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "util_nextbirthday",
       "spec": 1,
       "ported": 2,
-      "green": 0,
+      "green": 2,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "util_postforwarder",
       "spec": 2,
       "ported": 8,
-      "green": 0,
+      "green": 8,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "util_postgetter",
       "spec": 1,
       "ported": 4,
-      "green": 0,
+      "green": 4,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "util_youtube",
       "spec": 1,
       "ported": 1,
-      "green": 0,
+      "green": 1,
       "failing": 0,
-      "state": "no step definitions"
+      "state": "green"
     },
     {
       "stem": "x_age_guess",
       "spec": 0,
       "ported": 5,
-      "green": 0,
+      "green": 7,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -2055,7 +2055,7 @@
       "stem": "x_analysis",
       "spec": 0,
       "ported": 4,
-      "green": 0,
+      "green": 7,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -2063,7 +2063,15 @@
       "stem": "x_conversational_ai",
       "spec": 0,
       "ported": 7,
-      "green": 0,
+      "green": 7,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "x_custom_commands",
+      "spec": 0,
+      "ported": 6,
+      "green": 6,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -2071,7 +2079,15 @@
       "stem": "x_distortion",
       "spec": 0,
       "ported": 10,
-      "green": 0,
+      "green": 12,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "x_drawing_idea",
+      "spec": 0,
+      "ported": 3,
+      "green": 5,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -2079,7 +2095,7 @@
       "stem": "x_fortune_cookie",
       "spec": 0,
       "ported": 3,
-      "green": 0,
+      "green": 5,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -2087,7 +2103,7 @@
       "stem": "x_gender_guess",
       "spec": 0,
       "ported": 6,
-      "green": 0,
+      "green": 8,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -2095,7 +2111,15 @@
       "stem": "x_giveaways",
       "spec": 0,
       "ported": 10,
-      "green": 0,
+      "green": 10,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "x_image_search",
+      "spec": 0,
+      "ported": 10,
+      "green": 10,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -2103,7 +2127,7 @@
       "stem": "x_owner_commands",
       "spec": 0,
       "ported": 8,
-      "green": 0,
+      "green": 9,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -2111,7 +2135,7 @@
       "stem": "x_reverse_search",
       "spec": 0,
       "ported": 6,
-      "green": 0,
+      "green": 6,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -2119,7 +2143,7 @@
       "stem": "x_speech_to_text",
       "spec": 0,
       "ported": 6,
-      "green": 0,
+      "green": 6,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -2127,7 +2151,7 @@
       "stem": "x_sticker_autoreply",
       "spec": 0,
       "ported": 6,
-      "green": 0,
+      "green": 6,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -2135,7 +2159,7 @@
       "stem": "x_unearth",
       "spec": 0,
       "ported": 5,
-      "green": 0,
+      "green": 6,
       "failing": 0,
       "state": "v2-only spec"
     }
@@ -2207,48 +2231,5 @@
       "addressed": true
     }
   ],
-  "problems": [
-    "util_isalive: marked done but no scenario executed green",
-    "core_listcommand: marked done but no scenario executed green",
-    "core_privacy: marked done but no scenario executed green",
-    "core_reload: marked done but no scenario executed green",
-    "core_rules: marked done but no scenario executed green",
-    "core_welcome: marked done but no scenario executed green",
-    "core_groupguardian: marked done but no scenario executed green",
-    "core_stickerspam: marked done but no scenario executed green",
-    "core_mediarestrict: marked done but no scenario executed green",
-    "util_config: marked done but no scenario executed green",
-    "util_doomlist: marked done but no scenario executed green",
-    "core_setlang: marked done but no scenario executed green",
-    "core_botskins: marked done but no scenario executed green",
-    "fun_dice: marked done but no scenario executed green",
-    "fun_ship: marked done but no scenario executed green",
-    "fun_death: marked done but no scenario executed green",
-    "fun_meme: marked done but no scenario executed green",
-    "fun_random: marked done but no scenario executed green",
-    "fun_firecracker: marked done but no scenario executed green",
-    "fun_complaint: marked done but no scenario executed green",
-    "util_birthday: marked done but no scenario executed green",
-    "util_nextbirthday: marked done but no scenario executed green",
-    "util_everyone: marked done but no scenario executed green",
-    "util_calladms: marked done but no scenario executed green",
-    "util_embedder: marked done but no scenario executed green",
-    "util_youtube: marked done but no scenario executed green",
-    "core_musicdetection: marked done but no scenario executed green",
-    "util_postforwarder: marked done but no scenario executed green",
-    "util_postgetter: marked done but no scenario executed green",
-    "util_deletereposts: marked done but no scenario executed green",
-    "x_giveaways: marked done but no scenario executed green",
-    "x_conversational_ai: marked done but no scenario executed green",
-    "x_speech_to_text: marked done but no scenario executed green",
-    "x_reverse_search: marked done but no scenario executed green",
-    "x_distortion: marked done but no scenario executed green",
-    "x_owner_commands: marked done but no scenario executed green",
-    "x_age_guess: marked done but no scenario executed green",
-    "x_gender_guess: marked done but no scenario executed green",
-    "x_unearth: marked done but no scenario executed green",
-    "x_fortune_cookie: marked done but no scenario executed green",
-    "x_analysis: marked done but no scenario executed green",
-    "x_sticker_autoreply: marked done but no scenario executed green"
-  ]
+  "problems": []
 }

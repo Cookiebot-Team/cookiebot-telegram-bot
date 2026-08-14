@@ -92,6 +92,13 @@ COMMAND_ALIASES: dict[str, str] = {
     "blacklist": "blacklist", "unblacklist": "unblacklist",
     "broadcast": "broadcast",
     "stop": "stop", "restart": "restart",
+    # x_image_search's *prompt*. All three spellings are v1 triggers
+    # (COOKIEBOT.py:258); the search itself has no trigger at all - it is
+    # every unrecognised /command (COOKIEBOT.py:283).
+    "qualquercoisa": "anything", "anything": "anything", "cualquiercosa": "anything",
+    # x_drawing_idea. All three spellings are v1 triggers (COOKIEBOT.py:256).
+    "ideiadesenho": "drawingidea", "drawingidea": "drawingidea",
+    "ideadibujo": "drawingidea",
     # partnered conventions (fun_partneredcons) — /trex was spec'd but missing in v1.
     "bff": "con_bff", "patas": "con_patas", "fursmeet": "con_fursmeet",
     "trex": "con_trex", "furcamp": "con_furcamp", "pawstral": "con_pawstral",

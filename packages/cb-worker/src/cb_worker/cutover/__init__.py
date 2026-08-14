@@ -37,9 +37,20 @@ from typing import Literal
 
 #: Every step `cutover` knows how to run, in the fixed order they execute in.
 #: `--only`/`--skip` narrow this set; they never reorder it.
-StepName = Literal["preflight", "schema", "mongo", "bucket", "memes", "verify"]
+StepName = Literal["preflight", "schema", "mongo", "random", "bucket", "memes", "verify"]
 
-STEP_ORDER: tuple[StepName, ...] = ("preflight", "schema", "mongo", "bucket", "memes", "verify")
+#: `random` runs after `mongo` because `media_objects.group_id` is a foreign
+#: key to `groups`: the pointers it backfills belong to groups the import has
+#: to have created first (`cb_worker/backfill/random_media.py`).
+STEP_ORDER: tuple[StepName, ...] = (
+    "preflight",
+    "schema",
+    "mongo",
+    "random",
+    "bucket",
+    "memes",
+    "verify",
+)
 
 #: A step's own outcome. "skipped" covers both "not selected" and "selected but
 #: nothing to do" (no Mongo source configured, no bucket destination configured)
