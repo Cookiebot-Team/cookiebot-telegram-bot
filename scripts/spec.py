@@ -164,12 +164,11 @@ FEATURES: tuple[Feature, ...] = (
     Feature("fun_complaint", "fun", "Complaint bit", "M2", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:240-259",
             ("/complaint", "/milton", "/reclamacao", "/reclamação", "/queja")),
-    Feature("fun_partneredcons", "fun", "Partnered convention posters", "M2", Status.BLOCKED,
+    Feature("fun_partneredcons", "fun", "Partnered convention posters", "M2", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:261-323",
             ("/bff", "/patas", "/fursmeet", "/trex", "/furcamp", "/pawstral"),
-            "same GCS blocker as fun_death: every branch reads a Countdown/* prefix "
-            "(Miscellaneous.py:18-22) and the single send_photo is unconditional. "
-            "/trex is spec'd in QA but missing from v1 - net-new"),
+            "hardcoded dates and captions verbatim, +365 wraparound preserved, ungated "
+            "like v1; /trex is net-new and sends a Countdown/Trex poster with no caption"),
 
     # -------------------------------------------------------------------- util
     Feature("util_birthday", "util", "Today's birthdays", "M2", Status.DONE,

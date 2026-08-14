@@ -43,6 +43,7 @@ from cb_gateway.handlers import (
     musicdetection,
     nextbirthday,
     owner,
+    partneredcons,
     postgetter,
     privacy,
     publisher,
@@ -90,6 +91,11 @@ def build_router() -> Router:
     root.include_router(battle.router)
     root.include_router(meme.router)
     root.include_router(unearth.router)
+    # fun_partneredcons. Six disjoint triggers, and the one block in v1's chain
+    # that is gated on neither functionsFun nor functionsUtility
+    # (COOKIEBOT.py:248-251 sits above the utility check at :253) — the handler
+    # therefore consults no gate at all.
+    root.include_router(partneredcons.router)
     # x_age_guess / x_gender_guess / x_fortune_cookie all sit in the same
     # funfunctions-gated block as /random, /unearth and friends
     # (COOKIEBOT.py:214-241) and are disjoint triggers like the rest of it.

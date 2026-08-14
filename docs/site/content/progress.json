@@ -1,19 +1,19 @@
 {
   "generated_at": "2026-08-14",
-  "commit": "382b4cf",
-  "test_summary": "3110 passed, 44 skipped, 181 deselected, 2 warnings in 29.44s",
+  "commit": "90c2dc3",
+  "test_summary": "3139 passed, 44 skipped, 181 deselected, 2 warnings in 33.46s",
   "totals": {
     "features": 62,
-    "done": 55,
+    "done": 56,
     "partial": 2,
     "planned": 3,
-    "blocked": 2,
+    "blocked": 1,
     "spec_scenarios": 63,
-    "ported": 164,
+    "ported": 169,
     "spec_files": 31,
-    "spec_files_covered": 30,
+    "spec_files_covered": 31,
     "new_specs": 95,
-    "green": 338,
+    "green": 346,
     "failing": 0
   },
   "milestones": [
@@ -32,7 +32,7 @@
     {
       "id": "M2",
       "title": "Fun and utility commands",
-      "done": 14,
+      "done": 15,
       "total": 15
     },
     {
@@ -757,7 +757,7 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M2",
-      "status": "blocked",
+      "status": "done",
       "triggers": [
         "/bff",
         "/patas",
@@ -767,12 +767,12 @@
         "/pawstral"
       ],
       "v1_source": "Miscellaneous.py:261-323",
-      "notes": "same GCS blocker as fun_death: every branch reads a Countdown/* prefix (Miscellaneous.py:18-22) and the single send_photo is unconditional. /trex is spec'd in QA but missing from v1 - net-new",
-      "contract": null,
+      "notes": "hardcoded dates and captions verbatim, +365 wraparound preserved, ungated like v1; /trex is net-new and sends a Countdown/Trex poster with no caption",
+      "contract": "docs/contracts/fun_partneredcons.md",
       "scenarios": {
         "spec": 7,
-        "ported": 0,
-        "green": 0,
+        "ported": 5,
+        "green": 8,
         "failing": 0
       },
       "url": "/docs/features/fun_partneredcons"
@@ -1926,10 +1926,10 @@
     {
       "stem": "fun_partneredcons",
       "spec": 7,
-      "ported": 0,
-      "green": 0,
+      "ported": 5,
+      "green": 8,
       "failing": 0,
-      "state": "not ported"
+      "state": "partial"
     },
     {
       "stem": "fun_random",
@@ -2207,5 +2207,7 @@
       "addressed": true
     }
   ],
-  "problems": []
+  "problems": [
+    "fun_partneredcons: marked done but 2 of 7 QA scenarios are not ported"
+  ]
 }

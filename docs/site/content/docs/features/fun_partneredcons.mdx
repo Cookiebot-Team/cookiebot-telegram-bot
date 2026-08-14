@@ -3,25 +3,54 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Partnered convention posters"
-description: "same GCS blocker as fun_death: every branch reads a Countdown/* prefix (Miscellaneous.py:18-22) and the single send_photo is unconditional. /trex is spec'd in QA but missing from v1 - net-new"
-status: blocked
+description: "hardcoded dates and captions verbatim, +365 wraparound preserved, ungated like v1; /trex is net-new and sends a Countdown/Trex poster with no caption"
+status: done
 milestone: M2
 area: fun
 layer: gateway
 triggers: ["/bff", "/patas", "/fursmeet", "/trex", "/furcamp", "/pawstral"]
 v1_source: "Miscellaneous.py:261-323"
+contract: "docs/contracts/fun_partneredcons.md"
 ---
 <FeatureHeader id="fun_partneredcons" />
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+`/bff`, `/patas`, `/fursmeet`, `/furcamp` and `/pawstral` each post a poster
+for one furry convention the bot's operators partner with, captioned with how
+many days are left until it, a randomly picked promotional line, and the
+event's dates, venue, ticket link and Telegram group. `/trex` posts a picture
+from the Trex Furplayer folder and nothing else.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+**These six ignore both feature switches.** A group that has turned fun *and*
+utility off still gets its convention posters — v1 dispatches them above the
+utility check and outside the fun block, and they are promotional posts for
+real partners rather than a toy.
+
+Each event's date is hardcoded, and once it passes the countdown walks forward
+in 365-day steps until it is no longer in the past, while the caption keeps
+printing the original day and month. That means the number is "days until the
+same calendar date, some number of years out" and slips a day every four years.
+It is copied exactly: correcting it would mean guessing real convention dates,
+which is the operators' call and not the port's. Between five days before an
+event and the day itself, the caption is replaced by a single YouTube link —
+v1's placeholder for "it is happening right now", the same link for all five.
+
+The captions are Portuguese for four of the five events and English for
+Pawstral, whatever language the group is set to. Only the promotional line
+changes per language, and only one language file has those lines at all. That
+mismatch is v1's, and it is preserved.
+
+`/trex` has no v1 code behind it — QA asked for it and v1 never had it. It gets
+no countdown, because no date for the event exists anywhere in v1, its backend
+or the QA specs, and inventing one would be making up facts about a real event.
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/features/fun_partneredcons.feature` — QA's six commands plus four scenarios
+covering the caption, `/trex`, the ignored feature switches and an
+un-catalogued poster pool; run with `python scripts/cb.py test`. By hand in the
+sandbox: `/patas` in any group and read the caption's day count against the
+date in the same caption.
