@@ -1,0 +1,5 @@
+source_path,destination_key,byte_size,content_hash
+Custom/ruby/photo_2021-05-10_21-08-25.jpg,legacy/v1-bucket/5b/5b648ff4b5c0b39b045a2aa945543042.jpg,49391,5b648ff4b5c0b39b045a2aa945543042
+Custom/ruby/photo_2021-05-11_20-47-22.jpg,legacy/v1-bucket/45/457ad28c96dc08d96d1918a363ee53e8.jpg,52026,457ad28c96dc08d96d1918a363ee53e8
+Custom/ruby/photo_2021-05-11_20-48-07 (2).jpg,legacy/v1-bucket/63/63b5616faf74949238dc21ec16710337.jpg,50496,63b5616faf74949238dc21ec16710337
+Custom/ruby/photo_2021-05-11_20-48-07.jpg,legacy/v1-bucket/5b/5b644209fe057939c1f225372264e4cd.jpg,95636,5b644209fe057939c1f225372264e4cd

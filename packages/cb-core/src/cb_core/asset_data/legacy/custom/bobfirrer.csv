@@ -1,0 +1,6 @@
+source_path,destination_key,byte_size,content_hash
+Custom/bobfirrer/photo_2021-03-31_00-37-22.jpg,legacy/v1-bucket/c0/c0c6af89007c07ffd24ebadfa175d3d5.jpg,83833,c0c6af89007c07ffd24ebadfa175d3d5
+Custom/bobfirrer/photo_2021-03-31_00-37-24.jpg,legacy/v1-bucket/69/69b9074b166785382a4bb5ae68e403fd.jpg,52415,69b9074b166785382a4bb5ae68e403fd
+Custom/bobfirrer/photo_2021-03-31_00-37-26.jpg,legacy/v1-bucket/9c/9c2cc54868e774e1faa5e1f5e4fcf56f.jpg,46504,9c2cc54868e774e1faa5e1f5e4fcf56f
+Custom/bobfirrer/photo_2021-03-31_00-37-28.jpg,legacy/v1-bucket/3c/3c958c15a3e4b51402be350824f77fa4.jpg,36015,3c958c15a3e4b51402be350824f77fa4
+Custom/bobfirrer/photo_2021-03-31_00-37-30.jpg,legacy/v1-bucket/0a/0acb41961706ad737aabe929337d2279.jpg,68389,0acb41961706ad737aabe929337d2279

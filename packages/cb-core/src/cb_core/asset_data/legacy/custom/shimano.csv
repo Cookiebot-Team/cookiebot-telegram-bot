@@ -1,0 +1,6 @@
+source_path,destination_key,byte_size,content_hash
+Custom/shimano/photo_2021-07-19_23-43-34.jpg,legacy/v1-bucket/b4/b45168f2eb8782ee00db33778c1e1fa9.jpg,18467,b45168f2eb8782ee00db33778c1e1fa9
+Custom/shimano/photo_2021-07-19_23-57-59 (2).jpg,legacy/v1-bucket/93/9324d5c40f58f7f4925f16fd199fc90a.jpg,38171,9324d5c40f58f7f4925f16fd199fc90a
+Custom/shimano/photo_2021-07-19_23-57-59.jpg,legacy/v1-bucket/85/850acc2869c7538f37eeb89d83dbc9fc.jpg,32467,850acc2869c7538f37eeb89d83dbc9fc
+Custom/shimano/photo_2021-07-19_23-58-00 (2).jpg,legacy/v1-bucket/b0/b0687275b1d95201000b41153d0693e8.jpg,21406,b0687275b1d95201000b41153d0693e8
+Custom/shimano/photo_2021-07-19_23-58-00.jpg,legacy/v1-bucket/a3/a312c6d2ee5759e608481533288476e7.jpg,19795,a312c6d2ee5759e608481533288476e7

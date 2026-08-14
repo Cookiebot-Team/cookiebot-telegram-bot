@@ -1,11 +1,15 @@
 """`cb_core.legacy_assets` — the `meme_templates` counterpart for
 `bucket_export`'s objects.
 
-No real catalog ships yet: `cb.py legacy-catalog` has never been run against a
-finished export in this checkout (the export itself is still running), so
-`cb_core.asset_data.legacy` is genuinely empty right now. `TestNotYetExported`
-exercises exactly that real, current state — the "no bytes seeded yet"
-degradation the module docstring promises. Everything else builds a small
+The catalogs now ship: `cb.py legacy-catalog` has been run against the finished
+6,910-object export and its output is checked in, so `TestShippedCatalogs`
+asserts the real, current state of `cb_core.asset_data.legacy` — every prefix a
+handler reads is present and non-empty. `TestNotYetExported` still exercises the
+"no bytes seeded yet" degradation the module docstring promises, but against an
+empty `_INDEX` rather than against this checkout: that state is a property of a
+deployment where the generator has not run, not of this repository, and pinning
+it to "the catalogs happen to be missing here" is what made these tests fail the
+moment they were generated. Everything else builds a small
 index by hand: either via `_walk_csv_files`/`_load_catalog` against a
 `tmp_path` tree (a `pathlib.Path` satisfies the `Traversable` protocol this
 module reads through, so no package installation is needed to test the
@@ -21,6 +25,7 @@ from __future__ import annotations
 import json
 import random
 from pathlib import Path
+from types import MappingProxyType
 
 import pytest
 
@@ -45,10 +50,67 @@ def _asset(
     )
 
 
+class TestShippedCatalogs:
+    """The real, current state of `cb_core.asset_data.legacy` — the generated
+    catalogs are checked in, so these read the actual package data rather than
+    a fixture. Each prefix here is one a shipped handler picks from
+    (`death.py`, `battle.py`, `partneredcons.py`, `drawing_idea.py`,
+    `custom_command.py`), which is why the assertions are per-prefix rather
+    than one "the index is non-empty": a regenerated catalog that silently
+    dropped one prefix would still pass the loose version.
+    """
+
+    def test_every_v1_prefix_has_a_catalog(self) -> None:
+        assert legacy_assets.prefixes() == (
+            "countdown/bff",
+            "countdown/furcamp",
+            "countdown/fursmeet",
+            "countdown/patas",
+            "countdown/pawstral",
+            "countdown/trex",
+            "death",
+            "fight/english",
+            "fight/portuguese",
+            "ideiadesenho",
+        )
+
+    @pytest.mark.parametrize(
+        "prefix",
+        [
+            "Death",
+            "Countdown/BFF",
+            "Countdown/Patas",
+            "Countdown/FurSMeet",
+            "Countdown/Furcamp",
+            "Countdown/Pawstral",
+            "Countdown/Trex",
+            "Fight/English",
+            "Fight/Portuguese",
+            "IdeiaDesenho",
+        ],
+    )
+    def test_pool_is_non_empty_and_addresses_real_blobs(self, prefix: str) -> None:
+        entries = legacy_assets.entries_for(prefix)
+        assert entries
+        for entry in entries:
+            assert entry.storage_key.startswith("legacy/v1-bucket/")
+            assert entry.byte_size > 0
+
+    def test_custom_commands_were_discovered(self) -> None:
+        names = legacy_assets.custom_command_names()
+        assert len(names) > 1
+        assert all(legacy_assets.entries_for_custom(name) for name in names)
+
+
 class TestNotYetExported:
-    """The real, current state of `cb_core.asset_data.legacy`: `legacy-catalog`
-    has never run in this checkout, so every lookup degrades to empty rather
-    than raising."""
+    """A deployment where `legacy-catalog` has never run: every lookup degrades
+    to empty rather than raising (module docstring). Pinned to an empty
+    `_INDEX` rather than to this checkout's package data, which now ships real
+    catalogs — see this module's docstring."""
+
+    @pytest.fixture(autouse=True)
+    def _empty_index(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(legacy_assets, "_INDEX", MappingProxyType({}))
 
     def test_prefixes_is_empty(self) -> None:
         assert legacy_assets.prefixes() == ()
