@@ -221,3 +221,37 @@ class TestBodies:
             headers=_auth(),
         )
         assert response.status_code == 400
+
+
+class TestKeyOrdering:
+    def test_the_kid_named_by_the_header_is_tried_first(self) -> None:
+        """A `kid` is a hint from an unverified header, so every key is still
+        tried — but the usual request should cost one RSA verification, not
+        one per published key."""
+        wanted = keys.SigningKey(kid=KID, private_pem=PEM)
+        other = keys.SigningKey(kid="older", private_pem=keys.generate_private_pem())
+        ordered = security._ordered_keys(_token(ADMIN_ID), (other, wanted))  # noqa: SLF001
+        assert [key.kid for key in ordered] == [KID, "older"]
+
+    def test_an_unreadable_header_falls_back_to_the_published_order(self) -> None:
+        published = (
+            keys.SigningKey(kid="a", private_pem=PEM),
+            keys.SigningKey(kid="b", private_pem=PEM),
+        )
+        assert security._ordered_keys("not-a-jwt", published) == list(published)  # noqa: SLF001
+
+    def test_a_token_whose_kid_is_unknown_still_verifies_against_the_right_key(
+        self, client: TestClient
+    ) -> None:
+        """The header is not trusted: naming a kid nobody has must not skip the
+        key that actually signed the token."""
+        token = jwt.encode(
+            {"sub": str(ADMIN_ID), "iat": 1_700_000_000, "exp": 4_102_444_800},
+            PEM,
+            algorithm="RS256",
+            headers={"kid": "who-knows"},
+        )
+        response = client.get(
+            f"/groups/{GROUP_ID}/analytics/summary", headers={"Authorization": f"Bearer {token}"}
+        )
+        assert response.status_code == 200

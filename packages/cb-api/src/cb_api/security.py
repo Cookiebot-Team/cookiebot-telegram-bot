@@ -56,12 +56,33 @@ SELECT 1
 """
 
 
+def _ordered_keys(token: str, published: tuple[keys.SigningKey, ...]) -> list[keys.SigningKey]:
+    """`published`, with the key the token's `kid` header names first.
+
+    Every key is still tried — a `kid` is a hint from an unverified header, not
+    a fact — but naming one correctly is the common case, so this makes the
+    usual request cost one RSA verification instead of N.
+    """
+    try:
+        kid = jwt.get_unverified_header(token).get("kid")
+    except jwt.PyJWTError:
+        return list(published)
+    return sorted(published, key=lambda key: key.kid != kid)
+
+
 async def _decode(token: str) -> dict[str, Any]:
     """The first published key that verifies wins. Every key is tried because a
     rotation publishes the outgoing one alongside the incoming one, and a token
-    minted a minute before the swap has to keep working until it expires."""
+    minted a minute before the swap has to keep working until it expires.
+
+    `published_keys()` reads `signing_keys` per call when the PEM is not
+    configured — a small coordinator-local table, and the same read
+    `/.well-known/jwks.json` already does per request. Caching it would have to
+    invalidate on rotation, which is exactly when being wrong costs the most,
+    so the read stays.
+    """
     last_error: Exception | None = None
-    for key in await keys.published_keys():
+    for key in _ordered_keys(token, await keys.published_keys()):
         public_pem = keys.public_pem(key.private_pem)
         try:
             return dict(
