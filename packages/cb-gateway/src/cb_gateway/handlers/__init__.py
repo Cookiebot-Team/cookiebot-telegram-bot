@@ -22,6 +22,7 @@ from cb_gateway.handlers import (
     chat_ai,
     complaint,
     config_menu,
+    custom_command,
     death,
     deletereposts,
     destroy,
@@ -129,6 +130,12 @@ def build_router() -> Router:
     # block because a DM never reaches the join chain or the content rules at
     # all (`.specs/features/private_dispatch/`).
     root.include_router(owner.router)
+
+    # x_custom_commands. Registered last of the command routers on purpose:
+    # its trigger list is *data* (the exported Custom/ folder names), so a
+    # folder that happens to be named after a real command must never shadow
+    # the real one. Everything above claims its own trigger first.
+    root.include_router(custom_command.router)
 
     # ---- join chain: order matters, see the module docstring ----
     # 1. Bookkeeping first. `group_members.joined_at` is recorded even for a

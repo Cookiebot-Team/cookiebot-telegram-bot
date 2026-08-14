@@ -1,19 +1,19 @@
 {
   "generated_at": "2026-08-14",
-  "commit": "bae347e",
-  "test_summary": "3149 passed, 44 skipped, 181 deselected, 2 warnings in 37.10s",
+  "commit": "c3c65e3",
+  "test_summary": "3173 passed, 44 skipped, 181 deselected, 2 warnings in 44.64s",
   "totals": {
     "features": 62,
-    "done": 57,
-    "partial": 2,
+    "done": 59,
+    "partial": 1,
     "planned": 2,
-    "blocked": 1,
+    "blocked": 0,
     "spec_scenarios": 63,
-    "ported": 169,
+    "ported": 174,
     "spec_files": 31,
     "spec_files_covered": 31,
-    "new_specs": 98,
-    "green": 351,
+    "new_specs": 104,
+    "green": 359,
     "failing": 0
   },
   "milestones": [
@@ -26,7 +26,7 @@
     {
       "id": "M1",
       "title": "Survival core \u2014 moderation, config, captcha, tenancy",
-      "done": 15,
+      "done": 16,
       "total": 16
     },
     {
@@ -38,7 +38,7 @@
     {
       "id": "M3",
       "title": "Publisher, AI, giveaways, owner tooling",
-      "done": 17,
+      "done": 18,
       "total": 19
     },
     {
@@ -207,10 +207,10 @@
       "area": "platform",
       "layer": "core",
       "milestone": "M1",
-      "status": "partial",
+      "status": "done",
       "triggers": [],
       "v1_source": "",
-      "notes": "tenants table + registry landed; handler packs not wired",
+      "notes": "tenants table + registry + dispatch gate + llm_overrides/storage_prefix; handler packs read per update by cb_gateway/packs.py, first family legacy_custom",
       "contract": null,
       "scenarios": {
         "spec": 0,
@@ -558,7 +558,7 @@
       "status": "done",
       "triggers": [],
       "v1_source": "universal_funcs.py:39-52",
-      "notes": "one process serves every skin; cb_core/skins.py adds the two behavioural forks v1 keys on is_alternate_bot (intro animation, fun-override flair) plus the per-skin asset override tree; all 5 personas configured (0007). Handler packs remain platform_tenancy's open item - see docs/contracts/core_botskins.md",
+      "notes": "one process serves every skin; cb_core/skins.py adds the two behavioural forks v1 keys on is_alternate_bot (intro animation, fun-override flair) plus the per-skin asset override tree; all 5 personas configured (0007). Handler packs landed with x_custom_commands - see cb_gateway/packs.py",
       "contract": "docs/contracts/core_botskins.md",
       "scenarios": {
         "spec": 3,
@@ -771,8 +771,8 @@
       "contract": "docs/contracts/fun_partneredcons.md",
       "scenarios": {
         "spec": 7,
-        "ported": 5,
-        "green": 8,
+        "ported": 10,
+        "green": 10,
         "failing": 0
       },
       "url": "/docs/features/fun_partneredcons"
@@ -1133,15 +1133,15 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "blocked",
+      "status": "done",
       "triggers": [],
       "v1_source": "Miscellaneous.py:145-158",
-      "notes": "same GCS blocker as fun_death, and worse: the command *names* are the bucket's Custom/ folder names (Miscellaneous.py:23), so without the export there is not even a trigger list. Still the seed of tenant handler packs once the assets land",
-      "contract": null,
+      "notes": "53 exported Custom/ folders are the trigger list, matched by a filter rather than COMMAND_ALIASES because the names are data; gated per tenant by cb_gateway/packs.py, which is what finally reads tenants.handler_pack",
+      "contract": "docs/contracts/x_custom_commands.md",
       "scenarios": {
         "spec": 0,
-        "ported": 0,
-        "green": 0,
+        "ported": 6,
+        "green": 6,
         "failing": 0
       },
       "url": "/docs/features/x_custom_commands"
@@ -1926,10 +1926,10 @@
     {
       "stem": "fun_partneredcons",
       "spec": 7,
-      "ported": 5,
-      "green": 8,
+      "ported": 10,
+      "green": 10,
       "failing": 0,
-      "state": "partial"
+      "state": "green"
     },
     {
       "stem": "fun_random",
@@ -2064,6 +2064,14 @@
       "spec": 0,
       "ported": 7,
       "green": 7,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "x_custom_commands",
+      "spec": 0,
+      "ported": 6,
+      "green": 6,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -2215,7 +2223,5 @@
       "addressed": true
     }
   ],
-  "problems": [
-    "fun_partneredcons: marked done but 2 of 7 QA scenarios are not ported"
-  ]
+  "problems": []
 }

@@ -66,8 +66,9 @@ FEATURES: tuple[Feature, ...] = (
             Layer.CORE, notes="anthropic + openai-compatible; per-task routing; cost metering"),
     Feature("platform_selfhosted_api", "platform", "Self-hosted Telegram Bot API server", "M0", Status.DONE,
             Layer.GATEWAY, notes="local mode + polling ingest; websocket reserved"),
-    Feature("platform_tenancy", "platform", "Multi-tenant registry and schema", "M1", Status.PARTIAL,
-            Layer.CORE, notes="tenants table + registry landed; handler packs not wired"),
+    Feature("platform_tenancy", "platform", "Multi-tenant registry and schema", "M1", Status.DONE,
+            Layer.CORE, notes="tenants table + registry + dispatch gate + llm_overrides/storage_prefix; "
+            "handler packs read per update by cb_gateway/packs.py, first family legacy_custom"),
     # The three M1 prerequisites. Almost every M1 handler needs all three, so they
     # are built once rather than three-quarters of each inside three ports.
     Feature("platform_locales", "platform", "String catalog ported from v1 locales", "M1",
@@ -124,7 +125,7 @@ FEATURES: tuple[Feature, ...] = (
             "one process serves every skin; cb_core/skins.py adds the two behavioural forks "
             "v1 keys on is_alternate_bot (intro animation, fun-override flair) plus the "
             "per-skin asset override tree; all 5 personas configured (0007). Handler packs "
-            "remain platform_tenancy's open item - see docs/contracts/core_botskins.md"),
+            "landed with x_custom_commands - see cb_gateway/packs.py"),
 
     # --------------------------------------------------------------------- fun
     Feature("fun_dice", "fun", "Roll an n-sided die", "M2", Status.DONE,
@@ -246,12 +247,11 @@ FEATURES: tuple[Feature, ...] = (
             "handler thread (D8); /stop and /restart answer a refusal rather than "
             "os._exit-ing one of N replicas - see docs/contracts/x_owner_commands.md; "
             "QA authored (9 scenarios)"),
-    Feature("x_custom_commands", "fun", "Per-group custom commands", "M3", Status.BLOCKED,
+    Feature("x_custom_commands", "fun", "Per-group custom commands", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:145-158", (),
-            "same GCS blocker as fun_death, and worse: the command *names* are the "
-            "bucket's Custom/ folder names (Miscellaneous.py:23), so without the "
-            "export there is not even a trigger list. Still the seed of tenant "
-            "handler packs once the assets land"),
+            "53 exported Custom/ folders are the trigger list, matched by a filter rather "
+            "than COMMAND_ALIASES because the names are data; gated per tenant by "
+            "cb_gateway/packs.py, which is what finally reads tenants.handler_pack"),
     Feature("x_age_guess", "fun", "Age guess (agify.io)", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:185-202", ("/idade", "/age", "/edad"),
             "GET agify.io?name=, timeout+Breaker per doomlist.py's pattern; fun-gated with "

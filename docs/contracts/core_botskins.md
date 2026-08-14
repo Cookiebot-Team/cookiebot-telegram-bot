@@ -97,9 +97,13 @@ display name QA's — rather than choosing one, the same treatment
 - **No skin has supplied artwork.** `asset_data/skins/` is empty on purpose:
   this slice owed the mechanism, not the content. Adding a brand is a
   directory, not a code change.
-- **`Tenant.handler_pack` is still never read.** A skin cannot yet add or
-  remove *commands* — that is `platform_tenancy`'s open item, not this one,
-  and it is where a genuinely bespoke event experience would live.
+- **`Tenant.handler_pack` is read now** — `cb_gateway/packs.py`, shipped with
+  `x_custom_commands`. A pack names the command *families* a tenant receives,
+  and `legacy_custom` (v1's `Custom/` picture pools) is the first; a brand that
+  wants none of them sets `handler_pack = 'minimal'`. This entry used to read
+  "still never read", which was `platform_tenancy`'s last open item. What is
+  still missing is a family whose handlers are genuinely bespoke to one event
+  skin — the mechanism exists, the content does not, same as the artwork above.
 
 ## Tests
 

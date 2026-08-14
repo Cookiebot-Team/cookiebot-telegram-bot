@@ -55,34 +55,53 @@ faster. Nothing in the query plans changes to add tenancy.
 
 ## Custom implementations: handler packs
 
-Tenants that need bespoke behaviour ship a **handler pack** — a module exporting a
-`build(core_router) -> Router`. The gateway resolves `tenant.handler_pack` at
-startup and builds one dispatcher per pack, not per tenant.
+Tenants that need bespoke behaviour get a **handler pack**: a name on the tenant
+row that maps to a set of command **families** the tenant receives on top of the
+core ones. `cb_gateway/packs.py` is the registry, and a family is gated by one
+filter on the router that implements it.
 
 ```python
-# packs/furcon/pack.py
-from aiogram import Router
-from cb_gateway.handlers import build_router as build_core
+# cb_gateway/packs.py
+LEGACY_CUSTOM = "legacy_custom"           # v1's Custom/ picture pools
 
+PACKS = {
+    "core": frozenset({LEGACY_CUSTOM}),   # what the Cookiebot brand has always had
+    "minimal": frozenset(),               # a brand that wants none of it
+}
 
-def build() -> Router:
-    router = build_core()  # everything the core provides
-    router.include_router(badges)  # this tenant's own commands
-    return router
+# cb_gateway/handlers/custom_command.py
+@router.message(PackProvides(LEGACY_CUSTOM), CustomCommandName())
+async def custom_command(...): ...
 ```
+
+This started out sketched as "one dispatcher per pack, built at startup", which
+is not what shipped. A filter reaches the same observable rule — a tenant whose
+pack lacks the family falls through as if the handler were never registered —
+while `cb-gateway` keeps one `Dispatcher`, one webhook route and one
+`resolve_used_update_types()` across every skin. Per-pack dispatchers would have
+to be built from tenant rows the registry loads lazily, and rebuilt whenever a
+tenant's pack changed. The point at which they become the right shape is a pack
+that needs to *replace* a core handler — which rule 1 below says should not
+exist.
 
 Rules that keep this from becoming a fork:
 
-1. **A pack composes the core router; it never replaces it.** Removing a core
+1. **A pack adds families; it never replaces a core handler.** Removing a core
    command is `disabled_commands` on the tenant row, not a different pack.
-2. **Packs may not import another pack.** Shared behaviour graduates into core.
-3. **Packs get the same middleware.** Dedupe, telemetry and the analytics row are
+2. **Packs may not depend on another pack.** Shared behaviour graduates into
+   core — i.e. into `PACKS["core"]`.
+3. **An unknown pack name falls back to core.** A typo on a tenant row must not
+   silently delete commands; it logs `packs.unknown` and behaves as core.
+4. **Packs get the same middleware.** Dedupe, telemetry and the analytics row are
    attached to the dispatcher, not the router, so a pack cannot opt out of
    observability or skip the `message_events` row.
-4. **A pack that needs new storage adds a migration** in `cb-api`, distributed on
+5. **A pack that needs new storage adds a migration** in `cb-api`, distributed on
    `group_id` like everything else. No per-tenant schema.
-5. **Custom commands are registered in `command_catalog`** with their tenant, so
-   `/commands` stays accurate per tenant.
+6. **Commands a pack adds are registered in `command_catalog`** with their
+   tenant, so `/commands` stays accurate per tenant. The one exception today is
+   the `legacy_custom` family, whose 53 trigger names are *data* (v1's bucket
+   folder names) rather than catalog rows — see
+   `docs/contracts/x_custom_commands.md`.
 
 This is the supported successor to v1's GCS `Custom/` prefix, which had no
 review, no tests and no telemetry.
