@@ -3,8 +3,8 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Mongo -> Citus backfill"
-description: "configs/rules/welcomes/users/blacklist/groups/stickerdatabase import, idempotent (stickerdatabase -> the new global sticker_pool reference table, migration 0009); randomdatabase alone still needs a Telegram-download backfill - its rows have no content_hash/blob_key and media_objects requires both NOT NULL"
-status: partial
+description: "all 8 collections. 7 through the pure ETL mappers, idempotent upserts; randomdatabase through cb.py backfill-random, which downloads what each v1 pointer references and writes a real media_objects row - resumable by telegram_file_id, so a second run costs a query per pointer, not a download"
+status: done
 milestone: M4
 area: platform
 layer: worker
@@ -14,13 +14,38 @@ v1_source: "COOKIEBOT-backend/core/domains/*.java"
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+Moves every group's history out of v1's MongoDB and into v2's database: their
+settings, rules, welcome messages, members, blacklist, sticker pool and random
+media library. Nothing a group types changes — the point is that on cutover day
+nothing a group *has* is lost either.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+**Every write is an upsert on the natural key**, which is what makes a cutover
+possible without a maintenance window: run the import now while v1 is still
+serving, again next week, and once more at cutover to pick up the delta. Two
+runs produce the same rows, never duplicates and never resurrected defaults.
+
+Anything that cannot be moved faithfully is **skipped and counted, never
+guessed**. Every id in v1's database is a string; one that will not parse as a
+Telegram id is reported rather than invented. v1's `"9999"` "no topic pinned"
+sentinel becomes a real `NULL`, so v2 has one way to say that instead of two.
+
+The random-media library is the one collection that needs more than a mapping.
+v1 stored a *pointer* to a Telegram message, never the picture; v2 stores the
+picture. So `cb.py backfill-random` (also the cutover's `random` step)
+downloads what each pointer references, hashes the real bytes and writes the
+same kind of row the live bot writes when someone posts a photo today —
+indistinguishable afterwards, including to `/random` itself. Pointers whose
+message was deleted, or whose file id has expired, are counted as unavailable:
+that is a fact about v1's data and not something this can fix.
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/integration/test_importer.py` and
+`qa/integration/test_backfill_random_media.py` run both halves against a real
+Citus cluster — including that a second backfill run skips an already-imported
+pointer *without downloading it*, which is what makes a resumed cutover cheap.
+Run with `python scripts/cb.py test-integration`. By hand:
+`python scripts/cb.py cutover --dry-run` reads everything, writes nothing, and
+prints what each step would do.

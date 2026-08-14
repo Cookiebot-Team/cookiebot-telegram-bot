@@ -25,13 +25,14 @@ document for a chat before its `groups` row and the foreign key rejects it;
 seed templates into `memory://` and the run reports success and loses every
 byte at exit.
 
-## The six steps
+## The seven steps
 
 | Step | Writes | What it does |
 |---|---|---|
 | `preflight` | never | Postgres reachable, storage URI usable, Mongo source configured, GCS export credential configured and the bucket listable, v1 checkout present |
 | `schema` | Postgres | `alembic upgrade head`, reporting the revision before and after |
 | `mongo` | Postgres | v1 MongoDB (or a `mongodump` directory) → Citus |
+| `random` | Postgres + object storage | v1's `randomdatabase` pointers → real `media_objects` rows, by downloading what each one references from Telegram |
 | `bucket` | object storage | v1's private GCS bucket → v2 object storage |
 | `memes` | object storage | v1's checked-in meme templates → v2 object storage |
 | `verify` | never | row counts per table, objects at the destination, the alembic revision |
@@ -51,10 +52,34 @@ on:
   duplicates nothing;
 - the bucket export skips a blob whose content already landed, and appends to a
   manifest as it goes, so a killed run resumes;
-- the seeder skips a template key already present at the same size.
+- the seeder skips a template key already present at the same size;
+- the random-media backfill skips a pointer whose `telegram_file_id` is
+  already recorded for that group, so a resumed run costs one query per
+  already-imported pointer rather than one download.
 
 So the intended usage is not one careful run. It is: run it now while v1 still
 serves, run it again next week, run it once more at cutover to catch the delta.
+
+## The `random` step, and why it can never be "complete"
+
+Every other step moves data that exists. This one moves *pointers*: v1's
+`randomdatabase` stores `{chat_id, message_id, file_id}` and nothing else, so a
+row can only become a `media_objects` row by asking Telegram for the file and
+downloading it (`docs/contracts/fun_random.md`, and
+`cb_worker/backfill/random_media.py` for the mechanics). Three consequences an
+operator should expect rather than debug:
+
+- **It runs after `mongo`**, because `media_objects.group_id` is a foreign key
+  to a group that step creates. A pointer for a group that has not been
+  imported is skipped with exactly that reason.
+- **A `file_id` only resolves for the bot that saw the message.** The step uses
+  the first token in `CB_BOT_TOKENS`; `cb.py backfill-random --skin <name>`
+  picks a different one. The wrong brand's token fails every row, not some.
+- **Old pointers are expected to fail.** A deleted message or an expired file
+  id is a 400 from `getFile`. Each is one counted row and never the step, and
+  the summary reports how many — what fraction of years-old pointers still
+  resolve is a property of v1's data, so there is no threshold here to fail
+  against.
 
 ## Preflight refuses the two mistakes that look like success
 

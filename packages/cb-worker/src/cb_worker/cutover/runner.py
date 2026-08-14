@@ -30,6 +30,8 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 import asyncpg
+from aiogram import Bot
+from aiogram.client.default import DefaultBotProperties
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn
 from rich.table import Table
@@ -41,6 +43,9 @@ from cb_core.migrations import ensure_schema, head_revision, migrations_dir
 from cb_core.settings import Settings
 from cb_core.storage import BlobStore, store_from_uri
 from cb_worker import meme_seed
+from cb_worker.backfill import BackfillReport
+from cb_worker.backfill.random_media import COLLECTION as BACKFILL_COLLECTION
+from cb_worker.backfill.random_media import run_backfill
 from cb_worker.bucket_export import gcp_auth
 from cb_worker.bucket_export import manifest as bucket_manifest_io
 from cb_worker.bucket_export.runner import run_export
@@ -393,6 +398,83 @@ async def _step_mongo(
     )
 
 
+# ------------------------------------------------------------------- random
+
+
+async def _step_random(settings: Settings, *, dry_run: bool, console: Console) -> StepResult:
+    """`randomdatabase` -> `media_objects`, the one collection the importer
+    cannot move (`cb_worker/backfill/random_media.py`).
+
+    Placed after `mongo` in `STEP_ORDER` because every row it writes has a
+    foreign key to a group that step creates. Skipped, not failed, when there
+    is no Mongo source or no bot token: both are ordinary states for a partial
+    environment, and the same rule `_step_mongo` applies to a missing source.
+    """
+    start = time.monotonic()
+    if not settings.mongo_uri.strip() and not settings.mongo_dump_dir.strip():
+        return StepResult(
+            step="random",
+            status="skipped",
+            duration_s=time.monotonic() - start,
+            headline="no source configured",
+            detail="set CB_MONGO_URI or CB_MONGO_DUMP_DIR to run this step",
+        )
+    tokens = settings.bot_tokens
+    if not tokens:
+        return StepResult(
+            step="random",
+            status="skipped",
+            duration_s=time.monotonic() - start,
+            headline="no bot token",
+            detail="a v1 file_id only resolves for the bot that saw the message; set CB_BOT_TOKENS",
+        )
+
+    skin, token = next(iter(tokens.items()))
+    source = open_mongo_source(settings)
+    bot = Bot(token=token, default=DefaultBotProperties(parse_mode="HTML"))
+    try:
+        with Progress(
+            TextColumn("[bold blue]{task.fields[collection]}"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TimeElapsedColumn(),
+            console=console,
+            transient=True,
+        ) as progress:
+            total = source.count(BACKFILL_COLLECTION)
+            task_id = progress.add_task("", collection=f"random media ({skin})", total=total)
+
+            def on_progress(report: BackfillReport) -> None:
+                progress.update(
+                    task_id,
+                    completed=report.read,
+                    collection=(
+                        f"random media ({skin}): {report.imported} imported, "
+                        f"{report.failed} unavailable"
+                    ),
+                )
+
+            report = await run_backfill(source, bot, dry_run=dry_run, on_progress=on_progress)
+    finally:
+        source.close()
+        await bot.session.close()
+
+    # A failed pointer is expected — a deleted message or an expired file id —
+    # and never fails the step; there is no "all of them failed" threshold
+    # either, because what fraction of years-old pointers still resolve is a
+    # property of v1's data, not of this code.
+    return StepResult(
+        step="random",
+        status="ok",
+        duration_s=time.monotonic() - start,
+        headline=f"{report.imported} media object(s) written",
+        detail=(
+            f"{report.read} pointer(s) read, {report.skipped} skipped, "
+            f"{report.failed} no longer available from Telegram"
+        ),
+    )
+
+
 # ------------------------------------------------------------------- bucket
 
 
@@ -657,8 +739,8 @@ def render_summary(report: CutoverReport) -> Table:
 #: `cb_core.migrations` already does this at service startup), so a schema
 #: step's own failure already surfaces through the per-step `try`/`except`
 #: below without this module needing to open the pool at all for it.
-_DB_STEPS = frozenset({"mongo", "verify"})
-_STORAGE_STEPS = frozenset({"bucket", "memes", "verify"})
+_DB_STEPS = frozenset({"mongo", "random", "verify"})
+_STORAGE_STEPS = frozenset({"bucket", "memes", "random", "verify"})
 
 
 def _infra_problem(
@@ -666,7 +748,7 @@ def _infra_problem(
 ) -> str | None:
     """Whether `step` needs infrastructure that failed to initialise — and if
     so, why. `None` means the step can proceed to its own body."""
-    if db_error is not None and step in _DB_STEPS and not (step == "mongo" and dry_run):
+    if db_error is not None and step in _DB_STEPS and not (step in {"mongo", "random"} and dry_run):
         return db_error
     if storage_error is not None and step in _STORAGE_STEPS:
         return storage_error
@@ -705,7 +787,7 @@ async def run_cutover(
     report = CutoverReport()
     selected = frozenset(steps)
 
-    needs_db = "verify" in selected or ("mongo" in selected and not dry_run)
+    needs_db = "verify" in selected or (bool(selected & {"mongo", "random"}) and not dry_run)
     needs_storage = bool(selected & _STORAGE_STEPS)
 
     db_error: str | None = None
@@ -798,6 +880,8 @@ async def _run_step(
         return await _step_mongo(
             settings, collections=collections, dry_run=dry_run, console=console
         )
+    if step == "random":
+        return await _step_random(settings, dry_run=dry_run, console=console)
     if step == "bucket":
         return await _step_bucket(
             settings, dry_run=dry_run, manifest_path=bucket_manifest_path, console=console

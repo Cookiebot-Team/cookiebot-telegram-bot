@@ -45,7 +45,14 @@ Java backend's MongoDB into the v2 Citus schema, from a live server
 
 ## What is missing
 
-- **`randomdatabase` — every document is skipped, by design.**
+*(Nothing, as of the `cb.py backfill-random` commit — the section below is the
+reasoning that stood until then, kept because it is what the backfill was
+designed against. `randomdatabase` is still skipped by the **mapper**, and
+always will be: the fix was never to make a pure function do I/O, it was to
+add the download step somewhere a download belongs. See "How it was finished"
+at the end.)*
+
+- **`randomdatabase` — every document is skipped by the ETL mapper, by design.**
   `mappers.map_randomdatabase` (`mappers.py:339-360`) skips and counts every
   row rather than writing anything. The reason is structural, not
   procedural: v1's `RandomDatabase.java` stores only a Telegram
@@ -116,3 +123,37 @@ similarly, consumed by `SocialContent.py:208-222` (`add_to_sticker_database`/
 `reply_sticker`, now `x_sticker_autoreply`, also `Status.DONE` and likewise
 independent of whether this import has ever run — the importer backfills v1's
 history into the same table the live handler writes to going forward).
+
+
+## How it was finished
+
+`cb_worker.backfill.random_media`, driven by `python scripts/cb.py
+backfill-random`. Not an arq job and not a mapper: a cutover command, like
+`import-mongo` and `bucket-export`, for the same reason those are — it runs
+manually and repeatedly while v1 still serves, and again at cutover to catch
+the delta.
+
+Per pointer: parse `{_id, idMedia}` (every id a string, an unparseable one
+skipped and counted, same rule as every other collection), check the group
+exists, check `media_objects.telegram_file_id` for that group, and only then
+ask Telegram for the file, download it and hand the bytes to
+`storage.media().put` — the same call `fun_random`'s live pooling makes, so a
+backfilled row and a naturally-pooled one are indistinguishable afterwards.
+`/random`'s own read finding a backfilled row is an assertion in
+`qa/integration/test_backfill_random_media.py`.
+
+Three things worth knowing before running it:
+
+1. **`import-mongo` goes first.** `media_objects.group_id` is a foreign key; a
+   pointer whose group has not been imported is skipped with that reason
+   rather than failing the run.
+2. **A `file_id` only resolves for the bot that saw the message** — `--skin`
+   picks the token, and the wrong brand's token fails every row rather than
+   some.
+3. **Old pointers are expected to fail.** A deleted message or an expired file
+   id is a 400 from `getFile`; each is one counted row, never the run. What
+   fraction survives is a property of v1's data, not of this code, so the
+   report groups failures by reason instead of claiming a target.
+
+The resume check is on `telegram_file_id`, not the content hash — the hash is
+only knowable after the download it is trying to avoid.

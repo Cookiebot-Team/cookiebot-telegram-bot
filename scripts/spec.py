@@ -80,12 +80,12 @@ FEATURES: tuple[Feature, ...] = (
     Feature("platform_admin_resolution", "platform", "Admin resolution and cache", "M1",
             Status.DONE, Layer.CORE, "Configurations.py:104-114", (),
             "group_admins is never populated; must handle anonymous admins"),
-    Feature("platform_migration_etl", "platform", "Mongo -> Citus backfill", "M4", Status.PARTIAL,
+    Feature("platform_migration_etl", "platform", "Mongo -> Citus backfill", "M4", Status.DONE,
             Layer.WORKER, "COOKIEBOT-backend/core/domains/*.java", (),
-            "configs/rules/welcomes/users/blacklist/groups/stickerdatabase import, idempotent "
-            "(stickerdatabase -> the new global sticker_pool reference table, migration 0009); "
-            "randomdatabase alone still needs a Telegram-download backfill - its rows have no "
-            "content_hash/blob_key and media_objects requires both NOT NULL"),
+            "all 8 collections. 7 through the pure ETL mappers, idempotent upserts; "
+            "randomdatabase through cb.py backfill-random, which downloads what each v1 "
+            "pointer references and writes a real media_objects row - resumable by "
+            "telegram_file_id, so a second run costs a query per pointer, not a download"),
     Feature("util_isalive", "util", "Health check from chat", "M0", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:65-69", ("/isalive", "/tavivo")),
     Feature("core_listcommand", "core", "List available commands", "M1", Status.DONE,
