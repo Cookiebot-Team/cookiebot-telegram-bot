@@ -106,6 +106,24 @@ class Settings(BaseSettings):
     youtube_api_key: str = ""
     youtube_timeout_seconds: float = 5.0
 
+    # x_image_search — Google Programmable Search (Custom Search JSON API).
+    # v1 used the `google_images_search` wrapper around the same endpoint
+    # (`SocialContent.py:19-20`); v2 calls it over the shared httpx client, as
+    # util_youtube already does with the YouTube Data API. Two credentials,
+    # both required: the API key and the search-engine id (v1's `searchEngineCX`).
+    # Empty key or cx -> the feature answers "no image found", the same
+    # degradation an empty youtube_api_key gives /youtube.
+    google_search_api_key: str = ""
+    google_search_cx: str = ""
+    # 5s, matching youtube's: this is an index lookup, not an upload.
+    google_search_timeout_seconds: float = 5.0
+    # v1's daily caps (`Cooldowns.py:6-7`), per user and across the whole bot.
+    # v1 counted them in a per-process dict, so five processes meant five times
+    # the global cap in practice; v2's counter is shared, which is what the
+    # number always meant.
+    image_search_daily_per_user: int = 15
+    image_search_daily_total: int = 180
+
     # x_reverse_search — SauceNAO. v1 set no timeout at all (neither the call
     # site nor `saucenao_api`); 15s rather than youtube's 5s because SauceNAO
     # is hashing an uploaded image, not answering from an index. Empty key ->

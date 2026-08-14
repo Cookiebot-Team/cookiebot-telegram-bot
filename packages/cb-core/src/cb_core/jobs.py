@@ -79,6 +79,13 @@ COMPOSE_MEME = "compose_meme"
 BROADCAST_TO_GROUPS = "broadcast_to_groups"
 BROADCAST_DELIVER = "broadcast_deliver"
 
+#: `x_image_search`'s Google Custom Search call and the send loop that follows
+#: it (`cb_worker/jobs/image_search.py`), enqueued from
+#: `cb_gateway/handlers/image_search.py`. An external API call plus up to ten
+#: attempts at making Telegram fetch a remote URL — v1 did all of it inline on
+#: the reply path, for *every unrecognised command in every group*.
+IMAGE_SEARCH = "image_search"
+
 __all__ = [
     "BIRTHDAY_COLLAGE",
     "BROADCAST_DELIVER",
@@ -88,6 +95,7 @@ __all__ = [
     "DISTORT_MEDIA",
     "EVERYONE_FANOUT",
     "IDENTIFY_MUSIC",
+    "IMAGE_SEARCH",
     "NEXT_BIRTHDAYS_FOLLOWUP",
     "PUBLISHER_APPROVE",
     "REVERSE_SEARCH",

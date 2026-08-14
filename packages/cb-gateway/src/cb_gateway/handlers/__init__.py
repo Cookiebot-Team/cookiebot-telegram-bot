@@ -37,6 +37,7 @@ from cb_gateway.handlers import (
     gender,
     giveaway,
     groupguardian,
+    image_search,
     isalive,
     listcommand,
     mediarestrict,
@@ -136,6 +137,13 @@ def build_router() -> Router:
     # folder that happens to be named after a real command must never shadow
     # the real one. Everything above claims its own trigger first.
     root.include_router(custom_command.router)
+
+    # x_image_search's catch-all: literally "no other command matched", so it
+    # is the last command router of all, after even custom_command's data-driven
+    # triggers. v1's own position is the final elif of the same chain
+    # (COOKIEBOT.py:283-289), ahead of the passive handlers below, which is why
+    # this sits here rather than at the very end of the file.
+    root.include_router(image_search.router)
 
     # ---- join chain: order matters, see the module docstring ----
     # 1. Bookkeeping first. `group_members.joined_at` is recorded even for a

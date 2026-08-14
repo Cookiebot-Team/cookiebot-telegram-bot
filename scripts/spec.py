@@ -281,9 +281,12 @@ FEATURES: tuple[Feature, ...] = (
             "whole process, so the delete-then-answer tail now runs as a background "
             "asyncio.Task (complaint.py's _schedule_tail idiom) instead, keeping v1's exact "
             "user-visible order without holding the reply path open. QA authored, not ported"),
-    Feature("x_image_search", "util", "Image search (qualquer coisa)", "M3", Status.PLANNED,
+    Feature("x_image_search", "util", "Image search (v1's catch-all)", "M3", Status.DONE,
             Layer.GATEWAY, "SocialContent.py:144-170", ("/qualquercoisa", "/anything", "/cualquiercosa"),
-            "Google Custom Search Image API, sfw-gated; no QA scenario exists - write one"),
+            "the three triggers only print the usage line; the feature is that every "
+            "unrecognised /command is a search. Search + sends in cb-worker, quotas in "
+            "Valkey (v1's dict was per-process), catch-all raises SkipHandler - it is "
+            "registered ahead of three routers that own real commands"),
     Feature("x_drawing_idea", "fun", "Drawing idea prompt", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:137-143", ("/ideiadesenho", "/drawingidea", "/ideadibujo"),
             "3,435 exported references; the caption's id is the index drawn, so the "

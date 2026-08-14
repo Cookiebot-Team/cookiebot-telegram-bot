@@ -88,3 +88,7 @@ where = ["src"]
 # has run against a finished bucket-export manifest. `*/*.csv` covers
 # `Countdown/*`, `Fight/*` and `Custom/<command>`'s one level of nesting.
 "cb_core.asset_data.legacy" = ["*.csv", "*/*.csv"]
+# x_image_search's blocklist, v1's Static/avoid_search.txt byte-for-byte
+# (cb_core/image_search.py). Read through importlib.resources like the locale
+# catalogs, so it has to be in the wheel.
+"cb_core.asset_data.search" = ["*.txt"]
