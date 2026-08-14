@@ -1,4 +1,4 @@
-# Handoff — M1 core moderation is ported, M2 fun is underway
+# Handoff — the board is 62/62, and UAT runs it
 
 Written for whoever picks this up next (human or agent). Read
 [`AGENTS.md`](AGENTS.md) before writing code; this file says where we stopped and
@@ -6,7 +6,84 @@ what to do first.
 
 ---
 
-## 0a. Most recent session (read before §0b)
+## 0. Most recent session (read before §0a)
+
+**Every feature v1 had is ported, and UAT is running it.** The board went 54/62
+-> 62/62 in one session, because the thing that blocked five of the eight
+remaining rows was the same thing, and it had just been unblocked.
+
+### The export finished, which unblocked four features at once
+
+The local bucket export was 67 objects short: `Countdown/Trex` was added to
+`PREFIXES` after that run had started. Re-running it for that one prefix
+finished in minutes, and `cb.py legacy-catalog` then had a complete manifest to
+work from. **The catalogs are checked in**: 63 files, 6,905 rows.
+
+6,905 and not 6,910 because generating them for real turned up **five zero-byte
+GCS folder markers** (`Countdown/Furcamp/`, `Countdown/Pawstral/`, three under
+`Custom/`) — objects the Cloud Console creates when someone makes a folder by
+hand, which `list_blobs` returns like any other blob. v1 could draw one and
+hand Telegram a signed URL to nothing; here `legacy_assets.choose` would hand a
+handler an empty file. They are dropped at catalog time, counted, and printed
+in the summary. The export still copies them: the manifest is an audit log of
+what the bucket held, not of what a feature can use.
+
+### What shipped
+
+| Feature | Notes |
+|---|---|
+| `fun_battle` | the one-tag and no-tag shapes, off `Fight/English` (711) and `Fight/Portuguese` (114). QA's own scenario, skipped since it was written, now runs |
+| `fun_partneredcons` | six posters, hardcoded dates and captions verbatim, `+365` wraparound preserved, ungated like v1. `/trex` is net-new and caption-less — no date for that event exists anywhere, and inventing one would be fabricating content about a real convention |
+| `x_drawing_idea` | 3,435 references; the caption's id is the *index*, so the catalog's sort order is the contract and a test pins it |
+| `x_custom_commands` | 53 pools whose names are data, matched by a filter rather than 53 aliases — and the first reader `tenants.handler_pack` has ever had (`cb_gateway/packs.py`), which closes `platform_tenancy` |
+| `x_image_search` | v1's catch-all. Search and sends in `cb-worker`, quotas in Valkey instead of a per-process dict |
+| `platform_migration_etl` | `cb.py backfill-random` downloads what each `randomdatabase` pointer references and writes a real `media_objects` row. Also a seventh `cutover` step |
+| `x_analytics_api` | four reads over the rollups, behind the token `/login` mints plus `group_admins` membership |
+
+### The one that can break everything else
+
+`x_image_search` is the only handler whose trigger is "nothing else matched".
+Its first implementation **returned** on a non-match instead of raising
+`SkipHandler` — which in aiogram means the update was handled — and silently
+disabled `/random`, `/transcribe` and `/newwelcome`, all three registered after
+it because each also has a passive half. Both non-matches raise `SkipHandler`
+now, and `qa/features/x_image_search.feature` has one scenario that does
+nothing but check a real command still answers. **Do not "simplify" that
+handler's early returns.**
+
+### UAT
+
+`dev-62b2a32` is deployed and verified: all three services 1/1, the migrate
+Job completed, `/healthz` and `/readyz` 200 from inside the pod, the gateway's
+webhook re-registered with the self-hosted Bot API, and the catalogs resolving
+against real bytes in `s3://cookiebot-uat` — sampled across all ten static
+prefixes and five `Custom/` pools, zero missing. The Argo app is `Healthy`; the
+`OutOfSync` resources are the pre-existing drift on the StatefulSets, the
+HTTPRoute and the CNPG Cluster, not this rollout.
+
+**One thing UAT still lacks**: `CB_GOOGLE_SEARCH_API_KEY` and
+`CB_GOOGLE_SEARCH_CX`. The chart takes them as `secrets.googleSearchApiKeyKey`
+/ `googleSearchCxKey` (empty = not injected), so until someone puts a
+Programmable Search key in `cookiebot-secrets` and names it in the UAT values,
+every unrecognised `/command` answers "I couldn't find an image". The feature
+degrades; the pods start.
+
+## What to pick up first
+
+1. **Nothing is blocked.** For the first time since M0 the board has no
+   `BLOCKED` and no `PARTIAL` row.
+2. **The two Google Search credentials**, if `/anything` should actually work
+   in UAT (above).
+3. **The real cutover**, when someone is ready: `cb.py cutover` now has seven
+   steps, and `random` is the new one. Read `docs/cutover.mdx`'s "The `random`
+   step, and why it can never be complete" first — old pointers failing is a
+   property of v1's data, not a bug to chase.
+4. **Production.** UAT has run the full feature set now; what is untested is
+   the cutover against v1's *live* Mongo and bucket rather than a dump.
+
+---
+
+## 0a. The session before that (read before §0b)
 
 Cutover tooling, two tenancy fields that had no reader, and — the bulk of it —
 the features that were missing from the board rather than missing from the
@@ -246,21 +323,12 @@ for line in pathlib.Path("manifest.jsonl").read_text().splitlines():
 print(len(seen), collections.Counter(d["prefix"] for d in seen.values()))
 ```
 
-## What to pick up first
+## What that session said to pick up first — all of it is done
 
-1. **Generate the catalogs** from a finished manifest (`cb.py legacy-catalog`)
-   and commit them. Nothing downstream works until this exists.
-2. **`fun_death`** — a `feat/fun-death` branch was in progress when the session
-   ended and may be incomplete; check `git branch` and the gate before
-   building on it. Its spec is a complete Phase-2 contract, corrected for the
-   catalog.
-3. Then the other four: `x_drawing_idea`, `fun_partneredcons`,
-   `x_custom_commands`, `fun_battle`'s remaining shapes. All ordinary handler
-   work once the catalog exists.
-4. `x_image_search` is the one still-missing v1 command that needs no bucket —
-   it needs a Google Custom Search key and the `avoid_search.txt` blocklist
-   ported as package data. Note it is v1's *catch-all*: every unrecognised
-   `/command` becomes an image search, which interacts with the dispatch gate.
+Its list was: generate the catalogs, then `fun_death`, then the other four
+(`x_drawing_idea`, `fun_partneredcons`, `x_custom_commands`, `fun_battle`'s
+remaining shapes), then `x_image_search`. Every item shipped; see §0 for what
+each turned into.
 
 ## 0b. The session before that
 
@@ -574,18 +642,21 @@ Python list from Mojo costs ~174 ns per item.
 
 ## 1. Where things stand
 
-**M0 and M1 are complete bar one row; M2 and M3 are most of the way.** The
-board is generated — `docs/site/content/progress.json`, rendered by the docs
-site — and this section is the prose that goes stale first, so trust the
-generated numbers over this paragraph if they disagree.
+**Every row is done.** M0 through M4, 62 of 62 — nothing `PARTIAL`, nothing
+`BLOCKED`, nothing `PLANNED`. The board is generated
+(`docs/site/content/progress.json`, rendered by the docs site) and this section
+is the prose that goes stale first, so trust the generated numbers over this
+paragraph if they disagree.
 
 Verified on this machine, last run:
 
 ```
-ruff check + format --check   clean (449 files)
-mypy (four packages)          clean (153 files)
-pytest -m "not integration"   3 049 passed, 0 failed *
+ruff check + format --check   clean (474 files)
+mypy (four packages)          clean (167 files)
+pytest -m "not integration"   3 300+ passed, 0 failed *
+test-integration              clean, including the new analytics and backfill suites
 migrate-check                 clean through 0009 (upgrade -> downgrade -> upgrade)
+status.py --check             no inconsistency in either direction
 docs-sync --check             in sync with the spec
 ```
 
@@ -601,21 +672,20 @@ recovery" mid-suite.
 Progress, generated by `python scripts/cb.py status`:
 
 ```
-features   █████████████████████░░░  53/62 done, 3 partial, 3 blocked, 3 planned
-scenarios  ████████████████████████  154/63 of the v1 spec ported
+features   ████████████████████████  62/62 done
+scenarios  ████████████████████████  190+/63 of the v1 spec ported
 ```
 
-The three `blocked` rows and one of the `partial` ones are blocked on nothing
-any more — see §0a: the bucket they were waiting for has been exported. What
-they need now is the catalog generated and then ordinary handler work.
+Nothing is waiting on anything. The bucket that blocked five rows is exported,
+catalogued and checked in; the catch-all that was the last missing v1 command
+is ported; the one collection the ETL could not move now has a backfill.
 
 Scenarios exceed 100% because each port added scenarios for v1 behaviour the QA
 spec never covered — the spec described intent, not what v1 actually does.
 
-### What landed this session
+### What landed in the M1 session (kept for the file:line map)
 
-The three prerequisites (§3 of the previous handoff), then the ten features in
-the order it recommended:
+The three prerequisites, then the ten features:
 
 | Piece | Where | Note |
 |---|---|---|
