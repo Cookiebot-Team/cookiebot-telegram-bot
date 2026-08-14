@@ -84,6 +84,24 @@ def public_jwk(private_pem: str, kid: str) -> dict[str, Any]:
     return jwk
 
 
+def public_pem(private_pem: str) -> str:
+    """The public half as PEM — what `jwt.decode` verifies against.
+
+    `public_jwk` above is for publishing; this is for verifying locally
+    (`cb_api.security`), and deriving both from the same stored private key is
+    what keeps the two from ever disagreeing about which key a `kid` names.
+    """
+    return (
+        load_private_key(private_pem)
+        .public_key()
+        .public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        .decode()
+    )
+
+
 _SELECT = "SELECT kid, private_pem FROM signing_keys WHERE kid = $1"
 _INSERT = """
 INSERT INTO signing_keys (kid, algorithm, private_pem)
@@ -150,6 +168,7 @@ __all__ = [
     "generate_private_pem",
     "load_private_key",
     "public_jwk",
+    "public_pem",
     "published_keys",
     "reset_cache",
     "signing_key",

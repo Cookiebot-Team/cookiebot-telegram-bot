@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-from cb_api.routers import health, login
+from cb_api.routers import analytics, health, login
 from cb_core import cache, db, metrics, storage
 from cb_core.logging import configure_logging, get_logger
 from cb_core.migrations import ensure_schema
@@ -78,4 +78,7 @@ app.add_middleware(
 app.include_router(health.router)
 # x_webhub_login: `/`, `/login` and the two `.well-known` documents.
 app.include_router(login.router)
+# x_analytics_api: per-group rollup reads, behind the token `/login` mints and
+# `group_admins` membership (cb_api/security.py).
+app.include_router(analytics.router)
 FastAPIInstrumentor.instrument_app(app, excluded_urls="healthz,readyz")

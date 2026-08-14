@@ -322,8 +322,11 @@ FEATURES: tuple[Feature, ...] = (
             "enforcement is written but off by default (the WebHub renews by replaying "
             "the payload) - see docs/contracts/x_webhub_login.md. No QA scenario: the "
             "feature has no Telegram surface"),
-    Feature("x_analytics_api", "platform", "Per-group analytics endpoints", "M4", Status.PLANNED,
-            Layer.API, "", (), "rollup tables exist; no HTTP surface yet"),
+    Feature("x_analytics_api", "platform", "Per-group analytics endpoints", "M4", Status.DONE,
+            Layer.API, "", (),
+            "four reads over the rollups: daily, commands, llm, summary. Bearer token from "
+            "/login plus group_admins membership, 404 (not 403) for a group you do not "
+            "administer, bounded windows, no fleet-wide endpoint - every query is single-shard"),
 )
 # fmt: on
 
