@@ -152,10 +152,10 @@ FEATURES: tuple[Feature, ...] = (
             "object storage via `cb.py meme-seed`; Pillow compositing in cb-worker; v1's "
             "roster fallback was dead code and its empty-pool branch a NameError, both "
             "fixed - see docs/contracts/fun_meme.md; QA authored (4 scenarios)"),
-    Feature("fun_battle", "fun", "Battle poll", "M2", Status.PARTIAL,
+    Feature("fun_battle", "fun", "Battle poll", "M2", Status.DONE,
             Layer.GATEWAY, "SocialContent.py:294-379", ("/battle", "/batalha", "/batalla"),
-            "two-people shape ships (roster + getUserProfilePhotos, no scrape); "
-            "one-tag/self shapes blocked on the Fight/ GCS export, same as fun_death"),
+            "all three shapes: two people (roster + getUserProfilePhotos, no scrape), "
+            "one tag and self against the exported Fight/ pools"),
     Feature("fun_random", "fun", "Random media from the group", "M2", Status.DONE,
             Layer.GATEWAY, "SocialContent.py:198-206", ("/random", "/aleatorio"),
             "MediaService.random() done and tested; handler not written"),

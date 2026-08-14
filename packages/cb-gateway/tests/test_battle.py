@@ -10,7 +10,9 @@ between — no Telegram session, no database. Model:
 from __future__ import annotations
 
 import random
+from typing import cast
 
+from cb_core import locales
 from cb_core.members import MemberRef
 from cb_gateway.handlers import battle as bt
 
@@ -193,6 +195,60 @@ class TestFlavourSuffix:
         assert "Type:" in suffix
         assert "Rules:" in suffix
         assert "Equipment:" in suffix
+
+
+# ------------------------------------------------------------------ the fighter
+
+
+class TestFighterPoolPrefix:
+    def test_english_for_every_language_but_pt(self) -> None:
+        for lang in ("en", "es", "de"):
+            assert bt.fighter_pool_prefix(lang) == "Fight/English"
+
+    def test_pt_draws_from_either_pool(self) -> None:
+        """v1: `random.choice(random.choice([eng, pt]))` (`:367`) — the pool
+        is picked first, so both are equally likely regardless of size."""
+        drawn = {bt.fighter_pool_prefix("pt", rng=random.Random(seed)) for seed in range(20)}
+        assert drawn == {"Fight/English", "Fight/Portuguese"}
+
+
+class TestFighterDisplayName:
+    def test_underscores_become_spaces_and_only_the_first_letter_stays_upper(self) -> None:
+        """v1: `.replace("_", " ").capitalize()` (`:373`) — `capitalize`
+        lower-cases the rest, which is why this is not `.title()`."""
+        assert bt.fighter_display_name("Fight/English/Darth_Vader.jpg") == "Darth vader"
+
+    def test_strips_the_three_extensions_v1_strips(self) -> None:
+        assert bt.fighter_display_name("Fight/English/a.png") == "A"
+        assert bt.fighter_display_name("Fight/English/a.jpg") == "A"
+        assert bt.fighter_display_name("Fight/English/a.jpeg") == "A"
+
+    def test_keeps_an_extension_v1_does_not_strip(self) -> None:
+        """A `.gif` fighter keeps its extension in the poll option. v1's
+        wart, preserved — the name is user-visible text."""
+        assert bt.fighter_display_name("Fight/English/a.gif") == "A.gif"
+
+
+class TestPollTitle:
+    def test_plain_title_for_non_pt(self) -> None:
+        assert bt.poll_title("en") == locales.get("battle_title", "en")
+
+    def test_pt_gets_a_random_suffix(self) -> None:
+        """v1: `battle_title_plus` with a `battle_title_list` draw
+        (`:368`) — the `pt` catalog is the only one carrying either key."""
+        title = bt.poll_title("pt", rng=random.Random(4))
+        assert title.startswith("QUEM VENCE ")
+        assert any(
+            option in title
+            for option in cast(
+                list[str], cast(dict[str, object], locales.catalog("pt"))["battle_title_list"]
+            )
+        )
+
+
+class TestFighterFirst:
+    def test_both_orders_are_reachable(self) -> None:
+        assert {bt.fighter_first(rng=random.Random(seed)) for seed in range(20)} == {True, False}
 
 
 # --------------------------------------------------------------- caption assembly

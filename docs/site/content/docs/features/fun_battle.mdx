@@ -3,8 +3,8 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Battle poll"
-description: "two-people shape ships (roster + getUserProfilePhotos, no scrape); one-tag/self shapes blocked on the Fight/ GCS export, same as fun_death"
-status: partial
+description: "all three shapes: two people (roster + getUserProfilePhotos, no scrape), one tag and self against the exported Fight/ pools"
+status: done
 milestone: M2
 area: fun
 layer: gateway
@@ -16,12 +16,14 @@ contract: "docs/contracts/fun_battle.md"
 
 ## What it does
 
-`/battle` (also `/batalha`, `/batalla`) pits two people against each other:
-tag two group members, or type `/battle random` to let the bot pick two
-members who have spoken in the group before. The bot posts both of their
-profile photos side by side with a silly caption — a fight type, a rule and
-an "equipment" gag, all randomised — then a real Telegram poll so everyone
-can vote on who would win.
+`/battle` (also `/batalha`, `/batalla`) stages a fight and lets the group
+vote on it. Tag two members, or type `/battle random` to let the bot pick two
+people who have spoken in the group before, and it posts their profile photos
+side by side with a silly caption — a fight type, a rule and an "equipment"
+gag, all randomised. Tag exactly one person, or type `/battle` on its own,
+and the opponent is a "fighter" character drawn at random from v1's own
+image collection instead — that person, or you, against the fighter. Either
+way a real Telegram poll follows so everyone can vote on who would win.
 
 ## Behaviour that must not change
 
@@ -33,20 +35,26 @@ until a human does. If fewer than two known members exist for a `"random"`
 battle, or a tagged person's photo can't be found, the bot says so instead
 of posting anything.
 
-**Not yet ported**: tagging exactly one person, or running `/battle` with no
-tag at all, is supposed to pit that person (or you) against a random
-"fighter" character image. v1 kept those character images in a private
-cloud bucket that was never checked into its own source repository, so
-there is nothing to port them from yet — the same blocker
-[`fun_death`](/docs/features/fun_death) hit for its own image pool. Until
-that's resolved, both of those cases get the same "you need a profile
-picture" message v1 already shows when a photo can't be found, rather than
-a broken half-feature.
+The fighter shapes keep v1's own oddities. A Portuguese-language group draws
+from either the English or the Portuguese fighter collection with equal
+chance, even though the English one is six times larger, and its poll asks
+"who wins **in a slap fight**" (or one of seven other endings) where every
+other language just asks "who wins?". A fighter's name is whatever its file
+was called, tidied the way v1 tidied it — so `Darth_Vader` reads back as
+"Darth vader", lower-case v included. The fighter caption also has no
+type/rules/equipment gag; only the two-people shape gets that.
+
+Both fighter shapes shipped later than the rest of the command: v1 kept those
+character images in a private cloud bucket that was never checked into its
+source repository, and they answered "you need a profile picture" until that
+bucket was exported — the same blocker
+[`fun_death`](/docs/features/fun_death) hit for its own image pool.
 
 ## How to verify it
 
-`qa/features/fun_battle.feature` — six scenarios covering two explicit tags,
-`"random"`, the failure paths, and the fun-off gate; run with
+`qa/features/fun_battle.feature` — ten scenarios covering two explicit tags,
+`"random"`, one tag and no tag against a fighter, every failure path and the
+fun-off gate; run with
 `python scripts/cb.py test`. By hand in the sandbox: have two accounts talk
 in a group first (so the bot knows who they are), then run
 `/battle @name1 @name2` or `/battle random` as anyone in the group and

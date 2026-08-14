@@ -199,3 +199,54 @@ the same way.
    outcome v1's own mechanism produced, not a new capability.
 4. **`"random"` picks by `rng.sample`, not a retry loop.** Settled in
    R2.2 — behaviourally identical, structurally simpler.
+
+---
+
+## R7 — the fighter shapes (added once the `Fight/` export landed)
+
+Decision 2 above is now spent: `cb_worker.bucket_export` copied
+`Fight/English` (711) and `Fight/Portuguese` (114) out of v1's bucket and
+`cb.py legacy-catalog` turned them into `cb_core.asset_data.legacy/fight/*.csv`,
+so paths B and C do what v1 does instead of replying `battle_no_picture`
+unconditionally. The temporary route is deleted, not deprecated.
+
+**R7.1** `fighter_pool_prefix(lang, rng) -> str` — `"Fight/English"` for every
+language, except `pt`, which picks between the two pools first
+(`random.choice(random.choice([eng, pt]))`, `:367`). Preserved including its
+weighting: a `pt` group sees a Portuguese fighter half the time despite that
+pool holding one-sixth as many.
+
+**R7.2** `fighter_display_name(source_path) -> str` — v1's `:373` chain
+verbatim (`split('/')[-1]`, `.png`/`.jpg`/`.jpeg` stripped, `_` → space,
+`.capitalize()`). Both warts preserved: `.capitalize()` lower-cases the rest
+of the name, and a `.gif` fighter keeps its extension. The name is
+user-visible text in a poll option; changing it would change what a group
+reads.
+
+**R7.3** `poll_title(lang, rng) -> str` — `battle_title_plus` with a random
+`battle_title_list` suffix for `pt`, plain `battle_title` otherwise
+(`:368,371`). Only the fighter shapes have this; path A always uses the plain
+title (`:334`), so the two are deliberately not folded into one helper.
+
+**R7.4** `fighter_first(rng) -> bool` — v1's `if random.choice([0, 1])`
+(`:375`) flips the order of the media group, the caption and the poll's
+choice list *together*, never independently.
+
+**R7.5** `_human_side(...) -> tuple[str, str] | None` — the person half.
+ONE_TAG resolves `tags[0]` through the roster (R2.1's mechanism, unchanged)
+and then `get_user_profile_photos`; **both** an unresolvable tag and a
+resolved user with no visible photo answer `battle_private`, because v1 has
+exactly one string for "I could not get that user's picture" on this path.
+SELF is byte-for-byte v1: `getUserProfilePhotos` on the caller, empty ⇒
+`battle_no_picture`, and the display name is `username` or `first_name`
+**with no `@`** (`:359`).
+
+**R7.6** No flavour suffix on this tail. v1 builds `battle_full` only in path
+A (`:335-340`); the fighter caption is a bare `"{a} VS {b}"`. The asymmetry is
+real and preserved.
+
+**R7.7** An empty pool (`legacy_assets.choose` returns `None`, i.e. a
+deployment where `legacy-catalog` has never run) logs
+`battle.fighter_pool_empty` and sends nothing further — the same degradation
+`fun_death`'s D-DE-3 chose, and the same reason: v1's own `random.choice` on
+an empty listing raised.
