@@ -1,12 +1,12 @@
 {
   "generated_at": "2026-08-14",
-  "commit": "ed82344",
-  "test_summary": "3243 passed, 44 skipped, 187 deselected, 2 warnings in 33.74s",
+  "commit": "62b2a32",
+  "test_summary": "3271 passed, 44 skipped, 199 deselected, 2 warnings in 35.48s",
   "totals": {
     "features": 62,
-    "done": 61,
+    "done": 62,
     "partial": 0,
-    "planned": 1,
+    "planned": 0,
     "blocked": 0,
     "spec_scenarios": 63,
     "ported": 174,
@@ -44,7 +44,7 @@
     {
       "id": "M4",
       "title": "Analytics surface, web console, data migration",
-      "done": 2,
+      "done": 3,
       "total": 3
     }
   ],
@@ -1350,11 +1350,11 @@
       "area": "platform",
       "layer": "api",
       "milestone": "M4",
-      "status": "planned",
+      "status": "done",
       "triggers": [],
       "v1_source": "",
-      "notes": "rollup tables exist; no HTTP surface yet",
-      "contract": null,
+      "notes": "four reads over the rollups: daily, commands, llm, summary. Bearer token from /login plus group_admins membership, 404 (not 403) for a group you do not administer, bounded windows, no fleet-wide endpoint - every query is single-shard",
+      "contract": "docs/contracts/x_analytics_api.md",
       "scenarios": {
         "spec": 0,
         "ported": 0,

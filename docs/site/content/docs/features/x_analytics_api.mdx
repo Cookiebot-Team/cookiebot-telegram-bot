@@ -3,23 +3,49 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Per-group analytics endpoints"
-description: "rollup tables exist; no HTTP surface yet"
-status: planned
+description: "four reads over the rollups: daily, commands, llm, summary. Bearer token from /login plus group_admins membership, 404 (not 403) for a group you do not administer, bounded windows, no fleet-wide endpoint - every query is single-shard"
+status: done
 milestone: M4
 area: platform
 layer: api
+contract: "docs/contracts/x_analytics_api.md"
 ---
 <FeatureHeader id="x_analytics_api" />
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+Nothing in a chat — this one is HTTP. A group's admins can read their own
+group's numbers: what happened per day (messages, joins, captchas, errors,
+latency), which commands actually get used, what the AI features cost, and one
+summary of the three. The data has been collected and rolled up nightly since
+the beginning; this is the first way for the people whose groups they describe
+to see it.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+**You can only read a group you administer.** Membership of that group's admin
+list is the rule, and a group you do not administer answers *404*, not 403 —
+otherwise anyone logged in could discover which chats this deployment knows
+about by watching which ids come back forbidden.
+
+**There is no "all groups" endpoint, and there should not be one.** It would
+hand one tenant another's numbers, and on a sharded database it would have to
+ask every shard. Fleet-wide figures are the operator's and live in Grafana.
+
+Every window is bounded — thirty days by default, a year at most — and asking
+for a backwards or oversized range is an error rather than a quietly corrected
+answer. A day the group was silent has no row at all: inventing a zero would be
+indistinguishable from a real quiet day. The captcha solve rate is `null`, not
+zero, when nobody was challenged, and latency figures are the window's *worst*
+day rather than an average of percentiles, because averaging percentiles means
+nothing.
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/integration/test_analytics.py` runs the three queries against real rollup
+rows in Citus and asserts each one touches exactly one shard;
+`packages/cb-api/tests/test_analytics_endpoints.py` covers the auth boundary —
+including that an admin of one group cannot read another. Run with
+`python scripts/cb.py test` and `python scripts/cb.py test-integration`. By
+hand: log in through `/login`, then
+`curl -H "Authorization: Bearer $TOKEN" localhost:8000/groups/<id>/analytics/summary`.
