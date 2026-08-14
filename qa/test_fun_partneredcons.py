@@ -139,6 +139,7 @@ def user_types_command(
 
 
 @then(parsers.parse('the bot should send a picture of the "{event}" convention to the group'))
+@then(parsers.parse('the bot should send a picture of the "{event}" event to the group'))
 def bot_sends_a_picture(telegram: MockTelegram, event: str) -> None:
     """QA asks only for a picture. Which event it depicts is decided by the
     bucket prefix the handler draws from — asserted per command in

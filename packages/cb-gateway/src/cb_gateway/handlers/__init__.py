@@ -27,6 +27,7 @@ from cb_gateway.handlers import (
     destroy,
     dice,
     doomlist,
+    drawing_idea,
     embedder,
     everyone,
     firecracker,
@@ -102,6 +103,9 @@ def build_router() -> Router:
     root.include_router(age.router)
     root.include_router(gender.router)
     root.include_router(fortune.router)
+    # x_drawing_idea sits in the same utilityfunctions-gated stretch as
+    # /dado and /youtube (COOKIEBOT.py:253-257); disjoint trigger.
+    root.include_router(drawing_idea.router)
     root.include_router(youtube.router)
     root.include_router(birthday.router)
     root.include_router(nextbirthday.router)

@@ -1,19 +1,19 @@
 {
   "generated_at": "2026-08-14",
-  "commit": "90c2dc3",
-  "test_summary": "3139 passed, 44 skipped, 181 deselected, 2 warnings in 33.46s",
+  "commit": "bae347e",
+  "test_summary": "3149 passed, 44 skipped, 181 deselected, 2 warnings in 37.10s",
   "totals": {
     "features": 62,
-    "done": 56,
+    "done": 57,
     "partial": 2,
-    "planned": 3,
+    "planned": 2,
     "blocked": 1,
     "spec_scenarios": 63,
     "ported": 169,
     "spec_files": 31,
     "spec_files_covered": 31,
-    "new_specs": 95,
-    "green": 346,
+    "new_specs": 98,
+    "green": 351,
     "failing": 0
   },
   "milestones": [
@@ -38,7 +38,7 @@
     {
       "id": "M3",
       "title": "Publisher, AI, giveaways, owner tooling",
-      "done": 16,
+      "done": 17,
       "total": 19
     },
     {
@@ -1266,19 +1266,19 @@
       "area": "fun",
       "layer": "gateway",
       "milestone": "M3",
-      "status": "planned",
+      "status": "done",
       "triggers": [
         "/ideiadesenho",
         "/drawingidea",
         "/ideadibujo"
       ],
       "v1_source": "Miscellaneous.py:137-143",
-      "notes": "signed URL from a GCS blob pool; no QA scenario exists - write one",
-      "contract": null,
+      "notes": "3,435 exported references; the caption's id is the index drawn, so the catalog's sort order is the contract. Scenarios authored locally - QA has none",
+      "contract": "docs/contracts/x_drawing_idea.md",
       "scenarios": {
         "spec": 0,
-        "ported": 0,
-        "green": 0,
+        "ported": 3,
+        "green": 5,
         "failing": 0
       },
       "url": "/docs/features/x_drawing_idea"
@@ -2072,6 +2072,14 @@
       "spec": 0,
       "ported": 10,
       "green": 12,
+      "failing": 0,
+      "state": "v2-only spec"
+    },
+    {
+      "stem": "x_drawing_idea",
+      "spec": 0,
+      "ported": 3,
+      "green": 5,
       "failing": 0,
       "state": "v2-only spec"
     },

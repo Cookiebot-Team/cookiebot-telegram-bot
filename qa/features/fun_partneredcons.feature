@@ -5,6 +5,8 @@
 # of v1's actual behaviour is (Miscellaneous.py:261-323). The scenarios below
 # the marker are net-new and cover it.
 #
+# Scenario titles and wording are QA's, verbatim -- including "in in any group"
+# and the two events QA calls conventions but its own wording calls events.
 # QA's file also has the /fursmeet scenario twice, byte-identical. That is an
 # authoring slip rather than a behavioural conflict; it is not reproduced here,
 # since a duplicated scenario tests nothing the first one does not.
@@ -17,19 +19,35 @@ Feature: sends a picture from the partnered cons from a specific command
     Background:
         Given that the bot is in the group and properly set up
 
-    Scenario Outline: User types a convention command in any group
+    Scenario: User types /bff in any group
         Given that the user is a member of the group
-        When the user types the command "<command>"
-        Then the bot should send a picture of the "<event>" convention to the group
+        When the user types the command "/bff"
+        Then the bot should send a picture of the "Brasil Fur Fest" convention to the group
 
-        Examples:
-            | command   | event           |
-            | /bff      | Brasil Fur Fest |
-            | /patas    | Patas           |
-            | /fursmeet | Fursmeet        |
-            | /trex     | Trex Furplayer  |
-            | /furcamp  | Furcamp         |
-            | /pawstral | Pawstral        |
+    Scenario: User types /patas in any group
+        Given that the user is a member of the group
+        When the user types the command "/patas"
+        Then the bot should send a picture of the "Patas" convention to the group
+
+    Scenario: User types /fursmeet in any group
+        Given that the user is a member of the group
+        When the user types the command "/fursmeet"
+        Then the bot should send a picture of the "Fursmeet" convention to the group
+
+    Scenario: User types /trex in in any group
+        Given that the user is a member of the group
+        When the user types the command "/trex"
+        Then the bot should send a picture of the "Trex Furplayer" event to the group
+
+    Scenario: User types /furcamp in any group
+        Given that the user is a member of the group
+        When the user types the command "/furcamp"
+        Then the bot should send a picture of the "Furcamp" event to the group
+
+    Scenario: User types /pawstral in any group
+        Given that the user is a member of the group
+        When the user types the command "/pawstral"
+        Then the bot should send a picture of the "Pawstral" convention to the group
 
     # --- Scenarios below this line were not in the original Cookiebot-QA
     # spec. Added while porting to v2 to cover the countdown caption, the

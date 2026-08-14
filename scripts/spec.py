@@ -284,9 +284,10 @@ FEATURES: tuple[Feature, ...] = (
     Feature("x_image_search", "util", "Image search (qualquer coisa)", "M3", Status.PLANNED,
             Layer.GATEWAY, "SocialContent.py:144-170", ("/qualquercoisa", "/anything", "/cualquiercosa"),
             "Google Custom Search Image API, sfw-gated; no QA scenario exists - write one"),
-    Feature("x_drawing_idea", "fun", "Drawing idea prompt", "M3", Status.PLANNED,
+    Feature("x_drawing_idea", "fun", "Drawing idea prompt", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:137-143", ("/ideiadesenho", "/drawingidea", "/ideadibujo"),
-            "signed URL from a GCS blob pool; no QA scenario exists - write one"),
+            "3,435 exported references; the caption's id is the index drawn, so the "
+            "catalog's sort order is the contract. Scenarios authored locally - QA has none"),
     Feature("x_analysis", "util", "Message analysis (reply_to_message dump)", "M3", Status.DONE,
             Layer.GATEWAY, "Miscellaneous.py:71-81", ("/analise", "/analisis", "/analysis"),
             "dumps the replied-to message's fields back to chat, ungated exactly as v1 "

@@ -3,25 +3,39 @@
 # Edit the prose below, not this block — the sync rewrites it and
 # `docs-sync --check` fails CI when it drifts.
 title: "Drawing idea prompt"
-description: "signed URL from a GCS blob pool; no QA scenario exists - write one"
-status: planned
+description: "3,435 exported references; the caption's id is the index drawn, so the catalog's sort order is the contract. Scenarios authored locally - QA has none"
+status: done
 milestone: M3
 area: fun
 layer: gateway
 triggers: ["/ideiadesenho", "/drawingidea", "/ideadibujo"]
 v1_source: "Miscellaneous.py:137-143"
+contract: "docs/contracts/x_drawing_idea.md"
 ---
 <FeatureHeader id="x_drawing_idea" />
 
 ## What it does
 
-{/* One paragraph, from the user's side. What happens in the chat? */}
+`/ideiadesenho` (also `/drawingidea`, `/ideadibujo`) replies with a random
+photo out of a 3,435-picture reference collection, captioned with the
+reference's id and a reminder not to trace it without credit.
 
 ## Behaviour that must not change
 
-{/* v1 compatibility is not negotiable: the aliases, the wording, the
-    permissions. Anything a group would notice if it moved. */}
+The id in the caption is the picture's **position** in the collection, not a
+name it carries — there is no command to look one up, in v1 or here, and its
+only use is a person quoting the number. That only works while the collection
+keeps its order, so v2 stores the references in the same alphabetical order the
+old bucket listed them in, and a test fails if that order ever changes. It is
+the same guarantee v1 offered and no more: deleting one picture renumbers
+everything after it, then as now.
+
+It answers to the utility switch, not the fun one — a group with utility turned
+off is told so rather than ignored.
 
 ## How to verify it
 
-{/* Which scenario file, and what to do by hand in the sandbox. */}
+`qa/features/x_drawing_idea.feature` — the three spellings, the utility gate
+and a collection that was never loaded; run with `python scripts/cb.py test`.
+By hand in the sandbox: `/drawingidea` in a group and check the caption's id
+against the picture you get for the same id twice.
