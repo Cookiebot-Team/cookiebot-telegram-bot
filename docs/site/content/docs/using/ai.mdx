@@ -1,0 +1,95 @@
+---
+title: AI features
+description: Conversational replies, voice transcription, music recognition, and the two picture lookups
+---
+
+Five things in Cookiebot call something outside Telegram. They are grouped here
+because they share a property nothing else in the bot has: they cost money per
+use, and they can be unavailable while the rest of the bot is fine.
+
+## Talking to the bot
+
+Mention the bot by name, or reply to one of its messages, and it answers in
+character. No command, no prefix.
+
+- **Seven consecutive triggers is the cap.** The first six get an answer; the
+  seventh gets nothing. Every ordinary message the same person sends puts one
+  back. It stops one member turning the bot into a private chat toy without the
+  bot ever having to say no.
+- **A message that is only the bot's name** gets `?` — and no model is asked,
+  so an empty prod costs nothing.
+- **Other handlers win.** If you reply to the `/newrules` prompt with something
+  that also mentions the bot, that is a rules reply, not a conversation.
+- **With Fun Functions off, it goes quiet** rather than announcing that fun is
+  disabled — a chat reply refusing to chat is worse than silence.
+
+Replying to the bot **with a sticker** gets a sticker back instead, from the
+pool it has collected in safe-for-work groups.
+
+## Voice notes
+
+Two different things happen to a voice note, and they are independent.
+
+**A voice note that replies to the bot** is transcribed and answered like any
+other message. The transcript itself is never posted — you get the reply, not a
+readback. Notes longer than **300 seconds** are refused rather than truncated.
+
+**`/transcribe`** (also `/transcrever`, `/transcribir`), sent as a reply to a
+voice note, posts the transcript in the chat. Sent without replying to
+anything, it says so. This one follows **Utility Functions**.
+
+## Music recognition
+
+Every voice note in the group can be fingerprinted against Shazam, and the bot
+answers when it recognises the song. Nothing is posted when it does not.
+
+<Callout>
+This is **off unless the operator turns it on** (`CB_MUSIC_DETECTION_ENABLED`),
+because it calls an unofficial API on the busiest path in the bot. It also
+follows **Utility Functions**. Neither switch produces a refusal message: a
+voice note never asked the bot for anything.
+</Callout>
+
+## Finding where a picture came from
+
+<CommandCards
+  only={['/searchsource']}
+  describe={{
+    '/searchsource': 'Reply to an image with it, and the bot looks for the original.',
+  }}
+  note={{
+    '/searchsource': 'A confident match comes back with the title, the author and a link. Nothing found is reported as "this looks original" — the bot does not guess.',
+  }}
+/>
+
+Sent without a picture to work on — no reply, or a reply to plain text — it
+answers with the instructions instead. There is a **daily allowance**, and the
+bot says when it is spent rather than failing quietly. It follows **Utility
+Functions**.
+
+## Any unknown command is an image search
+
+`/french fries` is not a command, so the bot searches Google Images for
+"french fries" and posts what it finds. This is v1's catch-all, kept exactly:
+
+- **Safe search follows the group.** A group marked safe-for-work gets filtered
+  results; one marked otherwise does not.
+- **Two daily limits** apply — one per person, one across the deployment. The
+  request that crosses the line is the one refused, and the bot says so.
+- **Real commands are never hijacked.** `/isalive` answers as itself.
+- **Nothing happens** for a command carrying a link, a command addressed to
+  another bot, or a word on the blocklist. No search, no message.
+- **`/anything` on its own** (also `/qualquercoisa`, `/cualquiercosa`) explains
+  the shape rather than searching for nothing.
+
+It follows **Utility Functions**, and with that switch off it is silent.
+
+## What this costs, and who chooses
+
+For a group: nothing to configure beyond the two family switches.
+
+For an operator: the model behind every AI task is configuration, not code —
+provider and model are chosen per task, tokens and cost are recorded per call,
+and a provider that starts failing is cut off rather than retried into the
+ground. A refusal from a model comes back as a refusal, not a crash. The
+[architecture](/docs/architecture) page has the details.

@@ -1,5 +1,21 @@
 {
   "title": "Using Cookiebot",
   "description": "For whoever runs the group",
-  "pages": ["index", "commands", "configure", "moderation", "privacy", "troubleshooting"]
+  "pages": [
+    "index",
+    "commands",
+    "configure",
+    "---What it does---",
+    "moderation",
+    "welcome",
+    "fun",
+    "utilities",
+    "ai",
+    "giveaways",
+    "posts",
+    "---Reference---",
+    "owner",
+    "privacy",
+    "troubleshooting"
+  ]
 }

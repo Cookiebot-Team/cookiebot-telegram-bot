@@ -36,6 +36,24 @@ see [Who is responsible](#who-is-responsible).
   are per group; someone removed from one group arrives in the next with a
   clean slate.
 
+## What leaves the deployment
+
+Some features are lookups against someone else's service, and those calls carry
+what the feature needs to work:
+
+| Feature | What is sent, and where |
+|---|---|
+| [Talking to the bot](/docs/using/ai#talking-to-the-bot) | The text of the message that mentioned or replied to it, to the operator's configured model provider |
+| Voice replies and `/transcribe` | The voice note's audio, to the transcription provider |
+| Music recognition | The voice note's audio, for fingerprinting — off unless the operator turned it on |
+| `/searchsource` | The image bytes, to the reverse-search service |
+| Unknown commands | The words you typed, to Google Images |
+| `/age`, `/gender` | The name you typed, to agify.io / genderize.io |
+| Joiner screening | The joining account's id, to the anti-spam services |
+
+None of it is retained by the bot beyond the reply. Which providers those are is
+the operator's choice — see [AI features](/docs/using/ai#what-this-costs-and-who-chooses).
+
 ## Getting rid of it
 
 - **Remove the bot from the group.** Its access ends immediately — it stops

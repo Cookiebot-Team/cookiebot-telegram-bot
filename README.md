@@ -1,42 +1,61 @@
 <div align="center">
 
-<img src="docs/assets/cookiebot.svg" width="112" alt="Cookiebot">
+<img src="docs/assets/cookiebot-avatar.jpg" width="128" alt="Cookiebot" style="border-radius: 50%">
 
 # 🍪 Cookiebot v2
 
 **The Telegram group bot for furry community chats — rebuilt.**
 
-Keeps chats free of spammers and raids, welcomes new members, runs giveaways and
-conventions, talks back in natural language, transcribes voice notes, finds
-sources for images, schedules cross-group posts, and hands out an unreasonable
-number of memes.
+Screens the people at the door, greets the ones who get in, holds the rules,
+keeps sticker floods and drive-by spam out — then stays for the dice, the memes,
+the giveaways, the birthdays and the conventions. In English, Portuguese and
+Spanish, with Telegram as the whole interface.
+
+[**Documentation**](https://cookiebot-team.github.io/cookiebot-telegram-bot) ·
+[Set up a group](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using) ·
+[Every command](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/commands) ·
+[Progress board](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/progress)
 
 </div>
 
 ---
 
-## What Cookiebot is
+## What it does
+
+| | | |
+|---|---|---|
+| 🛡️ **Guards the chat** | A captcha at the door with five attempts and an admin override, three block lists checked on join, a per-group sticker-flood limit, and a media hold on brand-new accounts. | [docs](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/moderation) |
+| 👋 **Runs the room** | Welcome messages with nine placeholder spellings, the group's rules, three languages picked up from whoever added the bot, and a skin per event so a convention can run its own bot on the same core. | [docs](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/welcome) |
+| 🎲 **Is fun to have around** | `/dice`, `/ship`, `/battle`, `/meme`, `/death`, `/random`, `/destroy`, `/unearth`, `/fortunecookie` — and per-group custom commands. | [docs](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/fun) |
+| 🧰 **Does the chores** | Birthdays (including an unprompted daily post), `/adm` with a confirmation step, `/everyone`, YouTube search, and X / TikTok / Bluesky links rewritten so Telegram previews them. | [docs](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/utilities) |
+| 🤖 **Talks and listens** | Answers when mentioned or replied to, transcribes voice notes, recognises music, reverse-searches images, and turns any unknown command into an image search — each with its own limits. | [docs](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/ai) |
+| 🎁 **Runs the events** | Raffles drawn in the group with entry buttons and an admin-only end, countdown posters for the partnered conventions, and approved posts carried between partnered groups. | [docs](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/giveaways) |
+
+**Every command answers to its Portuguese and Spanish spellings** — `/rules`,
+`/regras` and `/reglas` are one command. The group's language changes what the
+bot says back, never what it listens for.
 
 Cookiebot has been running in furry community groups for years, under several
 names — Cookiebot, Bombot, Pawsy, Tarinbot — one per community or convention.
-It does three jobs at once:
-
-🛡️ **Guards the chat.** A captcha on join, a shared doom-list of known bad
-actors, sticker-flood limits, and a media hold on brand-new members. Raids stop
-at the door instead of in the moderators' notifications.
-
-🎉 **Runs the community.** Welcome messages, rules, birthdays, giveaways,
-countdowns to Brasil Fur Fest / Pawstral / Furcamp / Fursmeet, and a publisher
-that forwards approved posts between partnered groups.
-
-😹 **Is fun to have around.** `/meme`, `/ship`, `/battle`, `/death`, `/dice`,
-`/random`, reverse image search, music recognition from a voice note, and a bot
-that answers when you talk to it.
 
 Related projects: [the v1 bot](https://github.com/MekhyW/COOKIEBOT-Telegram-Group-Bot) ·
 [backend](https://github.com/MekhyW/COOKIEBOT-backend) ·
 [web hub](https://github.com/MekhyW/COOKIEBOT-WebHub) ·
 [QA specs](https://github.com/MekhyW/Cookiebot-QA)
+
+## Running it in your group
+
+Add the bot, promote it to admin, and check it can see the chat:
+
+```
+/isalive
+/config       → language, the two moderation timers, the feature switches
+/newwelcome   → reply to the prompt with your greeting
+/newrules     → reply to the prompt with your rules
+```
+
+Five minutes, start to finish:
+**[Getting started](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using)**.
 
 ## Why a rewrite
 
@@ -90,24 +109,20 @@ cache, and temporary files no longer collide between chats.
 
 ## Status
 
-**Milestone M0 complete.** The foundation is in: three services, the database
-schema, observability, storage, AI routing, the self-hosted API option, and a
-test suite that runs the specs. One command is live end to end (`/isalive`);
-the rest are being ported in order.
+**Every feature in the spec is ported and green.** 62 of 62, with all 31 v1 QA
+spec files covered by executable scenarios and the whole suite passing in CI.
 
-Live progress, measured from the spec and a real test run rather than written
-by hand — the documentation site's **[progress board](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/progress)**:
+Progress is measured from the spec and a real test run rather than written by
+hand — the documentation site's
+**[progress board](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/progress)**:
 
 ```
-features   ███████████░░░░░░░░░░░░░  25/53 done
-v1 specs   ████████████░░░░░░░░░░░░  15/31 covered by an executable scenario
+features   ████████████████████████  62/62 done
+v1 specs   ████████████████████████  31/31 covered by an executable scenario
 ```
 
 Regenerate it with `python scripts/cb.py docs-sync`; read it locally with
 `python scripts/cb.py docs` (:3002).
-
-Nothing is switched over yet — v1 keeps serving every group until a feature's
-scenarios pass here.
 
 ## Try it
 
@@ -128,10 +143,23 @@ Dashboards land on <http://localhost:3000>.
 Everything below lives in the documentation site (`docs/site`, Fumadocs) —
 published at **https://cookiebot-team.github.io/cookiebot-telegram-bot**, or run locally with `python scripts/cb.py docs`.
 
+**For whoever runs a group**
+
 | | |
 |---|---|
-| [Progress board](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/progress) | what's ported, what's next, which scenarios pass — all measured |
-| [Features](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/features) | one page per feature: what it does, what must not change, whether it works yet |
+| [Getting started](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using) | add the bot, promote it, set a language, a welcome and the rules |
+| [Commands](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/commands) | all 48, generated from the parser, with every spelling |
+| [Configuring a group](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/configure) | every setting in `/config`, and the two most groups get wrong |
+| [Moderation](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/moderation) | the captcha, sticker floods, the media hold, the block lists |
+| [Privacy](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/privacy) | what is stored, what leaves the deployment, who is responsible |
+| [Troubleshooting](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/troubleshooting) | silent bot, missing menu, a setting that will not stick |
+
+**For whoever builds or runs it**
+
+| | |
+|---|---|
+| [Progress board](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/progress) | what's ported, which scenarios pass — all measured |
+| [Features](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/features) | one page per feature: what it does, what must not change |
 | [Architecture](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/architecture) | how v2 is built and why |
 | [Development](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/development) | setup, tasks, testing, the compiled hot path |
 | [Sandbox](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/sandbox) | driving the real bot by hand against [telegram-sandbox](https://github.com/Cookiebot-Team/telegram-sandbox), the local Telegram we open-sourced out of this repo |
@@ -142,14 +170,33 @@ published at **https://cookiebot-team.github.io/cookiebot-telegram-bot**, or run
 
 ## Contributing
 
-Read [`AGENTS.md`](AGENTS.md) first — it is short, and it is the rulebook.
+**Reports and ideas are contributions.** You do not need to write Python to
+make this bot better — nobody here can see your group, so "this command did the
+wrong thing" is information only you have. Every form asks for two or three
+facts and nothing more:
+
+| | |
+|---|---|
+| [🐛 Something is broken](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/issues/new?template=bug_report.yml) | a command, a moderation feature or a deployment behaving wrongly |
+| [🔁 v2 differs from v1](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/issues/new?template=v1_parity.yml) | a command that changed its name, wording, permissions or reply |
+| [💡 An idea or an improvement](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/issues/new?template=idea.yml) | a new command, a better default, a rough edge worth smoothing |
+| [📖 Docs wrong or missing](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/issues/new?template=docs.yml) | a page that says something untrue |
+
+Half-formed ideas are welcome. Security problems are not — report those
+[privately](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/security/advisories/new),
+never in a public issue.
+
+Writing code? [`CONTRIBUTING.md`](CONTRIBUTING.md) has the whole loop — branch,
+scenario, implementation, gate, pull request — and [`AGENTS.md`](AGENTS.md) is
+the rulebook it follows.
 
 The one rule that matters most: **v1 compatibility is not negotiable.** Groups
 are using the old bot right now. A command that changes its name, its
 permissions or its reply is a regression, however much nicer the new code is.
 
 ```bash
-python scripts/cb.py check   # lint, tests, benchmarks, spec consistency
+python scripts/cb.py fmt     # ruff autofix + format
+python scripts/cb.py check   # lint, types, tests, benchmarks, spec consistency
 ```
 
 ## License
@@ -158,3 +205,7 @@ python scripts/cb.py check   # lint, tests, benchmarks, spec consistency
 explicit patent grant and the attribution requirement that a public-domain
 dedication waives. Cookiebot is built by
 [MekhyW](https://github.com/MekhyW) and contributors.
+
+The avatar and the colour palette are shared with the
+[web hub](https://github.com/MekhyW/COOKIEBOT-WebHub) — one bot, one face,
+one set of colours across everything it ships.

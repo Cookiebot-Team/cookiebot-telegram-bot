@@ -1,0 +1,87 @@
+---
+title: Everyday utilities
+description: Birthdays, calling the admins, link previews that actually preview, YouTube search
+---
+
+The working half of the bot: the commands a group reaches for without thinking
+about it. Most of them are switched out at once with **Utility Functions** in
+[`/config`](/docs/using/configure).
+
+<CommandCards
+  only={['/isalive', '/adm', '/everyone', '/youtube', '/drawingidea', '/analysis']}
+  describe={{
+    '/isalive': 'Answers if the bot can both see this group and post in it.',
+    '/adm': 'Calls the group\'s admins. Reply to the message you are reporting.',
+    '/everyone': 'Mentions every member the bot knows. Admins only.',
+    '/youtube': 'Searches YouTube and posts the first result.',
+    '/drawingidea': 'A random drawing reference, captioned with its id.',
+    '/analysis': 'Dumps what Telegram actually sent for the message you replied to.',
+  }}
+  note={{
+    '/adm': 'It asks you to confirm first, and the confirmation button goes stale after ten minutes — press it later and the bot tells you to run the command again. Admins get a private message as well as the ping.',
+    '/everyone': 'A non-admin gets a refusal, and a group where fewer than two members have ever spoken gets told there is nobody to ping yet.',
+    '/analysis': 'Mostly for bug reports: it is how you show an operator what the bot received. A payload too long for one Telegram message is truncated and says so.',
+  }}
+/>
+
+## Birthdays
+
+<CommandCards
+  only={['/birthday', '/nextbirthday']}
+  describe={{
+    '/birthday': "Builds a collage of the members whose birthday is today.",
+    '/nextbirthday': 'Lists whose birthdays are coming up, soonest first.',
+  }}
+  note={{
+    '/birthday': 'It needs an argument — a name, tagged or not. A bare /birthday asks you to type one instead of looking anything up. That is v1 behaviour, kept deliberately.',
+    '/nextbirthday': "Unlike the collage, this list is not filtered to the group — also v1 behaviour, also kept.",
+  }}
+/>
+
+You do not have to ask, though: every day at **00:10 UTC** the bot posts and
+pins a birthday collage in each group that has one, sends 🎂, and follows up a
+quarter of an hour later with who is next. A group with **Fun Functions** off is
+skipped, and a day with no birthdays anywhere costs nothing.
+
+Birthdays themselves are part of a member's account record rather than
+something a chat command sets — the bot reads them, it does not ask for them.
+
+## Links that preview properly
+
+Telegram will not show a preview for an X, TikTok or Bluesky link. The bot
+notices those links in ordinary messages and replies with a form that does
+preview:
+
+| You post | The bot replies with |
+|---|---|
+| `x.com/…` or `twitter.com/…` | `fixupx.com/…` |
+| `tiktok.com/…` | `vm.vxtiktok.com/…` |
+| `bsky.app/…` | `fxbsky.app/…` |
+
+Several links in one message get several rewrites. A link **inside a sentence**
+is still rewritten; a link **inside a command** is not, and neither is a link
+that already is one of the rewritten forms.
+
+<Callout>
+Instagram, Reddit, Pixiv, e621 and FurAffinity links are recognised and
+deliberately left alone — v1 never rewrote them, and inventing rewrites here
+would be a behaviour change dressed as a fix.
+</Callout>
+
+Rewriting needs Telegram's privacy mode **off** for the bot: with it on, the bot
+never sees an ordinary message containing a link. It also follows **Utility
+Functions**.
+
+## Finding pictures and sources
+
+Two lookups, both covered in more detail under [AI features](/docs/using/ai):
+
+- **`/searchsource`** replying to an image looks for where it came from.
+- **Any command the bot does not know** — `/french fries` — becomes a Google
+  Images search, safe-search on unless the group is marked not safe-for-work.
+
+## Housekeeping
+
+`/reload` re-reads the group's admin list and settings. You need it about once a
+year: after promoting someone who then immediately runs an admin-only command.
+Everything else applies the moment it is set.

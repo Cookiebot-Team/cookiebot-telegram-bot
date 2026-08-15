@@ -1,0 +1,93 @@
+---
+title: Welcome, rules and language
+description: The greeting new members get, the rules /rules shows, the three languages, and the bot's per-event skins
+---
+
+The three things every group sets once and then forgets about.
+
+<CommandCards
+  only={['/newwelcome', '/rules', '/newrules', '/commands', '/reload']}
+  describe={{
+    '/newwelcome': 'Sets the greeting new members get. Admin only, and two-step.',
+    '/rules': "Shows the group's rules to whoever asked.",
+    '/newrules': 'Sets the text /rules shows. Admin only, and two-step.',
+    '/commands': 'Lists the commands this group can use. Works in a private chat too.',
+    '/reload': "Re-reads the group's admin list and settings, for when a promotion has just happened.",
+  }}
+  note={{
+    '/newwelcome': 'The bot posts a prompt — reply to that prompt with the text. Typing it on the same line does nothing.',
+    '/newrules': 'Same two-step shape. A non-admin replying to the prompt gets "You are not a group admin!".',
+  }}
+/>
+
+## The welcome message
+
+New members are greeted with whatever `/newwelcome` set, or with a default
+greeting in the group's language if nothing was ever set.
+
+A placeholder in the text becomes the new member's name — their Telegram
+username if they have one, their first name if they do not. Nine spellings are
+accepted, because v1 accepted all nine and groups have all nine in the wild:
+
+```
+{user}   {username}   {mention}
+$user    $(user)      $(username)
+<user>   <username>   <name>
+```
+
+<Callout type="warn">
+`$username` is the one to avoid. It collides with `$user` — the shorter
+placeholder is substituted first, leaving `name` stuck to the end of the
+member's name. Use `{user}` or `<user>` instead. This is a v1 defect kept for
+compatibility, not a v2 bug.
+</Callout>
+
+Three details worth knowing:
+
+- **A bot joining** gets a "new companion" note, not the welcome message.
+- **The bot itself** being added is silent — no greeting for its own arrival.
+- **Several people joining at once** (one Telegram update) produce **one**
+  greeting, for the first of them.
+
+## The rules
+
+`/rules` prints what an admin set with `/newrules`. A group that never set any
+gets told so, by name:
+
+> No rules have been set for this group yet. Please contact an admin to set the
+> rules using /newrules command
+
+Both commands answer to their Portuguese and Spanish spellings — `/regras`,
+`/reglas`, `/novasregras`, `/nuevasreglas` — in every group, whatever the
+group's language is set to.
+
+## Language
+
+The group's language decides what the bot *says*: greetings, refusals, button
+labels, the command menu Telegram shows next to the message box. It never
+decides what the bot *listens for*.
+
+- A **new group** takes its language from the Telegram client of whoever added
+  the bot: `pt-*` → Portuguese, `es-*` → Spanish, `en-*` → English. A client
+  that sends no language at all leaves the group on the default.
+- **Changing it** is the **Language** button in [`/config`](/docs/using/configure),
+  answered with `pt`, `eng` or `es`.
+- Changing it also **relabels the command menu**. If Telegram refuses that
+  relabel, the language change still stands.
+
+## Skins
+
+One codebase runs several bots: Cookiebot itself, and the event personas —
+Bombot for Brasil Fur Fest, Pawsy for Pawstral, Tarinbot for SC Furs. A skin is
+a different name, avatar, wording and command set on the same core, not a
+different bot with a copied config.
+
+For a group, the visible differences are small but deliberate:
+
+- **The flagship bot announces itself** with an introduction animation when it
+  is added to a group.
+- **An event skin joins quietly** — a convention bot that shouts on arrival in
+  fifty group chats is a worse experience for everyone.
+
+Each skin can also carry [custom commands](/docs/using/fun#commands-a-group-invents-for-itself)
+of its own.
