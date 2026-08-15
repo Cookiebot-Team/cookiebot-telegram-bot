@@ -1,0 +1,60 @@
+name: 🔁 v2 behaves differently from v1
+description: A command that changed its name, its wording, its permissions or its reply.
+title: '[parity]: '
+labels: ['parity', 'needs triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **v1 compatibility is not negotiable** — groups are running the old bot
+        right now, and a command that answers differently is a regression even
+        when the new answer is better. This form exists because that class of
+        report is the most valuable one this project gets.
+
+        If the difference is deliberate, the answer will point at the contract in
+        `docs/contracts/` that records why. Either way, filing it is right.
+
+  - type: input
+    id: command
+    attributes:
+      label: Command or behaviour
+      placeholder: '/shipp with one tagged user'
+    validations:
+      required: true
+
+  - type: textarea
+    id: v1
+    attributes:
+      label: What v1 does
+      description: The old bot's reply, as literally as you can quote it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: v2
+    attributes:
+      label: What v2 does instead
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of difference
+      options:
+        - The trigger or an alias no longer works
+        - The wording of the reply changed
+        - Who is allowed to use it changed
+        - The feature switch it obeys changed
+        - It does nothing at all now
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Which v2 build
+      placeholder: 'dev-c035630, or the branch you are on'
+    validations:
+      required: false

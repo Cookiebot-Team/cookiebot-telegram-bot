@@ -1,0 +1,55 @@
+name: 💡 An idea or an improvement
+description: A new command, a better default, a rough edge worth smoothing.
+title: '[idea]: '
+labels: ['enhancement', 'needs triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome, including half-formed ones. "This is annoying and I do
+        not know what would fix it" is a useful issue — describing the annoyance
+        is the part only you can do.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is awkward today
+      description: The situation you keep hitting. Skip the solution for a moment.
+      placeholder: >
+        New members keep posting spam images in the first minute, and I only
+        find out when someone reports it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you would like instead
+      description: If you have a shape in mind. Leave blank if you do not.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the bot
+      options:
+        - Moderation (captcha, sticker limits, media hold, block lists)
+        - Welcome, rules, language
+        - Fun commands
+        - Everyday utilities
+        - AI features (chat, voice, searches)
+        - Giveaways, conventions, publishing
+        - Running a deployment (config, storage, database, charts)
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: parity
+    attributes:
+      label: Compatibility
+      options:
+        - label: This would change what an existing command says or who may use it.
+          required: false

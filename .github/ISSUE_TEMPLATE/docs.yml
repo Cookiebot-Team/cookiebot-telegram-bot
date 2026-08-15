@@ -1,0 +1,32 @@
+name: 📖 The documentation is wrong or missing
+description: A page that says something untrue, or a question it should have answered.
+title: '[docs]: '
+labels: ['documentation', 'needs triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Documentation that disagrees with the bot is a bug in the documentation —
+        the bot's behaviour is the reference. Reports here are as welcome as code
+        ones, and usually faster to fix.
+
+  - type: input
+    id: page
+    attributes:
+      label: Which page
+      placeholder: 'https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/configure'
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong, or what you were looking for and did not find
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        Every page has a **Copy Markdown** button and an **Open** menu that links
+        to the file on GitHub — a pull request is often quicker than an issue.

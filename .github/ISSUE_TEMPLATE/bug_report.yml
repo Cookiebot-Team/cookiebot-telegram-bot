@@ -1,0 +1,93 @@
+name: 🐛 Something is broken
+description: A command, a moderation feature or a deployment behaving wrongly.
+title: '[bug]: '
+labels: ['bug', 'needs triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting — a report with the command and what you expected is
+        worth more than a perfect one that never gets filed. Fill in what you
+        know and leave the rest blank.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before filing
+      options:
+        - label: I checked [Troubleshooting](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/troubleshooting) — the bot is silent, `/config` never arrives, and a setting that will not stick are all covered there.
+          required: false
+        - label: I searched open issues for the same thing.
+          required: false
+
+  - type: input
+    id: command
+    attributes:
+      label: Command or feature
+      description: The command you sent, or the thing that runs on its own.
+      placeholder: '/config, the join captcha, the sticker limit, link previews…'
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened
+      description: What the bot did, and what you expected instead.
+      placeholder: |
+        I sent /newrules and replied to the prompt with the rules text.
+        The bot said "You are not a group admin!" — I am an admin.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce it
+      description: The shortest sequence that shows the problem.
+      placeholder: |
+        1. In a group where the bot is an admin
+        2. Send /newrules
+        3. Reply to the bot's prompt with any text
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      options:
+        - A Telegram group
+        - A private chat with the bot
+        - A self-hosted deployment (services, database, chart)
+        - The documentation site
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: deployment
+    attributes:
+      label: Which bot, and which version
+      description: >
+        The bot's @username, plus the image tag or commit if you run it
+        yourself. UAT runs `@cookiebot_uat_bot`.
+      placeholder: '@cookiebot_uat_bot, dev-c035630'
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: >
+        Optional. `/analysis`, sent as a reply to the message that misbehaved,
+        dumps exactly what the bot received — that is usually the fastest answer.
+        **Remove tokens and personal data before pasting.**
+      render: text
+    validations:
+      required: false
