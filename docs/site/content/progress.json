@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-14",
-  "commit": "62b2a32",
-  "test_summary": "3271 passed, 44 skipped, 199 deselected, 2 warnings in 35.48s",
+  "generated_at": "2026-08-15",
+  "commit": "c035630",
+  "test_summary": "3274 passed, 44 skipped, 199 deselected, 2 warnings in 37.99s",
   "totals": {
     "features": 62,
     "done": 62,
@@ -1041,7 +1041,11 @@
       "layer": "gateway",
       "milestone": "M3",
       "status": "done",
-      "triggers": [],
+      "triggers": [
+        "/transcribe",
+        "/transcrever",
+        "/transcribir"
+      ],
       "v1_source": "Audio.py:22-32",
       "notes": "shape (a) ports the voice-to-AI sub-step; shape (b) is a net-new /transcribe command with no v1 equivalent; QA authored, not ported (5 scenarios) - see docs/contracts/x_speech_to_text.md",
       "contract": "docs/contracts/x_speech_to_text.md",
@@ -1379,6 +1383,45 @@
       "url": "/docs/features/util_calladms"
     },
     {
+      "primary": "/age",
+      "aliases": [
+        "/edad",
+        "/idade"
+      ],
+      "feature_id": "x_age_guess",
+      "area": "fun",
+      "title": "Age guess (agify.io)",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_age_guess"
+    },
+    {
+      "primary": "/analysis",
+      "aliases": [
+        "/analise",
+        "/analisis"
+      ],
+      "feature_id": "x_analysis",
+      "area": "util",
+      "title": "Message analysis (reply_to_message dump)",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_analysis"
+    },
+    {
+      "primary": "/anything",
+      "aliases": [
+        "/cualquiercosa",
+        "/qualquercoisa"
+      ],
+      "feature_id": "x_image_search",
+      "area": "util",
+      "title": "Image search (v1's catch-all)",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_image_search"
+    },
+    {
       "primary": "/battle",
       "aliases": [
         "/batalha",
@@ -1388,7 +1431,7 @@
       "area": "fun",
       "title": "Battle poll",
       "hint": "",
-      "status": "partial",
+      "status": "done",
       "url": "/docs/features/fun_battle"
     },
     {
@@ -1398,7 +1441,7 @@
       "area": "fun",
       "title": "Partnered convention posters",
       "hint": "",
-      "status": "blocked",
+      "status": "done",
       "url": "/docs/features/fun_partneredcons"
     },
     {
@@ -1413,8 +1456,28 @@
       "area": "util",
       "title": "Today's birthdays",
       "hint": "",
-      "status": "partial",
+      "status": "done",
       "url": "/docs/features/util_birthday"
+    },
+    {
+      "primary": "/blacklist",
+      "aliases": [],
+      "feature_id": "x_owner_commands",
+      "area": "util",
+      "title": "Owner-only operations",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_owner_commands"
+    },
+    {
+      "primary": "/broadcast",
+      "aliases": [],
+      "feature_id": "x_owner_commands",
+      "area": "util",
+      "title": "Owner-only operations",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_owner_commands"
     },
     {
       "primary": "/commands",
@@ -1466,7 +1529,7 @@
       "area": "fun",
       "title": "Random cause of death",
       "hint": "",
-      "status": "blocked",
+      "status": "done",
       "url": "/docs/features/fun_death"
     },
     {
@@ -1509,6 +1572,19 @@
       "url": "/docs/features/fun_dice"
     },
     {
+      "primary": "/drawingidea",
+      "aliases": [
+        "/ideadibujo",
+        "/ideiadesenho"
+      ],
+      "feature_id": "x_drawing_idea",
+      "area": "fun",
+      "title": "Drawing idea prompt",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_drawing_idea"
+    },
+    {
       "primary": "/everyone",
       "aliases": [],
       "feature_id": "util_everyone",
@@ -1534,13 +1610,26 @@
       "url": "/docs/features/fun_firecracker"
     },
     {
+      "primary": "/fortunecookie",
+      "aliases": [
+        "/sorte",
+        "/suerte"
+      ],
+      "feature_id": "x_fortune_cookie",
+      "area": "fun",
+      "title": "Fortune cookie",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_fortune_cookie"
+    },
+    {
       "primary": "/furcamp",
       "aliases": [],
       "feature_id": "fun_partneredcons",
       "area": "fun",
       "title": "Partnered convention posters",
       "hint": "",
-      "status": "blocked",
+      "status": "done",
       "url": "/docs/features/fun_partneredcons"
     },
     {
@@ -1550,8 +1639,21 @@
       "area": "fun",
       "title": "Partnered convention posters",
       "hint": "",
-      "status": "blocked",
+      "status": "done",
       "url": "/docs/features/fun_partneredcons"
+    },
+    {
+      "primary": "/gender",
+      "aliases": [
+        "/genero",
+        "/g\u00eanero"
+      ],
+      "feature_id": "x_gender_guess",
+      "area": "fun",
+      "title": "Gender guess (genderize.io)",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_gender_guess"
     },
     {
       "primary": "/giveaway",
@@ -1564,6 +1666,18 @@
       "url": "/docs/features/x_giveaways"
     },
     {
+      "primary": "/groups",
+      "aliases": [
+        "/grupos"
+      ],
+      "feature_id": "x_owner_commands",
+      "area": "util",
+      "title": "Owner-only operations",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_owner_commands"
+    },
+    {
       "primary": "/isalive",
       "aliases": [
         "/tavivo"
@@ -1574,6 +1688,16 @@
       "hint": "",
       "status": "done",
       "url": "/docs/features/util_isalive"
+    },
+    {
+      "primary": "/leave",
+      "aliases": [],
+      "feature_id": "x_owner_commands",
+      "area": "util",
+      "title": "Owner-only operations",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_owner_commands"
     },
     {
       "primary": "/meme",
@@ -1632,7 +1756,7 @@
       "area": "fun",
       "title": "Partnered convention posters",
       "hint": "",
-      "status": "blocked",
+      "status": "done",
       "url": "/docs/features/fun_partneredcons"
     },
     {
@@ -1642,7 +1766,7 @@
       "area": "fun",
       "title": "Partnered convention posters",
       "hint": "",
-      "status": "blocked",
+      "status": "done",
       "url": "/docs/features/fun_partneredcons"
     },
     {
@@ -1685,6 +1809,18 @@
       "url": "/docs/features/fun_random"
     },
     {
+      "primary": "/reload",
+      "aliases": [
+        "/recarregar"
+      ],
+      "feature_id": "core_reload",
+      "area": "core",
+      "title": "Reload cached admins and settings",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/core_reload"
+    },
+    {
       "primary": "/repost",
       "aliases": [
         "/reenviar",
@@ -1696,6 +1832,16 @@
       "hint": "",
       "status": "done",
       "url": "/docs/features/util_postforwarder"
+    },
+    {
+      "primary": "/restart",
+      "aliases": [],
+      "feature_id": "x_owner_commands",
+      "area": "util",
+      "title": "Owner-only operations",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_owner_commands"
     },
     {
       "primary": "/rules",
@@ -1737,17 +1883,27 @@
       "url": "/docs/features/fun_ship"
     },
     {
+      "primary": "/stop",
+      "aliases": [],
+      "feature_id": "x_owner_commands",
+      "area": "util",
+      "title": "Owner-only operations",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_owner_commands"
+    },
+    {
       "primary": "/transcribe",
       "aliases": [
         "/transcrever",
         "/transcribir"
       ],
-      "feature_id": null,
-      "area": "other",
-      "title": "",
+      "feature_id": "x_speech_to_text",
+      "area": "util",
+      "title": "Voice transcription",
       "hint": "",
-      "status": "unknown",
-      "url": null
+      "status": "done",
+      "url": "/docs/features/x_speech_to_text"
     },
     {
       "primary": "/trex",
@@ -1756,8 +1912,30 @@
       "area": "fun",
       "title": "Partnered convention posters",
       "hint": "",
-      "status": "blocked",
+      "status": "done",
       "url": "/docs/features/fun_partneredcons"
+    },
+    {
+      "primary": "/unblacklist",
+      "aliases": [],
+      "feature_id": "x_owner_commands",
+      "area": "util",
+      "title": "Owner-only operations",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_owner_commands"
+    },
+    {
+      "primary": "/unearth",
+      "aliases": [
+        "/desenterrar"
+      ],
+      "feature_id": "x_unearth",
+      "area": "fun",
+      "title": "Unearth a random old message",
+      "hint": "",
+      "status": "done",
+      "url": "/docs/features/x_unearth"
     },
     {
       "primary": "/youtube",

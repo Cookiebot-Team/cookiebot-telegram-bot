@@ -222,7 +222,8 @@ FEATURES: tuple[Feature, ...] = (
             "streak on a new cache.bump_clamped primitive, per-group rate limit; "
             "QA authored, not ported (7 scenarios) - see docs/contracts/x_conversational_ai.md"),
     Feature("x_speech_to_text", "util", "Voice transcription", "M3", Status.DONE,
-            Layer.GATEWAY, "Audio.py:22-32", (),
+            Layer.GATEWAY, "Audio.py:22-32",
+            ("/transcribe", "/transcrever", "/transcribir"),
             "shape (a) ports the voice-to-AI sub-step; shape (b) is a net-new "
             "/transcribe command with no v1 equivalent; QA authored, not ported "
             "(5 scenarios) - see docs/contracts/x_speech_to_text.md"),
