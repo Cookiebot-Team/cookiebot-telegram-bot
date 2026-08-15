@@ -5,6 +5,19 @@ description: "Setup, the task runner, the test pyramid, and the gates a change h
 
 Everything a developer needs that does not belong in the README. Read
 [`AGENTS.md`](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/blob/main/AGENTS.md) first — it is the rulebook; this is the manual.
+[`CONTRIBUTING.md`](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/blob/main/CONTRIBUTING.md)
+is the shorter door into both.
+
+<Callout>
+**You do not need to write code to help.** Nobody working on this bot can see
+your group, so a report of what a command actually did there is information only
+you have — and it is the most useful thing this project receives.
+[File it](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/issues/new/choose):
+a bug, a v1 behaviour that changed, an idea, or a page of these docs that says
+something untrue. Half-formed ideas count. Security problems go
+[in a private advisory](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/security/advisories/new),
+never in a public issue.
+</Callout>
 
 ## Requirements
 
@@ -254,6 +267,65 @@ python scripts/cb.py status -- --check # non-zero if the spec and reality disagr
 
 A feature marked `done` without a ported, passing scenario is a finding, not a
 footnote. `check` runs this.
+
+## Contributing a change
+
+The whole loop, in the order it actually happens.
+
+1. **Branch** — `feat/<short-name>`, `fix/<short-name>`, `docs/<short-name>`.
+2. **Write the scenario first.** New behaviour gets one in `qa/features/`; a
+   ported v1 feature gets v1's behaviour captured before the implementation
+   exists. A feature whose Gherkin is still red does not land.
+3. **Implement**, respecting the layering: the reply path stays cheap, and
+   anything slow — an external API, image compositing — is a `cb-worker` job.
+4. **Update the spec** when a feature is finished: flip its `status` in
+   `scripts/spec.py`, then `python scripts/cb.py docs-sync`. Never hand-edit a
+   generated frontmatter block; `check` fails on the drift.
+5. **Update the docs** when a command, a setting or a reply changed. The
+   user-facing pages are `docs/site/content/docs/using/`.
+6. **Run the gate.**
+
+   ```bash
+   python scripts/cb.py fmt      # ruff autofix + format
+   python scripts/cb.py check    # lint, types, tests, benchmarks, spec consistency
+   ```
+
+7. **Open a pull request.** Its template asks three questions; brief answers are
+   the right ones.
+
+### Commit messages
+
+[Conventional Commits](https://www.conventionalcommits.org/) — `cliff.toml`
+builds the changelog out of them, so a release note is exactly as good as the
+subjects under it.
+
+```
+<type>(<scope>): <what changed, lowercase, no full stop>
+```
+
+| Part | What goes there |
+|---|---|
+| **type** | `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore` |
+| **scope** | the feature id when there is one (`fun_dice`, `x_giveaways`, `core_welcome`), otherwise the package or area (`cb-gateway`, `chart`, `site`) |
+| **subject** | what a changelog reader needs: `feat(fun_dice): /d<N> with a clamped repeat count`, not `feat(dice): improvements` |
+
+One scope per commit. If a change needs two, it is usually two commits. A change
+to observable behaviour that a group would notice is `!` plus a body saying
+what: `feat(core_welcome)!: …`.
+
+### What review asks about
+
+Behaviour, not style — `ruff` settled style and it is not up for debate. Expect
+questions about what a group would notice, which layer the work belongs in, and
+which scenario proves it. A first contribution that needs two rounds is a normal
+first contribution.
+
+<Callout type="warn">
+**v1 compatibility is not negotiable.** A command that changes its trigger, its
+permissions or its reply is a regression even when the new answer is better.
+Deliberate divergences are written down in `docs/contracts/` — a change that
+diverges without that note will be asked for one.
+</Callout>
 
 ## CI
 

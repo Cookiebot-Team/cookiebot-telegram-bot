@@ -10,58 +10,85 @@ and **ban** rights.
 ## Screening joiners
 
 A new member gets a challenge in the group and has **🕒 CAPTCHA** seconds to
-answer it — by replying with the answer, or by tapping the button. An admin can
-wave someone through with the approve button.
+answer it — by replying with the answer, or by tapping the button. A wrong
+answer is not fatal: the bot says the password is wrong and the joiner keeps
+trying, up to **five attempts**. An admin can wave someone through with the
+approve button; the newcomer pressing that same button does nothing, which is
+the point of it.
 
-Fail it, or let the timer run out, and the member is removed. **Removal is not a
-permanent ban**: the block is lifted shortly afterwards so a real person who put
-their phone down can come back and try again. That matters, because the most
-common captcha failure is exactly that.
+Fail every attempt, or let the timer run out, and the member is removed.
+**Removal is not a permanent ban**: the block is lifted shortly afterwards so a
+real person who put their phone down can come back and try again. That matters,
+because the most common captcha failure is exactly that.
 
-Set **🕒 CAPTCHA** to `0` to turn screening off entirely.
+Three cases get no challenge at all:
+
+- someone **added by an existing member** rather than joining themself — a
+  member vouching for someone is a decision the bot does not overrule;
+- every joiner, when **🕒 CAPTCHA** is `0`;
+- every joiner, when the bot is **not an admin** — it could not remove anyone
+  who failed, so it does not pretend to screen.
 
 ## Sticker floods
 
 Stickers are the cheapest way to make a group unreadable — a client can send
-them faster than anyone can scroll. The bot counts stickers per member within a
-rolling window:
+them faster than anyone can scroll. The bot counts stickers **per group**
+within a rolling window:
 
-- at exactly **Stickers limit** (default 5) it **warns once**;
-- past the limit it **deletes** every further sticker.
+- one below **Stickers limit** (default 5): nothing;
+- at exactly the limit: **one warning**;
+- past it: every further sticker is **deleted**.
 
-A conversation held in stickers between two people is counted per person, so it
-is not treated as a flood. If the bot cannot reach its counter, it does nothing
-rather than guessing — silence beats deleting a message that was fine.
+<Callout>
+The count is the group's, not each member's — one person's stickers can push
+the group over the line and get the *next* person's sticker deleted. That is
+v1's behaviour, kept deliberately rather than quietly changed. Admins are not
+exempt either: an admin flooding stickers is warned and deleted like anyone
+else.
+</Callout>
+
+If the bot cannot reach its counter, it does nothing rather than guessing —
+silence beats deleting a message that was fine.
 
 ## Holding back new members
 
-**🕒 Limbo** stops a member who has just joined from posting images and files
-for a set number of seconds. The bot says how long the hold is when it greets
-them.
+**🕒 Limbo** stops a member who has just joined from posting photos, videos,
+GIFs and stickers for a set number of seconds. The bot says how many minutes
+the hold is when it turns a message away, and greets the new member with the
+same number.
 
-Off by default, and the single most effective setting against drive-by image
-spam. Ten minutes (`600`) is a reasonable starting point.
+Admins are never held, even seconds after joining. Off by default, and the
+single most effective setting against drive-by image spam — that kind of
+account posts within seconds of arriving or not at all. Ten minutes (`600`) is
+a reasonable starting point.
 
 ## Blocked accounts
 
-Accounts on the shared abuse lists the bot checks — plus its own list — are
-removed when they **join by themselves**. An account *added* by an existing
-member is not, on the assumption that a member vouching for someone is a
-decision the bot should not overrule.
+When someone **joins by themself**, the bot checks them against three lists, in
+order:
 
-If a list cannot be reached, the join is allowed. A screening service being
-down is not a reason to lock a group's door.
+1. the **CAS** anti-spam service (`cas.chat`);
+2. the deployment's own block list — the one `/blacklist` writes to;
+3. a public raid-block list.
+
+A match removes the joiner and says which kind of listing matched. A display
+name carrying one of the characters raid accounts use to dodge filters is
+treated the same way.
+
+Two deliberate gaps: an account **added by a member** is never checked, and if
+the external services are unreachable the local list still decides — a
+screening service being down is not a reason to lock a group's door.
 
 ## What the bot will not do
 
-- **It does not moderate admins.** An admin flooding stickers is a matter for
-  the group's humans.
+- **It does not moderate what people say.** There is no word filter and no
+  transcript; see [Privacy](/docs/using/privacy).
 - **It does not read what it is not addressed with**, unless privacy mode is
   turned off for the bot in BotFather. That is Telegram's rule, and it is why
   sticker counting and link rewriting need privacy mode off to work at all.
 - **It does not act across groups.** Someone removed from one group arrives in
-  the next with a clean slate. There is no shared reputation, by design.
-- **It does not keep a transcript.** See [Privacy](/docs/using/privacy).
+  the next with a clean slate. There is no shared reputation, by design — the
+  block lists above are the one exception, and they are explicit.
 
 <Callout type="warn">
 Without **delete** and **ban** rights, every one of these can detect a problem

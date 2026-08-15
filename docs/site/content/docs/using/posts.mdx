@@ -1,0 +1,61 @@
+---
+title: Cross-posting
+description: Submitting a post to partnered groups, the approval step, and scheduled reposts
+---
+
+Partnered communities advertise in each other's groups. The publisher is how
+that happens without fifty admins copying an image around by hand: a post is
+submitted once, approved once, and delivered on a schedule to the groups that
+agreed to receive posts.
+
+<CommandCards
+  only={['/publish', '/repost', '/deletereposts']}
+  describe={{
+    '/publish': 'Submits the channel post you replied to for publishing.',
+    '/repost': 'Schedules the message you replied to to be reposted in this group. Admins only.',
+    '/deletereposts': 'Cancels this group\'s scheduled posts. Admins only.',
+  }}
+  note={{
+    '/publish': 'It must be a reply, the replied-to message must come from a channel, and it must carry a photo, video or GIF. Each of those three has its own refusal, so you know which one you hit.',
+    '/repost': '/repost 3 means three days. A plain member gets "You are not a group admin!" and nothing is scheduled.',
+    '/deletereposts': 'It cancels what has not been sent yet. Posts already delivered are not touched.',
+  }}
+/>
+
+## Submitting a post
+
+1. A member replies **`/publish`** to the channel post they want shared.
+2. The bot's **owner approves it**. Nothing reaches any group before that — the
+   approval press has to come from the approval chat, and one from anywhere
+   else is ignored.
+3. A **daily sweep** delivers approved posts to groups that accept them, spread
+   out rather than all at once.
+
+A group that has turned off receiving posts gets nothing, and the scheduled
+post for it is dropped rather than queued forever.
+
+## Being offered a post
+
+When Telegram auto-forwards a linked channel's post into the group, the bot can
+offer to put it into the publishing queue: an **accept** and a **decline**
+button under the post. Turn that offer off and the bot says nothing at all when
+those forwards arrive.
+
+## The four settings
+
+All four live in [`/config`](/docs/using/configure), and all four are per group.
+
+| Setting | Default | What it decides |
+|---|---|---|
+| **Publisher Post** | off | Whether approved posts are delivered *into* this group. Meant for groups over ~50 members |
+| **Publisher Ask** | on | Whether the bot offers to queue a channel post that lands here |
+| **Max Posts** | `3` | How many posts the bot may deliver here per day |
+| **Publisher Members Only** | off | Whether only channel members may submit |
+| **Thread Posts** | unset | Which forum topic delivered posts land in, for groups with topics |
+
+<Callout>
+Two switches, two directions. **Publisher Post** is about what this group
+*receives*; **Publisher Ask** is about what this group *offers to send*. A group
+that wants to advertise but not be advertised in wants the second on and the
+first off.
+</Callout>

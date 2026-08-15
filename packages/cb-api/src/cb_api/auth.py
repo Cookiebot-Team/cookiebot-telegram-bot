@@ -80,7 +80,15 @@ def is_fresh(auth_data: dict[str, Any], max_age_seconds: int, *, now: float | No
 
 
 def build_claims(
-    *, subject: str, issuer: str, kid: str, ttl_seconds: int, now: float | None = None
+    *,
+    subject: str,
+    issuer: str,
+    kid: str,
+    ttl_seconds: int,
+    now: float | None = None,
+    scope: str | None = None,
+    audience: str | None = None,
+    token_type: str | None = None,
 ) -> dict[str, Any]:
     """v1's claim set, field for field (`Server.py:41-48`) — including `kid`,
     which v1 put in the payload as well as (via `jwt.encode`) the header. It is
@@ -94,13 +102,25 @@ def build_claims(
     the token's life differs from v1's by at most that same second.
     """
     issued_at = int(time.time() if now is None else now)
-    return {
+    claims: dict[str, Any] = {
         "exp": issued_at + ttl_seconds,
         "iat": issued_at,
         "kid": kid,
         "sub": subject,
         "iss": issuer,
     }
+    # `x_miniapp_auth` adds three claims, all optional so a `/login` token is
+    # byte-for-byte what v1 minted. A token with no `scope` is read-only to
+    # `cb_api.security` — the console could not write before this feature
+    # existed, and a token issued by the old route does not silently gain the
+    # ability to (see `routers/oauth.py`).
+    if scope is not None:
+        claims["scope"] = scope
+    if audience is not None:
+        claims["aud"] = audience
+    if token_type is not None:
+        claims["typ"] = token_type
+    return claims
 
 
 def issue_token(claims: dict[str, Any], private_pem: str, kid: str) -> str:

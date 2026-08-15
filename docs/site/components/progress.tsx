@@ -121,7 +121,7 @@ export function ProgressOverview() {
           label="Scenarios failing"
           value={t.failing}
           sub={t.failing === 0 ? 'nothing red' : 'needs attention'}
-          accent={t.failing > 0 ? 'text-red-600 dark:text-red-400' : ''}
+          accent={t.failing > 0 ? 'text-cb-error-ink dark:text-cb-error' : ''}
         />
         <Stat label="New v2 specs" value={t.new_specs} sub="no v1 equivalent" />
       </div>
@@ -169,7 +169,7 @@ export function MilestoneProgress() {
 function scenarioCell(feature: FeatureRow) {
   const { spec, ported, green, failing } = feature.scenarios;
   if (failing > 0)
-    return <span className="text-red-600 dark:text-red-400">{failing} failing</span>;
+    return <span className="text-cb-error-ink dark:text-cb-error">{failing} failing</span>;
   if (green > 0) return <span className="tabular-nums">{green} green</span>;
   if (ported > 0) return <span className="tabular-nums">{ported} ported</span>;
   if (spec > 0) return <span className="text-fd-muted-foreground">{spec} to port</span>;
@@ -256,7 +256,7 @@ export function FeatureHeader({ id }: { id: string }) {
   const feature = progress.features.find((row) => row.id === id);
   if (!feature)
     return (
-      <p className="text-sm text-red-600 dark:text-red-400">
+      <p className="text-sm text-cb-error-ink dark:text-cb-error">
         No row for <code>{id}</code> in <code>scripts/spec.py</code> — run{' '}
         <code>python scripts/cb.py docs-sync</code>.
       </p>
@@ -292,7 +292,7 @@ export function FeatureHeader({ id }: { id: string }) {
         <Pair
           label="Failing"
           value={failing || '—'}
-          accent={failing > 0 ? 'text-red-600 dark:text-red-400' : ''}
+          accent={failing > 0 ? 'text-cb-error-ink dark:text-cb-error' : ''}
         />
       </dl>
 
@@ -353,7 +353,7 @@ export function ScenarioLedger() {
               <td className="px-4 py-2 text-right tabular-nums">{row.ported || '—'}</td>
               <td className="px-4 py-2 text-right tabular-nums">{row.green || '—'}</td>
               <td
-                className={`px-4 py-2 text-right tabular-nums ${row.failing ? 'text-red-600 dark:text-red-400' : ''}`}
+                className={`px-4 py-2 text-right tabular-nums ${row.failing ? 'text-cb-error-ink dark:text-cb-error' : ''}`}
               >
                 {row.failing || '—'}
               </td>
@@ -384,9 +384,9 @@ export function DefectTable() {
               <td className="px-4 py-2">{defect.text}</td>
               <td className="px-4 py-2 text-xs">
                 {defect.addressed ? (
-                  <span className="text-emerald-700 dark:text-emerald-300">yes</span>
+                  <span className="text-cb-success-ink dark:text-cb-success">yes</span>
                 ) : (
-                  <span className="text-amber-700 dark:text-amber-300">not yet</span>
+                  <span className="text-cb-warning-ink dark:text-cb-warning">not yet</span>
                 )}
               </td>
             </tr>
@@ -404,14 +404,14 @@ export function DefectTable() {
 export function ConsistencyFindings() {
   if (progress.problems.length === 0)
     return (
-      <div className="not-prose my-6 rounded-xl border border-emerald-500/30 bg-emerald-500/8 p-4 text-sm">
+      <div className="not-prose my-6 rounded-xl border border-cb-success/30 bg-cb-success/8 p-4 text-sm">
         No inconsistencies. Every feature marked <strong>done</strong> has a ported, passing
         scenario, and every QA spec has a row in <code>scripts/spec.py</code>.
       </div>
     );
 
   return (
-    <div className="not-prose my-6 rounded-xl border border-amber-500/30 bg-amber-500/8 p-4">
+    <div className="not-prose my-6 rounded-xl border border-cb-warning/30 bg-cb-warning/8 p-4">
       <div className="text-sm font-medium">
         {progress.problems.length} finding{progress.problems.length === 1 ? '' : 's'}
       </div>

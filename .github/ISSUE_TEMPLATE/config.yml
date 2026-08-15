@@ -1,0 +1,18 @@
+# Blank issues stay off: every form below asks for the two or three facts that
+# decide whether a report is actionable, and a blank issue reliably arrives
+# without them. "None of these fit" is still one click away — the last form is
+# deliberately open-ended.
+blank_issues_enabled: false
+
+contact_links:
+  - name: 📖 Documentation
+    url: https://cookiebot-team.github.io/cookiebot-telegram-bot
+    about: Setting a group up, every command, the settings menu, privacy.
+
+  - name: 🩺 Troubleshooting first
+    url: https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/using/troubleshooting
+    about: The bot is silent, /config never arrives, a setting will not stick — most reports are one of these.
+
+  - name: 🔐 Security
+    url: https://github.com/Cookiebot-Team/cookiebot-telegram-bot/security/advisories/new
+    about: Report a vulnerability privately. Never in a public issue.

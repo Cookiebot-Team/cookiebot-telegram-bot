@@ -5,8 +5,8 @@ description: Add Cookiebot to a Telegram group and have it working in about five
 
 Cookiebot is a moderation and utility bot for Telegram groups. It greets new
 members, screens joiners with a captcha, keeps sticker floods and drive-by
-image spam under control, holds the group's rules, and carries a set of
-everyday tools. It speaks **English, Portuguese and Spanish**, and every
+image spam under control, holds the group's rules, and carries about forty
+everyday commands. It speaks **English, Portuguese and Spanish**, and every
 command works in all three regardless of which language the group replies in.
 
 Telegram is the whole interface. There is no account to create and no dashboard
@@ -29,7 +29,7 @@ intends.
 | **Delete messages** | Sticker-flood control, the media hold on new members, clearing a failed captcha |
 | **Ban users** | Removing a joiner who fails the captcha, blocking a listed account |
 | **Invite users via link** | Letting a removed joiner come back and try again |
-| **Pin messages** | Pinning the rules |
+| **Pin messages** | Pinning the rules, and pinning a giveaway announcement |
 
 ## 2. Check that it can see the group
 
@@ -44,11 +44,15 @@ than "it appears in the member list" tells you.
 **No reply?** Usually Telegram's privacy mode, which stops bots from seeing
 ordinary messages. Commands addressed to the bot still arrive, so `/isalive`
 answering while normal chat seems ignored is expected. Some features (link
-rewriting, sticker counting) need privacy mode off, which only the bot's owner
-can change in BotFather.
+rewriting, sticker counting, the AI replies) need privacy mode off, which only
+the bot's owner can change in BotFather.
 </Callout>
 
-## 3. Set the group's language
+## 3. Check the group's language
+
+A brand-new group inherits its language from the Telegram client of whoever
+added the bot: a `pt-BR` client makes it a Portuguese group, `es-419` a Spanish
+one. Change it whenever you like:
 
 ```
 /config
@@ -56,7 +60,8 @@ can change in BotFather.
 
 Pick **Language** and reply with `pt`, `eng` or `es`. That changes what the bot
 *says*; it never changes what the bot *listens for* — `/rules`, `/regras` and
-`/reglas` are the same command in every group.
+`/reglas` are the same command in every group. Changing it also relabels the
+command menu Telegram shows next to the message box.
 
 <Callout type="warn">
 `/config` answers **in a private chat**, not in the group: the bot replies "I've
@@ -75,7 +80,9 @@ the menu to go and the bot will say it could not reach you.
 
 Both are two-step: the bot posts a prompt, and you **reply to that prompt** with
 the text you want. Typing the text on the same line as the command does
-nothing. In a welcome message, `<user>` is replaced with the new member's name.
+nothing. In a welcome message, `<user>` is replaced with the new member's name —
+see [Welcome, rules and language](/docs/using/welcome) for the other spellings
+that work.
 
 Only an admin's reply is accepted — including an **anonymous** admin, whose
 message arrives from GroupAnonymousBot rather than from an account.
@@ -90,11 +97,15 @@ are covered on [Configuring a group](/docs/using/configure):
   files. Off by default, and the single most effective setting against
   drive-by image spam.
 
-## Where to go next
+## What you have just turned on
 
 <Cards>
-  <Card title="Commands" href="/docs/using/commands" description="Every command, with its Portuguese and Spanish spellings." />
-  <Card title="Configuring a group" href="/docs/using/configure" description="Every setting in the /config menu and what it changes." />
-  <Card title="Moderation" href="/docs/using/moderation" description="Captcha, sticker floods, media holds, blocked accounts." />
-  <Card title="Troubleshooting" href="/docs/using/troubleshooting" description="The bot is silent, the menu never arrives, a setting seems ignored." />
+  <Card title="Moderation" href="/docs/using/moderation" description="The captcha, sticker floods, the media hold, and the block lists checked at the door." />
+  <Card title="Welcome, rules and language" href="/docs/using/welcome" description="Greetings, the rules, the three languages, and the bot's per-event skins." />
+  <Card title="Fun" href="/docs/using/fun" description="Dice, ships, battles, memes, fortunes, and the bot answering when you talk to it." />
+  <Card title="Everyday utilities" href="/docs/using/utilities" description="Birthdays, calling the admins, link previews that work, YouTube search." />
+  <Card title="AI features" href="/docs/using/ai" description="Conversational replies, voice transcription, music recognition, image lookups." />
+  <Card title="Giveaways and events" href="/docs/using/giveaways" description="Raffles drawn in the group, and countdown posters for partnered conventions." />
+  <Card title="Cross-posting" href="/docs/using/posts" description="Submitting a post, the approval step, and scheduled reposts." />
+  <Card title="Commands" href="/docs/using/commands" description="The full list, with every Portuguese and Spanish spelling." />
 </Cards>

@@ -1,28 +1,57 @@
 ---
 title: Cookiebot
-description: A moderation and utility bot for Telegram groups — and the open rebuild of it
+description: The Telegram group bot for furry community chats — what it does, and how to run it in your group
 ---
 
-Cookiebot keeps a Telegram group habitable: it greets new members, screens
-joiners, holds the group's rules, keeps sticker floods and drive-by image spam
-under control, and carries a set of everyday tools. It speaks **English,
-Portuguese and Spanish**, and Telegram is the entire interface — no account, no
-dashboard.
+Cookiebot keeps a Telegram group habitable. It screens people at the door,
+greets the ones who get in, holds the group's rules, keeps sticker floods and
+drive-by image spam under control, and carries about forty commands the group
+actually uses — from `/rules` to `/battle`.
 
-## Run a group
+It speaks **English, Portuguese and Spanish**, every command works in all three,
+and Telegram is the entire interface: no account, no dashboard.
 
 <Cards>
-  <Card title="Getting started" href="/docs/using" description="Add the bot, promote it, set a language, a welcome and the rules." />
-  <Card title="Commands" href="/docs/using/commands" description="Every command, with its Portuguese and Spanish spellings." />
-  <Card title="Configuring a group" href="/docs/using/configure" description="Every setting in the /config menu — and the two most groups get wrong." />
-  <Card title="Moderation" href="/docs/using/moderation" description="The captcha, sticker floods, the media hold, blocked accounts." />
-  <Card title="Privacy" href="/docs/using/privacy" description="What is stored, what is not, and who is responsible for it." />
-  <Card title="Troubleshooting" href="/docs/using/troubleshooting" description="Silent bot, missing menu, a setting that will not stick." />
+  <Card title="Set it up in five minutes" href="/docs/using" description="Add the bot, promote it, set a language, a welcome and the rules." />
+  <Card title="Every command" href="/docs/using/commands" description="The full list, generated from the parser, with each Portuguese and Spanish spelling." />
 </Cards>
 
-## Build it
+## What it does
 
-Cookiebot is being rebuilt in the open. **v2 is a rewrite that has to earn every
+**🛡️ Guards the chat.** A captcha on join with five attempts and an admin
+override, three block lists checked at the door, a per-group sticker-flood
+limit, and a media hold on brand-new accounts. Raids stop at the door instead of
+in the moderators' notifications. → [Moderation](/docs/using/moderation)
+
+**👋 Runs the room.** Welcome messages with nine placeholder spellings, the
+rules, three languages picked up automatically from whoever added the bot, and
+per-event skins so a convention can run its own bot on the same core.
+→ [Welcome, rules and language](/docs/using/welcome)
+
+**🎲 Is fun to have around.** Dice, ships, battles decided by a poll, memes
+built from profile pictures, distorted stickers, fortunes, resurfaced old
+messages — and the bot answering in character when you talk to it.
+→ [Fun](/docs/using/fun)
+
+**🧰 Does the chores.** Birthdays (including an unprompted daily post),
+calling the admins with one confirmed press, pinging everyone, YouTube search,
+and rewriting X / TikTok / Bluesky links into a form Telegram will preview.
+→ [Everyday utilities](/docs/using/utilities)
+
+**🤖 Talks, listens and looks things up.** Conversational replies, voice notes
+transcribed and answered, music recognised from a voice note, reverse image
+search, and any unknown command turned into an image search — each with its own
+limits, and a per-group switch. → [AI features](/docs/using/ai)
+
+**🎁 Runs the community's events.** Raffles drawn in the group with entry
+buttons and an admin-only end, countdown posters for the partnered conventions,
+and a publisher that carries approved posts between partnered groups.
+→ [Giveaways and events](/docs/using/giveaways) · [Cross-posting](/docs/using/posts)
+
+## Being rebuilt in the open
+
+Cookiebot has run in furry community groups for years under several names —
+Cookiebot, Bombot, Pawsy, Tarinbot. **v2 is a rewrite that has to earn every
 switch-over**: a feature moves only once its behaviour is captured as an
 executable scenario and that scenario passes. Groups keep running on the current
 release until then.
@@ -48,10 +77,3 @@ reported as a finding, on the page, in amber.
 
 **Written** — everything else. Intent, behaviour that must not change, and the
 traps. The generator never touches it.
-
-## The one rule
-
-v1 compatibility is not negotiable. Groups are using the current release right
-now, so a command that changes its name, its permissions or its reply is a
-regression — however much nicer the new code is. Every ported feature carries a
-behaviour contract and at least one scenario that would catch that.

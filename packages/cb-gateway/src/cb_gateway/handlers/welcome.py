@@ -50,7 +50,7 @@ from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message, ReactionTypeEmoji, User
 
-from cb_core import db, locales
+from cb_core import audit, group_texts, locales
 from cb_core.logging import get_logger
 from cb_gateway.context import ChatContext, context_for, t
 from cb_gateway.filters import CommandName
@@ -178,31 +178,16 @@ def _is_welcome_reply(message: Message) -> bool:
 
 
 async def _fetch_welcome_body(group_id: int) -> str | None:
-    """Single-shard read, filtered on `group_id` (AGENTS.md §4)."""
-    row = await db.fetchrow(
-        "SELECT body FROM group_welcomes WHERE group_id = $1",
-        group_id,
-        name="welcome_lookup",
-    )
-    return row["body"] if row is not None else None
+    """The stored body, or `None`. The SQL lives in `cb_core.group_texts`, shared
+    with the Mini App's config API (AGENTS.md §8); this wrapper is the seam the
+    unit tests monkeypatch."""
+    record = await group_texts.get_welcome(group_id)
+    return record.body if record is not None else None
 
 
 async def _save_welcome(group_id: int, user_id: int | None, body: str) -> None:
     """v1's PUT-then-POST-on-404 (`Configurations.py:258-260`), as one upsert."""
-    await db.execute(
-        """
-        INSERT INTO group_welcomes (group_id, body, updated_by, updated_at)
-        VALUES ($1, $2, $3, now())
-        ON CONFLICT (group_id) DO UPDATE
-        SET body = EXCLUDED.body,
-            updated_by = EXCLUDED.updated_by,
-            updated_at = EXCLUDED.updated_at
-        """,
-        group_id,
-        body,
-        user_id,
-        name="welcome_upsert",
-    )
+    await group_texts.set_welcome(group_id, body, updated_by=user_id)
 
 
 async def _welcome_text(ctx: ChatContext, chat_title: str | None, newcomer: User) -> str:
@@ -282,7 +267,22 @@ async def capture_new_welcome(message: Message) -> None:
         return
 
     text = message.text or ""
+    # Best-effort, like the rules handler: the `before` value is worth having
+    # and never worth failing the write for.
+    previous: str | None = None
+    with contextlib.suppress(Exception):
+        previous = await _fetch_welcome_body(ctx.group_id)
     await _save_welcome(ctx.group_id, ctx.actor.user_id, text)
+    # Same trail the Mini App writes to (`cb_api.routers.groups`).
+    await audit.record(
+        ctx.group_id,
+        audit.WELCOME_UPDATED,
+        actor_user_id=ctx.actor.user_id,
+        surface="telegram",
+        summary="welcome message updated",
+        before={"body": previous},
+        after={"body": text},
+    )
 
     # Cosmetic side effect — best-effort, matching v1's exposure where a
     # failure here is silently swallowed by the outer handler and never blocks

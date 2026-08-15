@@ -61,7 +61,7 @@ from aiogram.types import (
     ReactionTypeEmoji,
 )
 
-from cb_core import errors, group_config, locales
+from cb_core import audit, errors, group_config, locales
 from cb_core.group_config import GroupConfig
 from cb_core.logging import get_logger
 from cb_core.settings import get_settings
@@ -392,14 +392,49 @@ def menu_text(config: GroupConfig) -> str:
     )
 
 
-async def apply_change(group_id: int, field: ConfigField, value: object) -> GroupConfig:
+def _actor_id(message: Message) -> int | None:
+    """The admin who sent the reply, when Telegram named one. An anonymous
+    admin arrives as GroupAnonymousBot and has no account to attribute the
+    change to — the audit row still says what changed, it just cannot say who,
+    which is the truth rather than a guess."""
+    return message.from_user.id if message.from_user is not None else None
+
+
+async def apply_change(
+    group_id: int,
+    field: ConfigField,
+    value: object,
+    *,
+    actor_user_id: int | None = None,
+) -> GroupConfig:
     """The write itself, isolated from Telegram object parsing.
 
     Split out so integration tests can drive it directly against a real database
     without constructing full aiogram `Message`/`CallbackQuery` objects — see
     `qa/integration/test_config_menu.py`.
+
+    It also writes the audit row, because this is the *only* path a menu change
+    takes: the Mini App writes the same settings through `cb_api.routers.groups`
+    and records the same action there, so a group's trail reads the same
+    whichever surface an admin used. `actor_user_id` is keyword-only and
+    optional so the integration tests that drive this directly keep working —
+    a row with no actor is still evidence that the value changed.
     """
-    return await group_config.set_config(group_id, **{field.column: value})
+    before = await group_config.get_config(group_id)
+    updated = await group_config.set_config(group_id, **{field.column: value})
+    old_value = getattr(before, field.column, None)
+    new_value = getattr(updated, field.column, None)
+    if old_value != new_value:
+        await audit.record(
+            group_id,
+            audit.CONFIG_UPDATED,
+            actor_user_id=actor_user_id,
+            surface="telegram",
+            summary=f"changed {field.column}",
+            before={field.column: old_value},
+            after={field.column: new_value},
+        )
+    return updated
 
 
 async def apply_language_side_effect(bot: Bot, group_id: int, language: object) -> None:
@@ -529,7 +564,7 @@ async def apply_config_reply(message: Message) -> None:
         return
 
     try:
-        await apply_change(group_id, field, value)
+        await apply_change(group_id, field, value, actor_user_id=_actor_id(message))
     except Exception as exc:  # noqa: BLE001 - the admin must learn the write did not land
         # `group_config.set_config` raises on a database failure rather than
         # degrading, which is right for a write — but it means the confirmation

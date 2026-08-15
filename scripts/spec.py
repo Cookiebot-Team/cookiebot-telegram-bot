@@ -222,7 +222,8 @@ FEATURES: tuple[Feature, ...] = (
             "streak on a new cache.bump_clamped primitive, per-group rate limit; "
             "QA authored, not ported (7 scenarios) - see docs/contracts/x_conversational_ai.md"),
     Feature("x_speech_to_text", "util", "Voice transcription", "M3", Status.DONE,
-            Layer.GATEWAY, "Audio.py:22-32", (),
+            Layer.GATEWAY, "Audio.py:22-32",
+            ("/transcribe", "/transcrever", "/transcribir"),
             "shape (a) ports the voice-to-AI sub-step; shape (b) is a net-new "
             "/transcribe command with no v1 equivalent; QA authored, not ported "
             "(5 scenarios) - see docs/contracts/x_speech_to_text.md"),
@@ -327,6 +328,28 @@ FEATURES: tuple[Feature, ...] = (
             "four reads over the rollups: daily, commands, llm, summary. Bearer token from "
             "/login plus group_admins membership, 404 (not 403) for a group you do not "
             "administer, bounded windows, no fleet-wide endpoint - every query is single-shard"),
+    Feature("x_miniapp_auth", "platform", "OAuth2 token issuer for the Telegram Mini App", "M4", Status.DONE,
+            Layer.API, "", (),
+            "net-new: v1 had no Mini App. /oauth2/token with three grants (Telegram "
+            "initData, the login widget, refresh_token), the same RS256 keys and JWKS "
+            "/login already publishes, plus scopes, a short access-token life and "
+            "rotating refresh tokens stored as hashes (migration 0010). A replayed "
+            "refresh token revokes its whole family. /login is untouched and its "
+            "scope-less token stays read-only"),
+    Feature("x_group_config_api", "platform", "Group settings over HTTP, admin-gated", "M4", Status.DONE,
+            Layer.API, "Configurations.py:150-211", (),
+            "every /config setting plus the rules and welcome text, readable and "
+            "writable by a group's admins from the Mini App. groups:read / groups:write "
+            "scopes, 404 (not 403) for a group you do not administer, PATCH semantics so "
+            "two admins do not overwrite each other, and the same cb_core.group_texts "
+            "upsert the Telegram handlers use"),
+    Feature("x_audit_log", "platform", "Per-group audit trail", "M4", Status.DONE,
+            Layer.API, "", (),
+            "net-new: v1 kept no trail at all. group_audit_events is distributed on "
+            "group_id (migration 0010) with a UUIDv7 key, so the page is a keyset read on "
+            "one shard. Written by both surfaces - the Mini App's config endpoints and "
+            "the Telegram config menu, /newrules and /newwelcome - and a failed audit "
+            "write never fails the action it describes"),
 )
 # fmt: on
 

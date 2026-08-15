@@ -93,17 +93,17 @@ export const statusLabel: Record<Status, string> = {
  * from this map, so a status can never mean green in one pane and amber in
  * another — the failure that makes a dashboard worse than no dashboard. */
 export const statusClass: Record<Status, string> = {
-  done: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 ring-emerald-500/25',
-  partial: 'bg-amber-500/12 text-amber-700 dark:text-amber-300 ring-amber-500/25',
+  done: 'bg-cb-success/12 text-cb-success-ink dark:text-cb-success ring-cb-success/25',
+  partial: 'bg-cb-warning/14 text-cb-warning-ink dark:text-cb-warning ring-cb-warning/30',
   planned: 'bg-fd-muted text-fd-muted-foreground ring-fd-border',
-  blocked: 'bg-red-500/12 text-red-700 dark:text-red-300 ring-red-500/25',
+  blocked: 'bg-cb-error/12 text-cb-error-ink dark:text-cb-error ring-cb-error/25',
 };
 
 export const statusBar: Record<Status, string> = {
-  done: 'bg-emerald-500',
-  partial: 'bg-amber-500',
+  done: 'bg-cb-success',
+  partial: 'bg-cb-warning',
   planned: 'bg-fd-muted-foreground/25',
-  blocked: 'bg-red-500',
+  blocked: 'bg-cb-error',
 };
 
 export function featuresByArea(): Record<string, FeatureRow[]> {

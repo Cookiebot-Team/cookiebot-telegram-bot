@@ -133,14 +133,37 @@ class TestDiscovery:
             assert jwk["kty"] == "RSA"
             assert set(jwk) & {"d", "p", "q", "dp", "dq", "qi"} == set()
 
-    def test_openid_configuration_is_v1s(self, client: TestClient) -> None:
-        assert client.get("/.well-known/openid-configuration").json() == {
+    def test_openid_configuration_still_carries_v1s_five_keys(self, client: TestClient) -> None:
+        """`x_miniapp_auth` added the token endpoint to this document. The five
+        v1 keys are asserted by value rather than the whole document by
+        equality: a consumer written against v1 reads exactly these, and adding
+        a key is not a break — changing one is."""
+        document = client.get("/.well-known/openid-configuration").json()
+        assert {
+            key: document[key]
+            for key in (
+                "issuer",
+                "jwks_uri",
+                "response_types_supported",
+                "subject_types_supported",
+                "id_token_signing_alg_values_supported",
+            )
+        } == {
             "issuer": "https://api.example",
             "jwks_uri": "https://api.example/.well-known/jwks.json",
             "response_types_supported": ["id_token"],
             "subject_types_supported": ["public"],
             "id_token_signing_alg_values_supported": ["RS256"],
         }
+
+    def test_openid_configuration_advertises_the_token_endpoint(self, client: TestClient) -> None:
+        """What a Mini App or an OAuth client library discovers this deployment
+        with."""
+        document = client.get("/.well-known/openid-configuration").json()
+        assert document["token_endpoint"] == "https://api.example/oauth2/token"
+        assert document["revocation_endpoint"] == "https://api.example/oauth2/revoke"
+        assert "refresh_token" in document["grant_types_supported"]
+        assert "groups:write" in document["scopes_supported"]
 
     def test_the_issuer_falls_back_to_the_request_when_unconfigured(
         self, settings: Settings, client: TestClient

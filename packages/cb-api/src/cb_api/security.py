@@ -33,6 +33,8 @@ every admin-gated command, so it is as fresh as the group's own activity.
 
 from __future__ import annotations
 
+import dataclasses
+from collections.abc import Awaitable, Callable
 from typing import Annotated, Any
 
 import jwt
@@ -104,10 +106,29 @@ async def _decode(token: str) -> dict[str, Any]:
     ) from last_error
 
 
-async def current_user(
+#: What a token with no `scope` claim may do. `/login` mints exactly such a
+#: token and always has; reading was all the console could do before
+#: `x_miniapp_auth` added write endpoints, so that is what it keeps. A caller
+#: that needs more asks `/oauth2/token` for a scoped one.
+LEGACY_SCOPES = frozenset({"groups:read"})
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class Caller:
+    """Who is on the other end of this request, and what they may do."""
+
+    user_id: int
+    scopes: frozenset[str]
+    audience: str | None = None
+
+    def can(self, scope: str) -> bool:
+        return scope in self.scopes
+
+
+async def current_caller(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
-) -> int:
-    """The Telegram user id in `sub`, or 401.
+) -> Caller:
+    """The verified token's subject and scopes, or 401.
 
     `auto_error=False` on the scheme so a missing header produces this
     function's own 401 with a `WWW-Authenticate` challenge rather than
@@ -123,7 +144,7 @@ async def current_user(
     claims = await _decode(credentials.credentials)
     subject = str(claims.get("sub", ""))
     try:
-        return int(subject)
+        user_id = int(subject)
     except ValueError:
         # v1 minted `sub` from the widget's `id`, always an integer. Anything
         # else is a token this deployment did not issue for a Telegram user.
@@ -131,10 +152,28 @@ async def current_user(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid subject"
         ) from None
 
+    raw_scope = claims.get("scope")
+    scopes = frozenset(str(raw_scope).split()) if raw_scope else LEGACY_SCOPES
+    audience = claims.get("aud")
+    return Caller(user_id=user_id, scopes=scopes, audience=str(audience) if audience else None)
+
+
+async def current_user(caller: Annotated[Caller, Depends(current_caller)]) -> int:
+    """The Telegram user id alone, for endpoints that never look at scopes."""
+    return caller.user_id
+
 
 async def _is_group_admin(group_id: int, user_id: int) -> bool:
     row = await db.fetchrow(_IS_ADMIN, group_id, user_id, name="api_is_group_admin")
     return row is not None
+
+
+async def administers(group_id: int, user_id: int) -> bool:
+    """Group admin, or an owner of the tenant that group belongs to."""
+    if await _is_group_admin(group_id, user_id):
+        return True
+    tenant = await tenancy.registry.by_id(tenancy.DEFAULT_TENANT)
+    return bool(tenant.owns(user_id))
 
 
 async def group_admin(
@@ -147,13 +186,59 @@ async def group_admin(
     chat id is known to this deployment is not something an arbitrary logged-in
     user should be able to probe.
     """
-    if await _is_group_admin(group_id, user_id):
-        return group_id
-    tenant = await tenancy.registry.by_id(tenancy.DEFAULT_TENANT)
-    if tenant.owns(user_id):
+    if await administers(group_id, user_id):
         return group_id
     log.info("api.analytics.denied", user_id=user_id)
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="group not found")
 
 
-__all__ = ["current_user", "group_admin"]
+def group_admin_caller(*required: str) -> Callable[..., Awaitable[Caller]]:
+    """Dependency: the caller, once they administer `{group_id}` **and** hold
+    every named scope.
+
+    Two failures, two different answers, on purpose:
+
+    * not an admin of that group -> **404**, the same answer a group that does
+      not exist gets, so a logged-in stranger cannot enumerate chat ids;
+    * an admin whose token lacks the scope -> **403** with an
+      `insufficient_scope` challenge (RFC 6750 §3.1), because the client can
+      fix that by asking for a better token and needs to be told so.
+
+    The order matters and is the less obvious half: membership is checked
+    first, so a stranger never learns whether their scope would have been
+    enough for a group they cannot see.
+    """
+
+    async def dependency(
+        group_id: Annotated[int, Path()],
+        caller: Annotated[Caller, Depends(current_caller)],
+    ) -> Caller:
+        if not await administers(group_id, caller.user_id):
+            log.info("api.group.denied", user_id=caller.user_id, reason="not_admin")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="group not found")
+        missing = [scope for scope in required if not caller.can(scope)]
+        if missing:
+            log.info("api.group.denied", user_id=caller.user_id, reason="scope")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"token is missing scope: {' '.join(missing)}",
+                headers={
+                    "WWW-Authenticate": (
+                        f'Bearer error="insufficient_scope", scope="{" ".join(required)}"'
+                    )
+                },
+            )
+        return caller
+
+    return dependency
+
+
+__all__ = [
+    "LEGACY_SCOPES",
+    "Caller",
+    "administers",
+    "current_caller",
+    "current_user",
+    "group_admin",
+    "group_admin_caller",
+]

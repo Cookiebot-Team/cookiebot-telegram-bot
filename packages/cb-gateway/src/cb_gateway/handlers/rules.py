@@ -38,7 +38,7 @@ from typing import cast
 from aiogram import Bot, Router
 from aiogram.types import Message
 
-from cb_core import db
+from cb_core import audit, group_texts
 from cb_gateway.context import context_for, t
 from cb_gateway.filters import CommandName
 from cb_gateway.telemetry import mark_outcome
@@ -108,29 +108,17 @@ def _is_new_rules_reply(message: Message) -> bool:
 
 
 async def _fetch_rules(group_id: int) -> str | None:
-    """Single-shard read, filtered on `group_id` (AGENTS.md §4)."""
-    row = await db.fetchrow(
-        "SELECT body FROM group_rules WHERE group_id = $1", group_id, name="rules_lookup"
-    )
-    return row["body"] if row is not None else None
+    """The stored body, or `None`. The SQL lives in `cb_core.group_texts`, which
+    the Mini App's config API writes through as well — one upsert, two surfaces
+    (AGENTS.md §8). This wrapper stays because it is the seam the unit tests
+    monkeypatch, and because the handler only ever wanted the text."""
+    record = await group_texts.get_rules(group_id)
+    return record.body if record is not None else None
 
 
 async def _upsert_rules(group_id: int, user_id: int | None, body: str) -> None:
     """v1's PUT-then-POST-on-404 (`Configurations.py:274-276`), as one upsert."""
-    await db.execute(
-        """
-        INSERT INTO group_rules (group_id, body, updated_by, updated_at)
-        VALUES ($1, $2, $3, now())
-        ON CONFLICT (group_id) DO UPDATE
-        SET body = EXCLUDED.body,
-            updated_by = EXCLUDED.updated_by,
-            updated_at = EXCLUDED.updated_at
-        """,
-        group_id,
-        body,
-        user_id,
-        name="rules_upsert",
-    )
+    await group_texts.set_rules(group_id, body, updated_by=user_id)
 
 
 # ------------------------------------------------------------------- handlers
@@ -174,7 +162,25 @@ async def capture_new_rules(message: Message) -> None:
         return
 
     text = message.text or ""
+    # The old text, for the audit row's `before`. Best-effort: a database that
+    # cannot answer this must not stop an admin setting the rules, and the row
+    # is still worth writing with the new value alone.
+    previous: str | None = None
+    with contextlib.suppress(Exception):
+        previous = await _fetch_rules(ctx.group_id)
     await _upsert_rules(ctx.group_id, ctx.actor.user_id, text)
+    # The Mini App writes the same rows through the same audit trail
+    # (`cb_api.routers.groups`); a change made in the chat has to show up there
+    # too, or the trail answers "who changed this" with half the story.
+    await audit.record(
+        ctx.group_id,
+        audit.RULES_UPDATED,
+        actor_user_id=ctx.actor.user_id,
+        surface="telegram",
+        summary="rules updated",
+        before={"body": previous},
+        after={"body": text},
+    )
     await message.reply(RULES_UPDATED_TEXT)
 
     prompt = message.reply_to_message

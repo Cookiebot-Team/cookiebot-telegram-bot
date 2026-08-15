@@ -19,101 +19,181 @@ Three things hold for every command:
   ignored in silence.
 
 <Callout>
-**The "In v2" column.** Cookiebot is being rebuilt; groups on the current
-release have everything, and each command moves to the new stack only once its
-behaviour is pinned down by a passing test. `Live` means it has already moved.
-The full picture is on the [progress board](/docs/progress).
+**The "In v2" column** is measured, not claimed: it comes from the same test run
+as the [progress board](/docs/progress). `Live` means the command's behaviour is
+pinned down by scenarios that pass.
 </Callout>
 
 ## Group setup
 
-Admin-only, and all three are two-step: the bot prompts, you **reply to that
+Admin-only. The first three are two-step: the bot prompts, you **reply to that
 prompt**.
 
 <CommandTable
-  only={['/config', '/newrules', '/newwelcome']}
+  only={['/config', '/newrules', '/newwelcome', '/reload']}
   describe={{
     '/config': 'Opens the settings menu — in a private chat, not in the group',
     '/newrules': 'Sets the rules that /rules shows',
     '/newwelcome': 'Sets the greeting new members get. <user> becomes their name',
+    '/reload': "Re-reads the group's admins and settings",
   }}
 />
+
+→ [Configuring a group](/docs/using/configure) ·
+[Welcome, rules and language](/docs/using/welcome)
 
 ## Everyday
 
 <CommandTable
-  only={['/rules', '/commands', '/isalive', '/privacy', '/adm']}
+  only={['/rules', '/commands', '/isalive', '/privacy', '/adm', '/everyone']}
   describe={{
     '/rules': "Shows the group's rules",
     '/commands': 'Lists what this group can use',
     '/isalive': 'Health check — the bot answers if it can see and post here',
     '/privacy': 'Replies with the privacy policy link',
     '/adm': "Summons the group's admins. Reply to the message you are reporting",
+    '/everyone': 'Mentions every known member. Admins only',
   }}
 />
 
 ## Fun
 
-Turned off for a whole group with **Fun Functions** in [`/config`](/docs/using/configure).
+Turned off for a whole group with **Fun Functions** in
+[`/config`](/docs/using/configure) — except `/dice`, which v1 put behind
+**Utility Functions** and which stays there.
 
 <CommandTable
-  only={['/dice', '/random', '/ship', '/battle', '/death', '/firecracker', '/meme', '/complaint']}
+  only={[
+    '/dice',
+    '/ship',
+    '/battle',
+    '/death',
+    '/meme',
+    '/random',
+    '/destroy',
+    '/unearth',
+    '/firecracker',
+    '/complaint',
+    '/fortunecookie',
+    '/age',
+    '/gender',
+  ]}
   describe={{
-    '/dice': 'Rolls a six-sided die. /d20, /d100 — any number of sides',
-    '/random': 'Posts a random piece of media the group has sent before',
+    '/dice': 'Rolls a die. /d20, /d100 — any number of sides, up to twenty rolls',
     '/ship': 'Pairs two members',
     '/battle': 'Two members, one winner, decided by a poll',
     '/death': 'A cause of death, at random',
+    '/meme': "Builds a meme from members' profile pictures",
+    '/random': 'Posts a random piece of media the group has sent before',
+    '/destroy': 'Distorts the photo, sticker or voice note you replied to',
+    '/unearth': 'Forwards a random older message from this group',
     '/firecracker': 'A firecracker, ceremonially',
-    '/meme': 'Generates a meme',
     '/complaint': 'Files a complaint, ceremonially',
+    '/fortunecookie': 'A fortune, and six lucky numbers',
+    '/age': 'Guesses how old a name sounds',
+    '/gender': 'Guesses whether a name reads as male or female',
   }}
 />
+
+→ [Fun](/docs/using/fun)
 
 ## Utility
 
-Turned off for a whole group with **Utility Functions**.
+Turned off for a whole group with **Utility Functions** — except `/birthday`
+and `/nextbirthday`, which follow **Fun Functions**, as they did in v1.
 
 <CommandTable
-  only={['/birthday', '/nextbirthday', '/everyone', '/youtube']}
+  only={[
+    '/birthday',
+    '/nextbirthday',
+    '/youtube',
+    '/drawingidea',
+    '/searchsource',
+    '/transcribe',
+    '/analysis',
+    '/anything',
+  ]}
   describe={{
-    '/birthday': "Registers yours, and shows today's",
+    '/birthday': "Collage of today's birthdays. Needs a name after it",
     '/nextbirthday': 'Whose birthday is next',
-    '/everyone': 'Mentions every member',
     '/youtube': 'Searches YouTube and posts the result',
+    '/drawingidea': 'A random drawing reference',
+    '/searchsource': 'Reverse image search on the picture you replied to',
+    '/transcribe': 'Transcribes the voice note you replied to',
+    '/analysis': 'Dumps what Telegram sent for the message you replied to',
+    '/anything': 'Any unknown command becomes a Google Images search',
   }}
 />
 
+→ [Everyday utilities](/docs/using/utilities) · [AI features](/docs/using/ai)
+
+## Giveaways and events
+
+<CommandTable
+  only={['/giveaway', '/bff', '/patas', '/fursmeet', '/furcamp', '/pawstral', '/trex']}
+  describe={{
+    '/giveaway': 'Starts a raffle for the prize you name. Admins only',
+    '/bff': 'Brasil Fur Fest poster, with a countdown',
+    '/patas': 'Patas poster, with a countdown',
+    '/fursmeet': 'Fursmeet poster, with a countdown',
+    '/furcamp': 'Furcamp poster, with a countdown',
+    '/pawstral': 'Pawstral poster, with a countdown',
+    '/trex': 'Trex Furplayer picture, no caption',
+  }}
+/>
+
+→ [Giveaways and events](/docs/using/giveaways)
+
 ## Posts
 
-The publishing flow, for groups that forward posts between channels. Its
-behaviour is set by the four **Publisher** settings in `/config`.
+The publishing flow, for groups that forward posts between channels.
 
 <CommandTable
   only={['/publish', '/repost', '/deletereposts']}
   describe={{
-    '/publish': 'Submits a post to the publishing queue',
-    '/repost': 'Reposts a message',
-    '/deletereposts': 'Clears posts scheduled for reposting',
+    '/publish': 'Submits the channel post you replied to for publishing',
+    '/repost': 'Reposts a message in this group for N days. Admins only',
+    '/deletereposts': 'Cancels this group\'s scheduled posts. Admins only',
   }}
 />
 
-## Convention shortcuts
+→ [Cross-posting](/docs/using/posts)
 
-Fixed links for partnered furry conventions.
+## Owner only
 
-<CommandTable only={['/bff', '/furcamp', '/fursmeet', '/patas', '/pawstral', '/trex']} />
+Private chat with the bot, owner only, silent for everyone else.
+
+<CommandTable
+  only={['/groups', '/blacklist', '/unblacklist', '/broadcast', '/leave', '/stop', '/restart']}
+  describe={{
+    '/groups': 'Lists the groups the bot is in',
+    '/blacklist': 'Blocks an account by id',
+    '/unblacklist': 'Unblocks an account by id',
+    '/broadcast': 'Queues a message for every group',
+    '/leave': 'Leaves a chat by id and blocks it',
+    '/stop': 'Refused — stopping a replica is the orchestrator\'s job',
+    '/restart': 'Refused, for the same reason',
+  }}
+/>
+
+→ [Owner commands](/docs/using/owner)
 
 ## Things without a command
 
 Some of what the bot does has no command at all — it just happens:
 
-- **Link rewriting.** Twitter/X, TikTok, Instagram and Bluesky links are
-  reposted in a form that actually shows a preview in Telegram.
+- **Link rewriting.** X, TikTok and Bluesky links are reposted in a form that
+  actually shows a preview in Telegram.
+- **Talking back.** Mention the bot, or reply to it, and it answers. Reply with
+  a sticker and it replies with one.
+- **Music recognition** on voice notes, where the operator has enabled it.
+- **The daily birthday post**, at 00:10 UTC.
 - **Joiner screening, sticker limits, media holds.** See
   [Moderation](/docs/using/moderation).
 
 <Callout>
-An unrecognised command gets **no reply**. In a group with several bots, one of
-them answering "unknown command" to everything is worse than silence.
+An unrecognised command is **not** silent here: it becomes an image search. That
+is v1's catch-all, kept — with the blocklist, the daily limits and the
+safe-search rule described under [AI features](/docs/using/ai#any-unknown-command-is-an-image-search).
+A command addressed to another bot is still ignored completely.
 </Callout>

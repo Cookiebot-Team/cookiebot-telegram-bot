@@ -1,0 +1,104 @@
+---
+title: Fun
+description: Dice, ships, battles, memes, fortunes — and the bot answering when you talk to it
+---
+
+The half of the bot nobody strictly needs and every group turns on anyway. All
+of it is switched out at once with **Fun Functions** in
+[`/config`](/docs/using/configure) — with two exceptions noted below, because
+the switch a command obeys is v1's, not a tidier one invented here.
+
+<Callout>
+A command in a switched-off family **says so**. It does not go quiet: "fun
+functions are disabled for this group" is a much better answer than silence
+when someone is wondering whether the bot is broken.
+</Callout>
+
+## Rolls, ships and battles
+
+<CommandCards
+  only={['/dice', '/ship', '/battle']}
+  describe={{
+    '/dice': 'Rolls dice. /d20 for a twenty-sided one, /d6 3 to roll it three times.',
+    '/ship': 'Pairs two members and posts the ship.',
+    '/battle': 'Two contenders, two photos, and a poll to settle it.',
+  }}
+  note={{
+    '/dice': 'Gated by Utility Functions, not Fun — that is where v1 put it. A bare /dice or a malformed one replies with the usage example rather than guessing.',
+    '/ship': 'Tag two people and it uses them verbatim, stranger or not. Tag one and both are still drawn at random — a v1 quirk, kept. It needs at least two members it has seen speak.',
+    '/battle': '/battle random picks two known members; a bare /battle puts you against a random fighter character. Everyone involved needs a visible profile picture.',
+  }}
+/>
+
+## Pictures the group makes
+
+<CommandCards
+  only={['/meme', '/random', '/destroy', '/unearth']}
+  describe={{
+    '/meme': "Builds a meme out of members' profile pictures.",
+    '/random': 'Posts a random piece of media this group has sent before.',
+    '/destroy': 'Distorts whatever you reply to — photo, sticker or voice note.',
+    '/unearth': 'Forwards a random older message from this group.',
+  }}
+  note={{
+    '/meme': 'Tag up to five people. More than five is refused rather than truncated.',
+    '/random': "The pool is this group's own media, and a safe-for-work group never gets an item marked otherwise.",
+    '/destroy': '/destroy pfp distorts your own profile picture. Video and GIF distortion are switched off — v1 shipped them broken, and they are not pretending to work here.',
+    '/unearth': 'If the message it picks has been deleted, it tries another; if everything it tries is gone, it says nothing.',
+  }}
+/>
+
+## Bits
+
+<CommandCards
+  only={['/death', '/firecracker', '/complaint', '/fortunecookie', '/age', '/gender']}
+  describe={{
+    '/death': 'A cause of death, at random, for you or for whoever you tag or reply to.',
+    '/firecracker': 'A firecracker, ceremonially, in several messages.',
+    '/complaint': 'Files a complaint with the management.',
+    '/fortunecookie': 'A fortune cookie animation, then a fortune and six lucky numbers.',
+    '/age': 'Guesses how old a name sounds, via agify.io.',
+    '/gender': 'Guesses whether a name reads as male or female, via genderize.io.',
+  }}
+  note={{
+    '/complaint': 'Reply to the picture it posts with your actual complaint and you get hold music, and an answer some minutes later.',
+    '/age': 'Both guessers report their sample size, and answer "no idea" for a name they have no data for — including when the service is down.',
+  }}
+/>
+
+## Talking to the bot
+
+Mention the bot, or reply to something it said, and it answers in character —
+no command needed. A voice note replying to the bot works the same way: it is
+transcribed, answered, and the transcript itself is never posted. See
+[AI features](/docs/using/ai) for what that costs and how it is configured.
+
+Two limits worth knowing:
+
+- **Seven in a row is the cap.** One person mentioning the bot over and over
+  gets six answers and then silence. Sending ordinary messages replenishes it —
+  the bot stops being a toy for one member without ever refusing out loud.
+- **A closed Fun switch is silent here**, not a refusal. A conversational reply
+  that answers "fun functions are disabled" reads as the bot talking back about
+  not talking back.
+
+Replying to the bot **with a sticker** gets a sticker back, drawn from the pool
+it has collected. Only stickers seen in safe-for-work groups go into that pool.
+
+## Commands a group invents for itself
+
+A deployment can attach a picture pool to a name — `/louie`, say — and that name
+becomes a command in the groups that brand serves. Plain `/louie` posts one at
+random, captioned with the pool's name and the picture's id; `/louie 1` asks for
+that exact one. A number nothing matches, or a name with no pool behind it,
+gets no reply at all.
+
+Custom commands follow the **Fun Functions** switch, and only exist for brands
+whose command set includes them.
+
+## Convention posters
+
+`/bff`, `/patas`, `/fursmeet`, `/furcamp`, `/pawstral` and `/trex` post a
+picture of the event with a countdown to it. They are covered on
+[Giveaways and events](/docs/using/giveaways#convention-posters) — and they
+ignore both the Fun and Utility switches, in every group.

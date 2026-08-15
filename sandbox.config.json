@@ -217,6 +217,20 @@
       "docs": "docs/contracts/core_privacy.md"
     },
     {
+      "id": "core_reload",
+      "title": "Reload cached admins and settings",
+      "description": "v2's caches invalidate themselves (D6), which is why nobody ported this - but the trigger is still advertised in the Cookiebot_functions.txt this repo ships verbatim, so typing it answered nothing. Does a real invalidation, not a stub: admins.refresh re-reads getChatAdministrators, which is the one thing no invalidation of ours could have known about. QA authored, not ported",
+      "status": "done",
+      "commands": [
+        "/reload",
+        "/recarregar"
+      ],
+      "tags": [
+        "reload"
+      ],
+      "docs": null
+    },
+    {
       "id": "core_rules",
       "title": "Group rules and /newrules",
       "description": null,
@@ -322,13 +336,13 @@
     {
       "id": "core_botskins",
       "title": "Per-event bot skins",
-      "description": "one process serves every skin; per-event asset packs pending",
-      "status": "partial",
+      "description": "one process serves every skin; cb_core/skins.py adds the two behavioural forks v1 keys on is_alternate_bot (intro animation, fun-override flair) plus the per-skin asset override tree; all 5 personas configured (0007). Handler packs landed with x_custom_commands - see cb_gateway/packs.py",
+      "status": "done",
       "commands": [],
       "tags": [
         "botskins"
       ],
-      "docs": null
+      "docs": "docs/contracts/core_botskins.md"
     },
     {
       "id": "fun_dice",
@@ -363,8 +377,8 @@
     {
       "id": "fun_death",
       "title": "Random cause of death",
-      "description": "image pool only ever lived in v1's private GCS bucket, never checked in - see .specs/features/fun_death/spec.md",
-      "status": "blocked",
+      "description": "unblocked by cb_worker.bucket_export + cb.py legacy-catalog, which turned v1's GCS Death/ prefix into a small package-data catalog (cb_core.legacy_assets) over content-addressed bytes in cb_core.storage - fun_meme's split, not fun_complaint's vendoring, since 21.5MB is past what belongs in the wheel. gif-vs-photo dispatch reads the catalog's source_path (v1's original filename), not the storage key's own extension, on purpose - see death.py. D-DE-1 (dropped skull-emoji prefix for a target with no username) preserved verbatim; D-DE-3 (v1's ValueError on an empty bucket listing) fixed - legacy_assets.choose() returns None and the handler answers nothing, the only state a real deployment can still be in before legacy-catalog has run. See docs/contracts/fun_death.md",
+      "status": "done",
       "commands": [
         "/death",
         "/morte",
@@ -373,7 +387,7 @@
       "tags": [
         "death"
       ],
-      "docs": null
+      "docs": "docs/contracts/fun_death.md"
     },
     {
       "id": "fun_meme",
@@ -391,8 +405,8 @@
     {
       "id": "fun_battle",
       "title": "Battle poll",
-      "description": "two-people shape ships (roster + getUserProfilePhotos, no scrape); one-tag/self shapes blocked on the Fight/ GCS export, same as fun_death",
-      "status": "partial",
+      "description": "all three shapes: two people (roster + getUserProfilePhotos, no scrape), one tag and self against the exported Fight/ pools",
+      "status": "done",
       "commands": [
         "/battle",
         "/batalha",
@@ -452,8 +466,8 @@
     {
       "id": "fun_partneredcons",
       "title": "Partnered convention posters",
-      "description": "same GCS blocker as fun_death: every branch reads a Countdown/* prefix (Miscellaneous.py:18-22) and the single send_photo is unconditional. /trex is spec'd in QA but missing from v1 - net-new",
-      "status": "blocked",
+      "description": "hardcoded dates and captions verbatim, +365 wraparound preserved, ungated like v1; /trex is net-new and sends a Countdown/Trex poster with no caption",
+      "status": "done",
       "commands": [
         "/bff",
         "/patas",
@@ -465,13 +479,13 @@
       "tags": [
         "partneredcons"
       ],
-      "docs": null
+      "docs": "docs/contracts/fun_partneredcons.md"
     },
     {
       "id": "util_birthday",
       "title": "Today's birthdays",
-      "description": "manual command only - the daily every-group broadcast is an unverified, unresolved parity gap, see docs/contracts/util_birthday.md",
-      "status": "partial",
+      "description": "both v1 shapes: the manual command, and the daily every-group broadcast - whose caller turned out to be COOKIEBOT.py:333-339 (the message handler's finally, on the first update of a new UTC day), not a scheduler. v2 runs it as a cron with one deferred job per group instead of v1's sleep(3) loop (D8)",
+      "status": "done",
       "commands": [
         "/birthday",
         "/aniversario",
@@ -633,7 +647,11 @@
       "title": "Voice transcription",
       "description": "shape (a) ports the voice-to-AI sub-step; shape (b) is a net-new /transcribe command with no v1 equivalent; QA authored, not ported (5 scenarios) - see docs/contracts/x_speech_to_text.md",
       "status": "done",
-      "commands": [],
+      "commands": [
+        "/transcribe",
+        "/transcrever",
+        "/transcribir"
+      ],
       "tags": [
         "speech_to_text"
       ],
@@ -672,34 +690,187 @@
     {
       "id": "x_owner_commands",
       "title": "Owner-only operations",
-      "description": null,
-      "status": "planned",
+      "description": "private-chat only and gated on CB_OWNER_ID; /grupos is one paged message instead of v1's one getChat + one sendMessage per group (D11) and /broadcast is a cb-worker fan-out instead of a sleep(0.5) loop on the handler thread (D8); /stop and /restart answer a refusal rather than os._exit-ing one of N replicas - see docs/contracts/x_owner_commands.md; QA authored (9 scenarios)",
+      "status": "done",
       "commands": [
         "/grupos",
+        "/groups",
         "/broadcast",
         "/leave",
         "/blacklist",
+        "/unblacklist",
         "/stop",
         "/restart"
       ],
       "tags": [
         "owner_commands"
       ],
-      "docs": null
+      "docs": "docs/contracts/x_owner_commands.md"
     },
     {
       "id": "x_custom_commands",
       "title": "Per-group custom commands",
-      "description": "same GCS blocker as fun_death, and worse: the command *names* are the bucket's Custom/ folder names (Miscellaneous.py:23), so without the export there is not even a trigger list. Still the seed of tenant handler packs once the assets land",
-      "status": "blocked",
+      "description": "53 exported Custom/ folders are the trigger list, matched by a filter rather than COMMAND_ALIASES because the names are data; gated per tenant by cb_gateway/packs.py, which is what finally reads tenants.handler_pack",
+      "status": "done",
       "commands": [],
       "tags": [
         "custom_commands"
+      ],
+      "docs": "docs/contracts/x_custom_commands.md"
+    },
+    {
+      "id": "x_age_guess",
+      "title": "Age guess (agify.io)",
+      "description": "GET agify.io?name=, timeout+Breaker per doomlist.py's pattern; fun-gated with v1's fun_off reply. Argument comes from ParsedCommand.args rather than v1's replace-chain, which crashed on a lone trailing space; an agify timeout/error/malformed body/open breaker answers the same not_know text as count == 0, since v1 never handles that case at all (silence). QA authored, not ported",
+      "status": "done",
+      "commands": [
+        "/idade",
+        "/age",
+        "/edad"
+      ],
+      "tags": [
+        "age_guess"
+      ],
+      "docs": null
+    },
+    {
+      "id": "x_gender_guess",
+      "title": "Gender guess (genderize.io)",
+      "description": "GET genderize.io?name=, same timeout+Breaker/argument/failure handling as x_age_guess. A null gender with a non-zero count (should be unreachable behind count == 0, but v1's f\"gender.{genero}\" would build the dead key 'gender.None' if it were) renders the dormant 'gender.unknown' entry that v1's own lib.json already ships (en only, never read by any v1 code path) instead of crashing or going silent. QA authored, not ported",
+      "status": "done",
+      "commands": [
+        "/genero",
+        "/gênero",
+        "/gender"
+      ],
+      "tags": [
+        "gender_guess"
+      ],
+      "docs": null
+    },
+    {
+      "id": "x_unearth",
+      "title": "Unearth a random old message",
+      "description": "forwards a random message_id in [1, current], fun-gated with v1's fun_off reply. v1 wrote a 100-attempt retry and then returned inside its own except, so it tried once and answered nothing whenever that id was deleted; the retry is real here, bounded at 8. QA authored, not ported",
+      "status": "done",
+      "commands": [
+        "/desenterrar",
+        "/unearth"
+      ],
+      "tags": [
+        "unearth"
+      ],
+      "docs": null
+    },
+    {
+      "id": "x_fortune_cookie",
+      "title": "Fortune cookie",
+      "description": "animated GIF + locale-random fortune line from sorte.txt (locales.lines) plus six lucky numbers, one per tens-decade; fun-gated with v1's fun_off reply. v1's time.sleep(3) between sending the animation and deleting it blocked the whole process, so the delete-then-answer tail now runs as a background asyncio.Task (complaint.py's _schedule_tail idiom) instead, keeping v1's exact user-visible order without holding the reply path open. QA authored, not ported",
+      "status": "done",
+      "commands": [
+        "/sorte",
+        "/fortunecookie",
+        "/suerte"
+      ],
+      "tags": [
+        "fortune_cookie"
+      ],
+      "docs": null
+    },
+    {
+      "id": "x_image_search",
+      "title": "Image search (v1's catch-all)",
+      "description": "the three triggers only print the usage line; the feature is that every unrecognised /command is a search. Search + sends in cb-worker, quotas in Valkey (v1's dict was per-process), catch-all raises SkipHandler - it is registered ahead of three routers that own real commands",
+      "status": "done",
+      "commands": [
+        "/qualquercoisa",
+        "/anything",
+        "/cualquiercosa"
+      ],
+      "tags": [
+        "image_search"
+      ],
+      "docs": "docs/contracts/x_image_search.md"
+    },
+    {
+      "id": "x_drawing_idea",
+      "title": "Drawing idea prompt",
+      "description": "3,435 exported references; the caption's id is the index drawn, so the catalog's sort order is the contract. Scenarios authored locally - QA has none",
+      "status": "done",
+      "commands": [
+        "/ideiadesenho",
+        "/drawingidea",
+        "/ideadibujo"
+      ],
+      "tags": [
+        "drawing_idea"
+      ],
+      "docs": "docs/contracts/x_drawing_idea.md"
+    },
+    {
+      "id": "x_analysis",
+      "title": "Message analysis (reply_to_message dump)",
+      "description": "dumps the replied-to message's fields back to chat, ungated exactly as v1 dispatches it (COOKIEBOT.py:202); truncates at 4000 chars, where v1 sent the whole dump and Telegram rejected anything over 4096 - so the command did nothing on exactly the messages worth analysing. QA authored, not ported",
+      "status": "done",
+      "commands": [
+        "/analise",
+        "/analisis",
+        "/analysis"
+      ],
+      "tags": [
+        "analysis"
+      ],
+      "docs": null
+    },
+    {
+      "id": "x_sticker_autoreply",
+      "title": "Sticker DB auto-reply",
+      "description": "passive: pools an sfw group's alphanumeric-set-name, non-banned-emoji stickers into a new GLOBAL sticker_pool reference table (migration 0009, not per-group like fun_random - full reasoning in that migration's docstring), then replies with one at random to any sticker/document/animation sent in reply to the bot. Deviations: (1) 'reply is from the bot' now checks reply_to_message.from_user.id == bot.id, not v1's literal first_name == 'Cookiebot' (wrong for every other persona this codebase ships); (2) pooling has no funfunctions gate, matching v1's real asymmetry exactly (only sfw + sender-has-username) - only the reply side is fun-gated; (3) write is a Valkey-fronted ON CONFLICT DO NOTHING upsert, since a reference-table write is 2PC replicated to every node and most sends repeat a pack already pooled. Also unblocks the stickerdatabase importer collection (map_stickerdatabase mapped it to skip for want of a destination table; now maps every row - see platform_migration_etl). QA authored, not ported",
+      "status": "done",
+      "commands": [],
+      "tags": [
+        "sticker_autoreply"
       ],
       "docs": null
     }
   ],
   "commands": [
+    {
+      "canonical": "age",
+      "primary": "/age",
+      "aliases": [
+        "/edad",
+        "/idade"
+      ],
+      "feature_id": "x_age_guess",
+      "title": "Age guess (agify.io)",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "analysis",
+      "primary": "/analysis",
+      "aliases": [
+        "/analise",
+        "/analisis"
+      ],
+      "feature_id": "x_analysis",
+      "title": "Message analysis (reply_to_message dump)",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "anything",
+      "primary": "/anything",
+      "aliases": [
+        "/cualquiercosa",
+        "/qualquercoisa"
+      ],
+      "feature_id": "x_image_search",
+      "title": "Image search (v1's catch-all)",
+      "status": "done",
+      "hint": null
+    },
     {
       "canonical": "battle",
       "primary": "/battle",
@@ -709,7 +880,7 @@
       ],
       "feature_id": "fun_battle",
       "title": "Battle poll",
-      "status": "partial",
+      "status": "done",
       "hint": null
     },
     {
@@ -723,7 +894,25 @@
       ],
       "feature_id": "util_birthday",
       "title": "Today's birthdays",
-      "status": "partial",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "blacklist",
+      "primary": "/blacklist",
+      "aliases": [],
+      "feature_id": "x_owner_commands",
+      "title": "Owner-only operations",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "broadcast",
+      "primary": "/broadcast",
+      "aliases": [],
+      "feature_id": "x_owner_commands",
+      "title": "Owner-only operations",
+      "status": "done",
       "hint": null
     },
     {
@@ -769,7 +958,7 @@
       "aliases": [],
       "feature_id": "fun_partneredcons",
       "title": "Partnered convention posters",
-      "status": "blocked",
+      "status": "done",
       "hint": null
     },
     {
@@ -778,7 +967,7 @@
       "aliases": [],
       "feature_id": "fun_partneredcons",
       "title": "Partnered convention posters",
-      "status": "blocked",
+      "status": "done",
       "hint": null
     },
     {
@@ -787,7 +976,7 @@
       "aliases": [],
       "feature_id": "fun_partneredcons",
       "title": "Partnered convention posters",
-      "status": "blocked",
+      "status": "done",
       "hint": null
     },
     {
@@ -796,7 +985,7 @@
       "aliases": [],
       "feature_id": "fun_partneredcons",
       "title": "Partnered convention posters",
-      "status": "blocked",
+      "status": "done",
       "hint": null
     },
     {
@@ -805,7 +994,7 @@
       "aliases": [],
       "feature_id": "fun_partneredcons",
       "title": "Partnered convention posters",
-      "status": "blocked",
+      "status": "done",
       "hint": null
     },
     {
@@ -814,7 +1003,7 @@
       "aliases": [],
       "feature_id": "fun_partneredcons",
       "title": "Partnered convention posters",
-      "status": "blocked",
+      "status": "done",
       "hint": null
     },
     {
@@ -838,7 +1027,7 @@
       ],
       "feature_id": "fun_death",
       "title": "Random cause of death",
-      "status": "blocked",
+      "status": "done",
       "hint": null
     },
     {
@@ -878,6 +1067,18 @@
       "hint": "Bare /dice/ /dado rolls a d6; /d<N> (e.g. /d20, /d100) rolls an N-sided die with no upper bound."
     },
     {
+      "canonical": "drawingidea",
+      "primary": "/drawingidea",
+      "aliases": [
+        "/ideadibujo",
+        "/ideiadesenho"
+      ],
+      "feature_id": "x_drawing_idea",
+      "title": "Drawing idea prompt",
+      "status": "done",
+      "hint": null
+    },
+    {
       "canonical": "everyone",
       "primary": "/everyone",
       "aliases": [],
@@ -901,11 +1102,46 @@
       "hint": null
     },
     {
+      "canonical": "fortune",
+      "primary": "/fortunecookie",
+      "aliases": [
+        "/sorte",
+        "/suerte"
+      ],
+      "feature_id": "x_fortune_cookie",
+      "title": "Fortune cookie",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "gender",
+      "primary": "/gender",
+      "aliases": [
+        "/genero",
+        "/gênero"
+      ],
+      "feature_id": "x_gender_guess",
+      "title": "Gender guess (genderize.io)",
+      "status": "done",
+      "hint": null
+    },
+    {
       "canonical": "giveaway",
       "primary": "/giveaway",
       "aliases": [],
       "feature_id": "x_giveaways",
       "title": "Giveaways",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "groups",
+      "primary": "/groups",
+      "aliases": [
+        "/grupos"
+      ],
+      "feature_id": "x_owner_commands",
+      "title": "Owner-only operations",
       "status": "done",
       "hint": null
     },
@@ -917,6 +1153,15 @@
       ],
       "feature_id": "util_isalive",
       "title": "Health check from chat",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "leave",
+      "primary": "/leave",
+      "aliases": [],
+      "feature_id": "x_owner_commands",
+      "title": "Owner-only operations",
       "status": "done",
       "hint": null
     },
@@ -1003,6 +1248,17 @@
       "hint": null
     },
     {
+      "canonical": "reload",
+      "primary": "/reload",
+      "aliases": [
+        "/recarregar"
+      ],
+      "feature_id": "core_reload",
+      "title": "Reload cached admins and settings",
+      "status": "done",
+      "hint": null
+    },
+    {
       "canonical": "repost",
       "primary": "/repost",
       "aliases": [
@@ -1011,6 +1267,15 @@
       ],
       "feature_id": "util_postforwarder",
       "title": "Cross-group post forwarding",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "restart",
+      "primary": "/restart",
+      "aliases": [],
+      "feature_id": "x_owner_commands",
+      "title": "Owner-only operations",
       "status": "done",
       "hint": null
     },
@@ -1051,15 +1316,44 @@
       "hint": null
     },
     {
+      "canonical": "stop",
+      "primary": "/stop",
+      "aliases": [],
+      "feature_id": "x_owner_commands",
+      "title": "Owner-only operations",
+      "status": "done",
+      "hint": null
+    },
+    {
       "canonical": "transcribe",
       "primary": "/transcribe",
       "aliases": [
         "/transcrever",
         "/transcribir"
       ],
-      "feature_id": null,
-      "title": null,
-      "status": "unknown",
+      "feature_id": "x_speech_to_text",
+      "title": "Voice transcription",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "unblacklist",
+      "primary": "/unblacklist",
+      "aliases": [],
+      "feature_id": "x_owner_commands",
+      "title": "Owner-only operations",
+      "status": "done",
+      "hint": null
+    },
+    {
+      "canonical": "unearth",
+      "primary": "/unearth",
+      "aliases": [
+        "/desenterrar"
+      ],
+      "feature_id": "x_unearth",
+      "title": "Unearth a random old message",
+      "status": "done",
       "hint": null
     },
     {

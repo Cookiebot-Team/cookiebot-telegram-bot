@@ -1,0 +1,229 @@
+---
+title: Mini App API
+description: The token flow a Telegram Mini App uses, and every endpoint behind it
+---
+
+The Mini App is a page opened inside Telegram. It receives `initData` — a signed
+string naming the user who opened it — and exchanges that for a token, then
+calls the same HTTP API the web console does.
+
+Everything here is live on `cb-api`. There is no Mini App yet; this is the
+surface it will be built against.
+
+<Callout>
+**Base URL** is the deployment's API host. Verify tokens against
+`/.well-known/jwks.json`, and discover the endpoints below from
+`/.well-known/openid-configuration` rather than hard-coding them.
+</Callout>
+
+Every endpoint on this page is described in `/openapi.json`, served by every
+deployment — request bodies, response shapes and the refusals each one can
+answer with. Point a client generator at it rather than typing these types out
+twice. (The Swagger *page* at `/docs` is local-only; the document is not.)
+
+## 1. Get a token
+
+```http
+POST /oauth2/token
+Content-Type: application/json
+
+{
+  "grant_type": "urn:cookiebot:params:oauth:grant-type:telegram-miniapp",
+  "init_data": "<window.Telegram.WebApp.initData, verbatim>"
+}
+```
+
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6…",
+  "token_type": "Bearer",
+  "expires_in": 900,
+  "refresh_token": "s7Q1…",
+  "scope": "groups:read groups:write audit:read"
+}
+```
+
+Send `initData` **exactly as Telegram gave it** — same order, same encoding.
+Every field in it is part of what Telegram signed, so a client that reorders,
+re-encodes or drops one produces a payload that cannot verify.
+
+A form-encoded body works too, for OAuth client libraries that insist on it.
+
+### The three grants
+
+| `grant_type` | Proof | Used by |
+|---|---|---|
+| `urn:cookiebot:params:oauth:grant-type:telegram-miniapp` | `init_data` | the Mini App |
+| `urn:cookiebot:params:oauth:grant-type:telegram-login` | `auth_data` — the login widget's payload | the web console |
+| `refresh_token` | `refresh_token` | both |
+
+### Refreshing
+
+```http
+POST /oauth2/token
+{ "grant_type": "refresh_token", "refresh_token": "s7Q1…" }
+```
+
+**Every refresh rotates.** The response carries a *new* refresh token and the
+old one is spent. Store the new one and forget the old one — presenting a spent
+token is treated as theft:
+
+<Callout type="warn">
+A refresh token that comes back after it was already used revokes **every token
+in its family**, logging that session out entirely. There is no way for the
+server to tell a buggy client from a stolen token, and letting a thief refresh
+alongside the real user is the worse of the two failures. A Mini App that
+refreshes from two tabs at once will hit this — refresh in one place.
+</Callout>
+
+`POST /oauth2/revoke` with `{"token": "…"}` ends a session deliberately. It
+answers 200 for an unknown token as well (RFC 7009): the caller's goal is that
+the token cannot be used, and it cannot.
+
+### What the access token carries
+
+| Claim | |
+|---|---|
+| `sub` | the Telegram user id |
+| `scope` | space-separated, from the deployment's `CB_MINIAPP_SCOPES` |
+| `aud` | `cookiebot-miniapp` by default |
+| `typ` | `access` |
+| `iss`, `iat`, `exp`, `kid` | as `/login` has always minted them |
+
+RS256, signed by the keys `/.well-known/jwks.json` publishes. It expires in
+fifteen minutes by default — hold it in memory, refresh when it expires.
+
+<Callout>
+A token from the older `/login` endpoint carries **no `scope` claim**, and is
+treated as `groups:read` only. That is what the web console could do before this
+API existed; a console that wants to write asks `/oauth2/token` for a scoped
+token instead.
+</Callout>
+
+## 2. Find out who you are
+
+```http
+GET /me
+Authorization: Bearer <access_token>
+```
+
+```json
+{
+  "user_id": 424243,
+  "scopes": ["audit:read", "groups:read", "groups:write"],
+  "audience": "cookiebot-miniapp",
+  "groups": [
+    { "group_id": -1001234567890, "title": "Furry Chat", "username": null,
+      "chat_type": "supergroup", "role": "creator", "anonymous": false }
+  ]
+}
+```
+
+The list comes from what the bot has seen, not from a live call to Telegram: a
+promotion appears once the bot has handled an admin-gated command in that group.
+
+## 3. Read and change a group's settings
+
+Every endpoint below is scoped to one group, and every one of them answers
+**404** if the caller does not administer it — the same answer an unknown group
+gets, on purpose.
+
+| | | Scope |
+|---|---|---|
+| `GET` | `/groups/{group_id}/config` | `groups:read` |
+| `PATCH` | `/groups/{group_id}/config` | `groups:write` |
+| `GET` `PUT` | `/groups/{group_id}/rules` | `groups:read` / `groups:write` |
+| `GET` `PUT` | `/groups/{group_id}/welcome` | `groups:read` / `groups:write` |
+| `GET` | `/groups/{group_id}/audit` | `audit:read` |
+| `GET` | `/groups/{group_id}/analytics/…` | `groups:read` |
+
+```http
+PATCH /groups/-1001234567890/config
+Authorization: Bearer <access_token>
+
+{ "captcha_timeout_seconds": 600, "media_restrict_seconds": 900 }
+```
+
+```json
+{
+  "group_id": -1001234567890,
+  "config": { "captcha_timeout_seconds": 600, "media_restrict_seconds": 900, "…": "…" },
+  "changed": ["captcha_timeout_seconds", "media_restrict_seconds"]
+}
+```
+
+Only the fields you send change. Send only what the admin actually edited: a
+form that PATCHes every field will overwrite whatever another admin changed
+while it was open.
+
+The fields, their meanings and the two most groups get wrong are on
+[Configuring a group](/docs/using/configure). Values outside the bounds the
+Telegram menu enforces are a **422**, and so is a field name the API does not
+know — a typo silently ignored is a setting an admin believes they changed.
+
+`PUT /rules` and `PUT /welcome` take `{"body": "…"}` and write the same rows
+`/newrules` and `/newwelcome` do. A group that never set one reads back
+`"body": null` rather than 404 — not having a welcome message is a normal state,
+not a missing resource.
+
+## 4. Read the audit trail
+
+```http
+GET /groups/-1001234567890/audit?limit=50
+```
+
+```json
+{
+  "group_id": -1001234567890,
+  "events": [
+    {
+      "id": "019267f1-…",
+      "ts": "2026-08-15T18:22:10.481Z",
+      "action": "config.updated",
+      "surface": "miniapp",
+      "actor_user_id": 424243,
+      "actor_kind": "admin",
+      "summary": "changed captcha_timeout_seconds",
+      "before": { "captcha_timeout_seconds": 300 },
+      "after": { "captcha_timeout_seconds": 600 },
+      "trace_id": "8f1c…"
+    }
+  ],
+  "next_before": "019267f1-…"
+}
+```
+
+Newest first. Pass `next_before` back as `?before=` for the following page; it
+is `null` on the last one. `?action=` and `?actor_user_id=` narrow the list.
+
+Actions today are `config.updated`, `rules.updated` and `welcome.updated`.
+`surface` says where the change came from — `telegram` for the `/config` menu,
+`/newrules` and `/newwelcome`, `miniapp` for this API. An **anonymous admin**
+produces a row with no `actor_user_id`: Telegram gives the bot GroupAnonymousBot
+rather than an account, and a guess would be worse than a gap.
+
+## Errors
+
+| Status | Meaning |
+|---|---|
+| **400** | An OAuth error body: `invalid_request`, `invalid_grant`, `unsupported_grant_type` |
+| **401** | No token, or one that does not verify. `WWW-Authenticate: Bearer` |
+| **403** | Your token is missing a scope. The challenge names which |
+| **404** | The group does not exist, **or** you do not administer it — deliberately the same answer |
+| **422** | A value or field name the endpoint will not accept |
+
+## For operators
+
+| Setting | Default | |
+|---|---|---|
+| `CB_MINIAPP_ACCESS_TOKEN_TTL_SECONDS` | `900` | access-token life |
+| `CB_MINIAPP_REFRESH_TOKEN_TTL_SECONDS` | `604800` | refresh-token life |
+| `CB_MINIAPP_INIT_DATA_MAX_AGE_SECONDS` | `86400` | how old `initData` may be — **on**, unlike the widget's window |
+| `CB_MINIAPP_AUDIENCE` | `cookiebot-miniapp` | `aud` on the tokens |
+| `CB_MINIAPP_SCOPES` | `groups:read groups:write audit:read` | what a Mini App session may do |
+| `CB_WEBHUB_ALLOWED_ORIGINS` | — | the Mini App's origin goes here; never `*` |
+
+Refresh tokens live in `refresh_tokens` as SHA-256 hashes — a database dump is
+not a set of sessions. Expired rows are dropped by `cb_api.sessions.purge_expired`;
+revoked-but-unexpired rows stay, because they are what turns a replay into a
+*detected* replay rather than an unknown token.

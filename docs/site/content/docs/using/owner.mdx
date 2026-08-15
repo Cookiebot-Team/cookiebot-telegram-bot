@@ -1,0 +1,52 @@
+---
+title: Owner commands
+description: What the person who runs the deployment can do from the bot's private chat
+---
+
+These are for whoever owns the bot, not for group admins. They only work in a
+**private chat with the bot**, and only for the configured owner — anyone else
+sending them gets no answer at all, which is deliberate: an error message would
+confirm the command exists.
+
+<CommandCards
+  only={['/groups', '/blacklist', '/unblacklist', '/broadcast', '/leave']}
+  describe={{
+    '/groups': 'Lists the groups the bot is in, and the total.',
+    '/blacklist': 'Blocks an account by numeric id, everywhere this deployment runs.',
+    '/unblacklist': 'Removes an account from the block list.',
+    '/broadcast': 'Queues a message for every group the bot is in.',
+    '/leave': 'Leaves a chat by id, and blocks it from re-adding the bot.',
+  }}
+  note={{
+    '/unblacklist': 'Unlisting someone who was never listed says so rather than pretending to have done something.',
+    '/broadcast': 'With no message it explains the shape instead of broadcasting an empty one.',
+  }}
+/>
+
+The block list `/blacklist` writes is the second of the three lists checked
+when someone joins a group — see [Moderation](/docs/using/moderation#blocked-accounts).
+
+## Process control
+
+`/stop` and `/restart` exist and refuse.
+
+<Callout>
+v1 had commands that killed the bot's own process and relied on a supervisor
+script to bring it back. v2 runs as containers under an orchestrator: stopping
+a replica is the orchestrator's job, and a bot that can stop itself is a bot
+one mistaken tap can take offline. The commands answer with that, rather than
+silently not existing — an owner who reaches for the old command deserves to
+know where it went.
+</Callout>
+
+## Running a deployment
+
+Everything else an operator needs — configuration, storage, models, dashboards,
+migrations from v1 — lives in the build section:
+
+<Cards>
+  <Card title="Architecture" href="/docs/architecture" description="The services, the database, the storage and the model routing." />
+  <Card title="Deploy" href="/docs/deploy" description="Running it for real." />
+  <Card title="Multi-tenant" href="/docs/multi-tenant" description="Several bot brands on one core." />
+  <Card title="Cutover" href="/docs/cutover" description="Moving a live v1 deployment onto v2." />
+</Cards>

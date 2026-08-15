@@ -22,10 +22,40 @@ If it does not answer:
 
 ## Commands work, but nothing automatic does
 
-Sticker limits, link rewriting and anything that reacts to ordinary messages
-need Telegram's **privacy mode** turned off for the bot. With privacy mode on —
-the default — a bot only receives messages addressed to it, so commands work
-and nothing else does. Only the bot's owner can change it, in BotFather.
+Sticker limits, link rewriting, the AI replies and anything else that reacts to
+ordinary messages need Telegram's **privacy mode** turned off for the bot. With
+privacy mode on — the default — a bot only receives messages addressed to it, so
+commands work and nothing else does. Only the bot's owner can change it, in
+BotFather.
+
+## Someone's sticker was deleted and they had only sent one
+
+The sticker count is the **group's**, not each member's: one person can push the
+group past **Stickers limit** and the next person's sticker is the one deleted.
+Admins are not exempt either. Both are v1 behaviours, kept deliberately — raise
+the limit if the group is chatty in stickers.
+
+## The bot stopped answering one person
+
+The conversational replies cap at **seven consecutive triggers** from the same
+member: six answers, then silence. Ordinary messages replenish it. Nothing is
+wrong, and nothing needs resetting.
+
+If it is not answering *anyone*, check **Fun Functions** — with it off the AI
+replies go quiet rather than announcing that they are disabled.
+
+## A typo turned into a picture search
+
+That is the catch-all: any command the bot does not recognise becomes a Google
+Images search. `/isalive` and every other real command are never hijacked, and a
+command carrying a link searches nothing. Turn **Utility Functions** off to stop
+it entirely — see [AI features](/docs/using/ai#any-unknown-command-is-an-image-search).
+
+## `/birthday` asks me to type a name
+
+It wants an argument: `/birthday @someone`. A bare `/birthday` never looks
+anything up — v1 behaviour, kept. The unprompted daily post at 00:10 UTC is the
+one that finds today's birthdays by itself.
 
 ## `/config` says it messaged me and nothing arrived
 
@@ -71,3 +101,22 @@ nothing at all. Only an admin's reply is accepted; a non-admin gets
 Check the [progress board](/docs/progress): a command that has not moved to the
 new stack yet behaves the way the current release behaves, and a feature marked
 partial does part of what its page describes.
+
+Then **tell us**. Nobody working on the bot can see your group, so a report of
+what actually happened there is information only you have — and it is the most
+useful thing this project gets.
+
+<Cards>
+  <Card title="Something is broken" href="https://github.com/Cookiebot-Team/cookiebot-telegram-bot/issues/new?template=bug_report.yml" description="A command or a moderation feature doing the wrong thing." />
+  <Card title="It used to behave differently" href="https://github.com/Cookiebot-Team/cookiebot-telegram-bot/issues/new?template=v1_parity.yml" description="A command that changed its wording, its permissions or its reply." />
+  <Card title="An idea" href="https://github.com/Cookiebot-Team/cookiebot-telegram-bot/issues/new?template=idea.yml" description="A better default, a missing command, a rough edge. Half-formed is fine." />
+  <Card title="These docs are wrong" href="https://github.com/Cookiebot-Team/cookiebot-telegram-bot/issues/new?template=docs.yml" description="A page that says something untrue, or a question it should have answered." />
+</Cards>
+
+<Callout>
+**`/analysis`**, sent as a reply to the message that misbehaved, dumps exactly
+what the bot received — pasting that into an issue is worth a paragraph of
+description. Strip anything private first; it is a raw Telegram payload. And
+never report a **security** problem in a public issue: use
+[a private advisory](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/security/advisories/new).
+</Callout>

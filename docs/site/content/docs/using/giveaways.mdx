@@ -1,0 +1,74 @@
+---
+title: Giveaways and events
+description: Raffles drawn in the group, and countdown posters for the partnered conventions
+---
+
+## Giveaways
+
+An admin starts a raffle, members enter with a button, and the bot draws.
+
+```
+/giveaway Fursuit of Mekhy
+```
+
+<CommandCards
+  only={['/giveaway']}
+  describe={{
+    '/giveaway': 'Starts a raffle for whatever you name after the command. Admins only.',
+  }}
+  note={{
+    '/giveaway': 'Forget the prize and the bot asks for it. A member who is not an admin is told they cannot start one.',
+  }}
+/>
+
+What happens, in order:
+
+1. The bot asks **how many winners**, offering one button for each count from
+   one to five.
+2. Picking a count **announces the giveaway** in the group, naming the full
+   prize, and **pins** it. The announcement carries an **enter** button and an
+   **end** button.
+3. Members press **enter**. Pressing it twice is refused — the bot says they
+   are already in.
+4. An admin presses **end**. The bot announces the winner with the prize, and
+   asks whether to draw more.
+
+Two things the buttons enforce that a group would otherwise have to police
+itself: only an **admin** can end a giveaway, and a giveaway **nobody entered**
+ends by saying so rather than drawing from an empty hat.
+
+Giveaways follow **Utility Functions** in [`/config`](/docs/using/configure).
+
+## Convention posters
+
+Six commands post a picture of a partnered event, captioned with a countdown to
+it — and, while it is happening, saying so.
+
+<CommandCards
+  only={['/bff', '/patas', '/fursmeet', '/furcamp', '/pawstral', '/trex']}
+  describe={{
+    '/bff': 'Brasil Fur Fest.',
+    '/patas': 'Patas.',
+    '/fursmeet': 'Fursmeet.',
+    '/furcamp': 'Furcamp.',
+    '/pawstral': 'Pawstral.',
+    '/trex': 'Trex Furplayer — a picture, and no caption.',
+  }}
+/>
+
+<Callout>
+These six ignore **both** family switches. A group that has turned Fun and
+Utility off still gets its convention posters — v1 dispatched them outside both
+gates, and community groups built around a convention would notice immediately
+if that changed.
+</Callout>
+
+`/trex` is the odd one: it has pictures and no date, so it posts one and says
+nothing. If a deployment has never had its poster library catalogued, these
+commands send nothing at all rather than an error.
+
+## Event skins
+
+A convention often runs its own bot: Bombot for Brasil Fur Fest, Pawsy for
+Pawstral, Tarinbot for SC Furs. Same core, different name, avatar, wording and
+command set — see [skins](/docs/using/welcome#skins).

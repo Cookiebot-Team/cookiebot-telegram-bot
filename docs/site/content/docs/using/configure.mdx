@@ -33,9 +33,9 @@ Buttons appear in this order.
 | **Stickers limit** | `sticker_spam_limit` | `5` | Stickers in a row before the bot steps in — see [Moderation](/docs/using/moderation) |
 | **🕒 Limbo** | `media_restrict_seconds` | `0` (off) | Seconds a new member must wait before posting images and files |
 | **🕒 CAPTCHA** | `captcha_timeout_seconds` | `120` | Seconds a joiner has to answer the challenge. **`0` turns the captcha off** |
-| **Fun Functions** | `functions_fun` | on | The whole `/dice`, `/ship`, `/battle` family |
-| **Utility Functions** | `functions_utility` | on | The utility commands |
-| **SFW Chat** | `sfw` | on | Marks the chat as safe-for-work |
+| **Fun Functions** | `functions_fun` | on | [The fun commands](/docs/using/fun), the AI replies, the sticker replies, and the birthdays |
+| **Utility Functions** | `functions_utility` | on | [The utility commands](/docs/using/utilities), the searches, the link rewriting — and `/dice` |
+| **SFW Chat** | `sfw` | on | Marks the chat as safe-for-work: filters image search, and keeps `/random` off anything marked otherwise |
 | **Publisher Post** | `publisher_post` | off | Allow posts from other channels to be published here (groups over 50 members) |
 | **Publisher Ask** | `publisher_ask` | on | Add posts sent in the group to the publishing queue |
 | **Thread Posts** | `thread_posts` | unset | Which forum topic posts land in, for groups with topics |
@@ -58,8 +58,18 @@ challenge does not answer it slowly.
 
 **Fun Functions** and **Utility Functions** switch out groups of commands at
 once. A moderation-only deployment is Fun off, Utility off — which leaves
-greetings, rules, the captcha, sticker limits and the media hold, and removes
-everything else.
+greetings, rules, the captcha, sticker limits, the media hold and the
+convention posters, and removes everything else.
+
+Two commands sit in the family you would not guess, because that is where v1
+put them and moving them would change what a group sees:
+
+- **`/dice` follows Utility Functions**, not Fun.
+- **`/birthday` and `/nextbirthday` follow Fun Functions**, not Utility.
+
+A command in a switched-off family says so rather than going quiet. The two
+exceptions are the ones that were never asked a question: the AI replies and
+the link rewriting simply stop happening.
 
 ## Values the menu will not accept
 
