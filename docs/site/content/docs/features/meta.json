@@ -68,6 +68,9 @@
     "platform_tenancy",
     "platform_migration_etl",
     "x_analytics_api",
+    "x_audit_log",
+    "x_group_config_api",
+    "x_miniapp_auth",
     "x_webhub_login"
   ]
 }

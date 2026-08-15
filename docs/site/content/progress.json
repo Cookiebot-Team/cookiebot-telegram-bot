@@ -1,10 +1,10 @@
 {
   "generated_at": "2026-08-15",
-  "commit": "c035630",
-  "test_summary": "3274 passed, 44 skipped, 199 deselected, 2 warnings in 37.99s",
+  "commit": "eadc339",
+  "test_summary": "3343 passed, 44 skipped, 217 deselected, 2 warnings in 36.16s",
   "totals": {
-    "features": 62,
-    "done": 62,
+    "features": 65,
+    "done": 65,
     "partial": 0,
     "planned": 0,
     "blocked": 0,
@@ -44,8 +44,8 @@
     {
       "id": "M4",
       "title": "Analytics surface, web console, data migration",
-      "done": 3,
-      "total": 3
+      "done": 6,
+      "total": 6
     }
   ],
   "features": [
@@ -1366,6 +1366,63 @@
         "failing": 0
       },
       "url": "/docs/features/x_analytics_api"
+    },
+    {
+      "id": "x_miniapp_auth",
+      "title": "OAuth2 token issuer for the Telegram Mini App",
+      "area": "platform",
+      "layer": "api",
+      "milestone": "M4",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "",
+      "notes": "net-new: v1 had no Mini App. /oauth2/token with three grants (Telegram initData, the login widget, refresh_token), the same RS256 keys and JWKS /login already publishes, plus scopes, a short access-token life and rotating refresh tokens stored as hashes (migration 0010). A replayed refresh token revokes its whole family. /login is untouched and its scope-less token stays read-only",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/x_miniapp_auth"
+    },
+    {
+      "id": "x_group_config_api",
+      "title": "Group settings over HTTP, admin-gated",
+      "area": "platform",
+      "layer": "api",
+      "milestone": "M4",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "Configurations.py:150-211",
+      "notes": "every /config setting plus the rules and welcome text, readable and writable by a group's admins from the Mini App. groups:read / groups:write scopes, 404 (not 403) for a group you do not administer, PATCH semantics so two admins do not overwrite each other, and the same cb_core.group_texts upsert the Telegram handlers use",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/x_group_config_api"
+    },
+    {
+      "id": "x_audit_log",
+      "title": "Per-group audit trail",
+      "area": "platform",
+      "layer": "api",
+      "milestone": "M4",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "",
+      "notes": "net-new: v1 kept no trail at all. group_audit_events is distributed on group_id (migration 0010) with a UUIDv7 key, so the page is a keyset read on one shard. Written by both surfaces - the Mini App's config endpoints and the Telegram config menu, /newrules and /newwelcome - and a failed audit write never fails the action it describes",
+      "contract": null,
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/x_audit_log"
     }
   ],
   "commands": [

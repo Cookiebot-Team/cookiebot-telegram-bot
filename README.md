@@ -109,7 +109,7 @@ cache, and temporary files no longer collide between chats.
 
 ## Status
 
-**Every feature in the spec is ported and green.** 62 of 62, with all 31 v1 QA
+**Every feature in the spec is ported and green.** 65 of 65, with all 31 v1 QA
 spec files covered by executable scenarios and the whole suite passing in CI.
 
 Progress is measured from the spec and a real test run rather than written by
@@ -117,7 +117,7 @@ hand — the documentation site's
 **[progress board](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/progress)**:
 
 ```
-features   ████████████████████████  62/62 done
+features   ████████████████████████  65/65 done
 v1 specs   ████████████████████████  31/31 covered by an executable scenario
 ```
 
@@ -161,6 +161,7 @@ published at **https://cookiebot-team.github.io/cookiebot-telegram-bot**, or run
 | [Progress board](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/progress) | what's ported, which scenarios pass — all measured |
 | [Features](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/features) | one page per feature: what it does, what must not change |
 | [Architecture](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/architecture) | how v2 is built and why |
+| [Mini App API](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/miniapp-api) | the OAuth2 token flow a Telegram Mini App uses, and the admin-gated config and audit endpoints behind it |
 | [Development](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/development) | setup, tasks, testing, the compiled hot path |
 | [Sandbox](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/sandbox) | driving the real bot by hand against [telegram-sandbox](https://github.com/Cookiebot-Team/telegram-sandbox), the local Telegram we open-sourced out of this repo |
 | [v1 feature map](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/feature-map) | every v1 feature traced to its source, with the known bugs |
