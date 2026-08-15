@@ -14,8 +14,10 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Request, Response, status
+from pydantic import BaseModel, Field
 
 from cb_api import auth, keys
+from cb_api.routers import oauth
 from cb_core import ops
 from cb_core.logging import get_logger
 from cb_core.settings import get_settings
@@ -23,6 +25,29 @@ from cb_core.settings import get_settings
 log = get_logger("cb.api.login")
 
 router = APIRouter(tags=["webhub"])
+
+
+class JwksDocument(BaseModel):
+    """Every key the deployment might have signed with, so a rotation overlaps."""
+
+    keys: list[dict[str, Any]] = Field(description="public JWKs, `kid` and all")
+
+
+class OpenIDConfiguration(BaseModel):
+    """What a Mini App or an OAuth client library discovers this deployment
+    with. The first five keys are v1's, unchanged; the rest arrived with
+    `x_miniapp_auth`."""
+
+    issuer: str
+    jwks_uri: str
+    response_types_supported: list[str]
+    subject_types_supported: list[str]
+    id_token_signing_alg_values_supported: list[str]
+    token_endpoint: str
+    revocation_endpoint: str
+    token_endpoint_auth_methods_supported: list[str]
+    grant_types_supported: list[str]
+    scopes_supported: list[str]
 
 
 def _issuer(request: Request) -> str:
@@ -86,7 +111,15 @@ async def login(payload: dict[str, Any], request: Request, response: Response) -
     }
 
 
-@router.get("/.well-known/jwks.json")
+# Documented through `responses` rather than `response_model`: these two are
+# v1's documents, and a model that filtered an unlisted key back out would turn
+# "additive" into "silently truncated" the day one is added.
+@router.get(
+    "/.well-known/jwks.json",
+    summary="The signing keys every token here verifies against",
+    responses={200: {"model": JwksDocument}},
+    response_model=None,
+)
 async def jwks() -> dict[str, Any]:
     """v1 `Server.py:78-84`. v1 published the key of whichever gunicorn worker
     answered; this publishes every key the deployment might have signed with,
@@ -95,17 +128,35 @@ async def jwks() -> dict[str, Any]:
     return {"keys": [keys.public_jwk(k.private_pem, k.kid) for k in published]}
 
 
-@router.get("/.well-known/openid-configuration")
+@router.get(
+    "/.well-known/openid-configuration",
+    summary="Discovery — where the token endpoint is and which grants it takes",
+    responses={200: {"model": OpenIDConfiguration}},
+    response_model=None,
+)
 async def openid_configuration(request: Request) -> dict[str, Any]:
-    """v1 `Server.py:86-95`, verbatim."""
+    """v1 `Server.py:86-95`, plus what `x_miniapp_auth` added.
+
+    The five v1 keys are unchanged and in place; the rest describe the token
+    endpoint, its two Telegram grants and the revocation endpoint, which is
+    what a Mini App or an OAuth client library discovers this deployment with.
+    Additive by construction: a consumer written against v1 reads the same five
+    values it always did.
+    """
     base_url = _issuer(request)
+    settings = get_settings()
     return {
         "issuer": base_url,
         "jwks_uri": f"{base_url}/.well-known/jwks.json",
         "response_types_supported": ["id_token"],
         "subject_types_supported": ["public"],
         "id_token_signing_alg_values_supported": ["RS256"],
+        "token_endpoint": f"{base_url}/oauth2/token",
+        "revocation_endpoint": f"{base_url}/oauth2/revoke",
+        "token_endpoint_auth_methods_supported": ["none"],
+        "grant_types_supported": list(oauth.GRANTS),
+        "scopes_supported": list(settings.miniapp_scopes),
     }
 
 
-__all__ = ["router"]
+__all__ = ["JwksDocument", "OpenIDConfiguration", "router"]

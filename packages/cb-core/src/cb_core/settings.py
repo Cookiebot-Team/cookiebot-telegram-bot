@@ -240,6 +240,31 @@ class Settings(BaseSettings):
     #: Browser origins allowed to call `/login`. v1 shipped `origins: "*"`.
     webhub_allowed_origins: list[str] = Field(default_factory=list)
 
+    # x_miniapp_auth — the OAuth2 token endpoint the Telegram Mini App uses.
+    # Net-new: v1 had no Mini App and no refresh tokens. The access token is the
+    # same RS256 JWT `/login` mints (same keys, same JWKS), so one resource
+    # server verifies both; what differs is how the caller proves who they are
+    # and that these tokens carry scopes and can be refreshed.
+    #: Access-token life. Short by design — a Mini App holds it in memory and
+    #: refreshes, unlike the console, which stores a 30-minute token.
+    miniapp_access_token_ttl_seconds: int = 900
+    #: Refresh-token life. A Mini App session that has been idle for a week
+    #: should log in again; `initData` is one tap away inside Telegram.
+    miniapp_refresh_token_ttl_seconds: int = 604_800
+    #: How old Telegram's `auth_date` inside `initData` may be. Unlike the
+    #: widget's window (`webhub_auth_max_age_seconds`, 0 for v1 parity), this
+    #: one is **on**: there is no v1 behaviour to preserve here, and Telegram's
+    #: own guidance is to reject stale `initData`.
+    miniapp_init_data_max_age_seconds: int = 86_400
+    #: `aud` on Mini App tokens, and what a resource server may pin.
+    miniapp_audience: str = "cookiebot-miniapp"
+    #: Scopes granted to a Mini App session. Writing configuration is a
+    #: different act from reading it, so it is a different scope, and a
+    #: deployment that wants a read-only Mini App drops one string.
+    miniapp_scopes: list[str] = Field(
+        default_factory=lambda: ["groups:read", "groups:write", "audit:read"]
+    )
+
     @field_validator("trace_sample_ratio")
     @classmethod
     def _ratio(cls, v: float) -> float:

@@ -127,6 +127,27 @@ llm_budget_check_failed_total = Counter(
     "Tenant budget check failed open on a cache or database error (R2.4)",
 )
 
+# ---- audit trail (x_audit_log) ----
+# Labelled with the action, never with the group or the actor: a per-group
+# label on a metric is the cardinality bomb AGENTS.md §7 forbids, and per-group
+# counts are a Citus query over `group_audit_events` anyway.
+audit_events_total = Counter("cb_audit_events_total", "Audit rows written", ["action", "surface"])
+audit_write_failures_total = Counter(
+    "cb_audit_write_failures_total",
+    "Audit rows that could not be written after the action they describe succeeded",
+    ["action"],
+)
+
+# ---- Mini App sessions (x_miniapp_auth) ----
+auth_tokens_issued_total = Counter("cb_auth_tokens_issued_total", "Access tokens minted", ["grant"])
+auth_grants_rejected_total = Counter(
+    "cb_auth_grants_rejected_total", "Token requests refused", ["grant", "reason"]
+)
+auth_refresh_reuse_total = Counter(
+    "cb_auth_refresh_reuse_total",
+    "Refresh tokens presented after rotation — the whole family is revoked",
+)
+
 # ---- build info ----
 build_info = Gauge("cb_build_info", "Build metadata", ["service", "version", "cython"])
 
