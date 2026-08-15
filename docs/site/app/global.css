@@ -1,6 +1,6 @@
 @import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
+@import './theme.css';
 
 html {
   scrollbar-gutter: stable;
@@ -9,4 +9,29 @@ html {
 html > body[data-scroll-locked] {
   margin-right: 0px !important;
   --removed-body-scroll-bar-size: 0px !important;
+}
+
+/* The hub scrolls in brand colours; so does this. */
+::-webkit-scrollbar {
+  width: 0.4rem;
+  height: 0.4rem;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--color-fd-muted);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-cb-gold-500);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-cb-caramel-600);
+}
+
+/* Commands are the unit this site is read in: `/newwelcome` should look like
+ * something you type, in every context, without each page saying so. */
+code {
+  font-variant-ligatures: none;
 }

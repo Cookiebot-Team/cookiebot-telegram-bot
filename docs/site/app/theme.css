@@ -1,0 +1,170 @@
+/* Cookiebot's design tokens.
+ *
+ * Two sources, one palette. The ramp below is sampled from the bot's own
+ * avatar (the cocoa background, the tan fur, the pink tongue) and from the web
+ * hub's stylesheet (`COOKIEBOT-WebHub/src/style/globals.scss`: gold #C48B17,
+ * caramel #955714, cream #F5D9BC, and its success/warning/error trio). Nothing
+ * here is invented — a reader who has seen the bot's picture or the hub should
+ * recognise this site as the same product.
+ *
+ * Everything downstream — Fumadocs' own `--color-fd-*` variables, the landing
+ * page, the MDX components — reads these tokens and never a raw hex. Changing
+ * the brand is changing this file.
+ */
+
+@import 'fumadocs-ui/css/lib/default-colors.css';
+
+@theme {
+  /* --- Brand ramp -------------------------------------------------------
+   * cocoa: the avatar's background and its spots — the dark end.
+   * gold/caramel: the hub's primary and secondary — the load-bearing brand.
+   * fur/sand/cream: the light end, warm rather than grey.
+   * blush: the tongue. The only cool colour, so it is the accent. */
+  --color-cb-cocoa-950: #120c04;
+  --color-cb-cocoa-900: #1c1307;
+  --color-cb-cocoa-800: #2a1c08;
+  --color-cb-cocoa-700: #382602;
+  --color-cb-cocoa-600: #4a3208;
+  --color-cb-caramel-600: #955714;
+  --color-cb-caramel-500: #b06c1c;
+  --color-cb-gold-500: #c48b17;
+  --color-cb-gold-400: #dda531;
+  --color-cb-gold-300: #ecc069;
+  --color-cb-fur-400: #9c834d;
+  --color-cb-fur-300: #bda67a;
+  --color-cb-sand-200: #cbafa3;
+  --color-cb-cream-100: #f5d9bc;
+  --color-cb-cream-50: #fbf3e7;
+  --color-cb-blush-500: #d1478c;
+  --color-cb-blush-400: #ef86bb;
+  --color-cb-blush-300: #ffb5d8;
+  --color-cb-olive-900: #383801;
+
+  /* --- Status -----------------------------------------------------------
+   * The hub's trio, unchanged: a feature that is live, one that is partly
+   * there, one that is blocked. */
+  --color-cb-success: #14a082;
+  --color-cb-warning: #f58250;
+  --color-cb-error: #ff6478;
+
+  /* The same three at text weight: the hub's values are tuned for fills and
+   * for dark backgrounds, and drop under 4.5:1 as small text on cream. */
+  --color-cb-success-ink: #0a7360;
+  --color-cb-warning-ink: #a84a12;
+  --color-cb-error-ink: #b81d3c;
+
+  /* --- Type -------------------------------------------------------------
+   * Chakra Petch for everything, Lobster for the wordmark, Space Mono for
+   * commands — the hub's three faces, in the same roles. */
+  --font-sans: var(--font-chakra), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-space), ui-monospace, monospace;
+  --font-display: var(--font-lobster), ui-serif, serif;
+
+  /* --- Surfaces ---------------------------------------------------------
+   * Named by role so a component never spells a gradient out itself. */
+  --gradient-cb-brand: linear-gradient(
+    100deg,
+    var(--color-cb-gold-500),
+    var(--color-cb-caramel-600) 45%,
+    var(--color-cb-blush-400)
+  );
+  --radius-cb: 0.875rem;
+}
+
+/* --- Light: a cookie on a cream table ----------------------------------- */
+:root {
+  --color-fd-background: #fbf3e7;
+  --color-fd-foreground: #2a1b06;
+  --color-fd-muted: #f3e6d3;
+  --color-fd-muted-foreground: #7a6444;
+  --color-fd-popover: #fffcf6;
+  --color-fd-popover-foreground: #2a1b06;
+  --color-fd-card: #fffcf6;
+  --color-fd-card-foreground: #2a1b06;
+  --color-fd-border: rgba(149, 87, 20, 0.22);
+  --color-fd-primary: #955714;
+  --color-fd-primary-foreground: #fffcf6;
+  --color-fd-secondary: #f3e6d3;
+  --color-fd-secondary-foreground: #2a1b06;
+  --color-fd-accent: rgba(196, 139, 23, 0.16);
+  --color-fd-accent-foreground: #2a1b06;
+  --color-fd-ring: rgba(196, 139, 23, 0.55);
+  --color-fd-overlay: rgba(42, 27, 6, 0.28);
+
+  /* Page-level decoration, so hero and cards can reach for one name. */
+  --cb-glow: radial-gradient(
+      60rem 30rem at 12% -8%,
+      rgba(196, 139, 23, 0.22),
+      transparent 60%
+    ),
+    radial-gradient(44rem 26rem at 88% 0%, rgba(255, 181, 216, 0.22), transparent 62%);
+  --cb-hairline: rgba(149, 87, 20, 0.18);
+}
+
+/* --- Dark: the avatar's own background ---------------------------------- */
+.dark {
+  --color-fd-background: #140e05;
+  --color-fd-foreground: #f2e4d0;
+  --color-fd-muted: #241906;
+  --color-fd-muted-foreground: #b29a74;
+  --color-fd-popover: #1f1608;
+  --color-fd-popover-foreground: #f2e4d0;
+  --color-fd-card: #1c1307;
+  --color-fd-card-foreground: #f2e4d0;
+  --color-fd-border: rgba(221, 165, 49, 0.2);
+  --color-fd-primary: #dda531;
+  --color-fd-primary-foreground: #241906;
+  --color-fd-secondary: #241906;
+  --color-fd-secondary-foreground: #f2e4d0;
+  --color-fd-accent: rgba(221, 165, 49, 0.16);
+  --color-fd-accent-foreground: #f7ecdb;
+  --color-fd-ring: rgba(221, 165, 49, 0.5);
+  --color-fd-overlay: rgba(10, 6, 2, 0.55);
+
+  --cb-glow: radial-gradient(
+      60rem 30rem at 12% -8%,
+      rgba(196, 139, 23, 0.26),
+      transparent 60%
+    ),
+    radial-gradient(44rem 26rem at 88% 0%, rgba(209, 71, 140, 0.2), transparent 62%);
+  --cb-hairline: rgba(221, 165, 49, 0.16);
+}
+
+/* Fumadocs' callout/status colours, warmed to the same palette. */
+@theme static {
+  --color-fd-info: #c48b17;
+  --color-fd-warning: #f58250;
+  --color-fd-error: #ff6478;
+  --color-fd-success: #14a082;
+  --color-fd-idea: #dda531;
+}
+
+/* --- Shared surfaces -----------------------------------------------------
+ * Three utilities, used by the landing page and the MDX components alike, so
+ * the same gradient is never written twice. */
+.cb-glow {
+  background-image: var(--cb-glow);
+}
+
+.cb-gradient-text {
+  background-image: var(--gradient-cb-brand);
+  background-clip: text;
+  color: transparent;
+}
+
+.cb-rule {
+  background-image: linear-gradient(90deg, var(--color-cb-gold-500), transparent);
+  block-size: 1px;
+  border: 0;
+}
+
+/* The hub's wire ornament, reused as a masked background rather than an
+ * <img> so it takes the current text colour and disappears in print. */
+.cb-wire {
+  background-repeat: no-repeat;
+  background-size: contain;
+  mask-image: var(--cb-wire-src);
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  background-color: currentColor;
+}

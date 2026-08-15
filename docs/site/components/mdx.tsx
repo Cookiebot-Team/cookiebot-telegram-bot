@@ -11,7 +11,7 @@ import {
   StatusBadge,
   StatusBar,
 } from '@/components/progress';
-import { CommandTable } from '@/components/commands';
+import { CommandCards, CommandTable } from '@/components/commands';
 
 /** The progress components are registered globally rather than imported per
  * page: every feature page uses `<FeatureHeader />`, and 50-odd identical
@@ -27,6 +27,7 @@ export function getMDXComponents(components?: MDXComponents) {
     DefectTable,
     ConsistencyFindings,
     CommandTable,
+    CommandCards,
     StatusBadge,
     StatusBar,
     ...components,
