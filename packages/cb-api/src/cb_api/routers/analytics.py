@@ -17,6 +17,9 @@ codebase's own rules:
 * **A day is a `date`, not a timestamp.** The rollups are daily and computed in
   UTC by `cb_rollup_day`; an endpoint that accepted an instant would imply an
   hourly resolution that does not exist.
+* **Every response is a declared model**, because the Mini App and the console
+  are both built from `/openapi.json` and a chart drawn against `object` is a
+  chart drawn against guesswork.
 """
 
 from __future__ import annotations
@@ -25,6 +28,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 
 from cb_api.security import group_admin
 from cb_core import analytics
@@ -75,7 +79,101 @@ def resolve_window(start: date | None, end: date | None) -> tuple[date, date]:
 Window = Annotated[date | None, Query(description="inclusive, UTC")]
 
 
-@router.get("/daily")
+class WindowedResponse(BaseModel):
+    """The window every answer here echoes back, resolved — the caller may have
+    given one end, or neither, and a chart needs to label the axis it actually
+    got rather than the one it asked for."""
+
+    group_id: int
+    start: date
+    end: date
+
+
+class DailyRow(BaseModel):
+    """One day. Days with no activity have no row at all."""
+
+    day: date
+    messages: int
+    commands: int
+    joins: int
+    leaves: int
+    captcha_issued: int
+    captcha_solved: int
+    active_users: int
+    errors: int
+    p95_latency_ms: int | None
+    llm_tokens: int
+    llm_cost_usd: float
+
+
+class DailyResponse(WindowedResponse):
+    days: list[DailyRow]
+
+
+class CommandRow(BaseModel):
+    command: str
+    invocations: int
+    errors: int
+    p95_latency_ms: int | None
+
+
+class CommandsResponse(WindowedResponse):
+    commands: list[CommandRow]
+
+
+class ModelCostRow(BaseModel):
+    provider: str
+    model: str
+    calls: int
+    input_tokens: int
+    output_tokens: int
+    cost_usd: float
+    refusals: int
+    errors: int
+
+
+class LlmResponse(WindowedResponse):
+    total_cost_usd: float
+    models: list[ModelCostRow]
+
+
+class SummaryResponse(WindowedResponse):
+    """`cb_core.analytics.summarise`, plus the window."""
+
+    days: int = Field(description="how many days had a row, not the window's length")
+    messages: int
+    commands: int
+    joins: int
+    leaves: int
+    errors: int
+    captcha_issued: int
+    captcha_solved: int
+    captcha_solve_rate: float | None = Field(
+        default=None, description="null when nobody was challenged — not the same fact as 0.0"
+    )
+    peak_active_users: int
+    worst_p95_latency_ms: int | None = Field(
+        default=None, description="the worst day's p95, never an average of percentiles"
+    )
+    llm_tokens: int
+    llm_cost_usd: float
+
+
+#: The window is checked before the group is read, so a bad range answers 400
+#: even for a group the caller may see; everything else is `security`'s.
+_ERRORS: dict[int | str, dict[str, Any]] = {
+    400: {"description": "the window is reversed or longer than a year"},
+    401: {"description": "no bearer token, or one that did not verify"},
+    404: {"description": "no such group — or the caller does not administer it"},
+}
+
+
+@router.get(
+    "/daily",
+    summary="One row per day the group was active",
+    response_model=DailyResponse,
+    responses=_ERRORS,
+)
 async def daily(
     group_id: Annotated[int, Depends(group_admin)],
     start: Window = None,
@@ -94,7 +192,12 @@ async def daily(
     }
 
 
-@router.get("/commands")
+@router.get(
+    "/commands",
+    summary="Which commands the group actually uses, busiest first",
+    response_model=CommandsResponse,
+    responses=_ERRORS,
+)
 async def commands(
     group_id: Annotated[int, Depends(group_admin)],
     start: Window = None,
@@ -121,7 +224,12 @@ async def commands(
     }
 
 
-@router.get("/llm")
+@router.get(
+    "/llm",
+    summary="What the group's AI features cost, per provider and model",
+    response_model=LlmResponse,
+    responses=_ERRORS,
+)
 async def llm(
     group_id: Annotated[int, Depends(group_admin)],
     start: Window = None,
@@ -156,7 +264,12 @@ async def llm(
     }
 
 
-@router.get("/summary")
+@router.get(
+    "/summary",
+    summary="The whole window in one object",
+    response_model=SummaryResponse,
+    responses=_ERRORS,
+)
 async def summary(
     group_id: Annotated[int, Depends(group_admin)],
     start: Window = None,
@@ -192,4 +305,11 @@ def _daily_row(row: analytics.DailyStats) -> dict[str, Any]:
     }
 
 
-__all__ = ["resolve_window", "router"]
+__all__ = [
+    "CommandsResponse",
+    "DailyResponse",
+    "LlmResponse",
+    "SummaryResponse",
+    "resolve_window",
+    "router",
+]
