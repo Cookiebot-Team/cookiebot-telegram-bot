@@ -164,6 +164,19 @@ secrets:
   # deployment, not a broken one.
   googleSearchApiKeyKey: ""
   googleSearchCxKey: ""
+  # util_youtube. The same Google Cloud key as googleSearchApiKeyKey works
+  # here when the project has YouTube Data API v3 enabled — v1 shared one key
+  # between both (Bot/SocialContent.py) — but the chart keeps them separate so
+  # a deployment can rotate one without the other.
+  youtubeApiKeyKey: ""
+  # x_reverse_image_search (/buscarfonte).
+  saucenaoApiKeyKey: ""
+  # x_music_detection. Only consulted when config.extraEnv sets
+  # musicDetectionEnabled; v1 used Shazam's unpublished endpoint and needed no
+  # key at all, so there is nothing to carry over from it.
+  auddApiKeyKey: ""
+  # Ad-price conversion in the publisher. Absent, prices are left as written.
+  exchangerateApiKeyKey: ""
 
 # ---------------------------------------------------------------------------
 # Self-hosted Telegram Bot API server (tdlib/telegram-bot-api).

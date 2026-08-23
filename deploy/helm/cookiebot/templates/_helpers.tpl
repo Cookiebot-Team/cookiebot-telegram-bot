@@ -147,6 +147,38 @@ env:
         name: {{ .Values.secrets.name }}
         key: {{ .Values.secrets.googleSearchCxKey }}
 {{- end }}
+{{- /* util_youtube, x_reverse_image_search, x_music_detection and the ad-price
+       conversion in the publisher each take one key. They follow the same
+       rule as the pair above: absent, the feature answers its "not found"
+       string instead of erroring, so an empty key is a supported deployment. */}}
+{{- if .Values.secrets.youtubeApiKeyKey }}
+  - name: CB_YOUTUBE_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: {{ .Values.secrets.name }}
+        key: {{ .Values.secrets.youtubeApiKeyKey }}
+{{- end }}
+{{- if .Values.secrets.saucenaoApiKeyKey }}
+  - name: CB_SAUCENAO_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: {{ .Values.secrets.name }}
+        key: {{ .Values.secrets.saucenaoApiKeyKey }}
+{{- end }}
+{{- if .Values.secrets.auddApiKeyKey }}
+  - name: CB_AUDD_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: {{ .Values.secrets.name }}
+        key: {{ .Values.secrets.auddApiKeyKey }}
+{{- end }}
+{{- if .Values.secrets.exchangerateApiKeyKey }}
+  - name: CB_EXCHANGERATE_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: {{ .Values.secrets.name }}
+        key: {{ .Values.secrets.exchangerateApiKeyKey }}
+{{- end }}
 {{- if .Values.objectStorage.enabled }}
 {{- /*
      AWS_*, not CB_*: obstore's S3Store reads the ambient AWS environment the
