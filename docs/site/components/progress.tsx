@@ -198,7 +198,7 @@ export function FeatureTable({
     return <p className="text-sm text-fd-muted-foreground">Nothing matches that filter.</p>;
 
   return (
-    <div className="not-prose my-6 overflow-x-auto rounded-xl border">
+    <div className="cb-stack-table not-prose my-6 overflow-x-auto rounded-xl border">
       <table className="w-full min-w-[46rem] border-collapse text-sm">
         <thead className="bg-fd-muted/50 text-left">
           <tr>
@@ -213,19 +213,32 @@ export function FeatureTable({
         <tbody>
           {rows.map((feature) => (
             <tr key={feature.id} className="border-t align-top hover:bg-fd-muted/30">
-              <td className="px-4 py-2.5">
-                <Link href={feature.url} className="font-medium text-fd-foreground hover:underline">
+              <td className="px-4 py-2.5" data-label="Feature">
+                <Link
+                  href={feature.url}
+                  className="cb-tap font-medium text-fd-foreground hover:underline"
+                >
                   {feature.title}
                 </Link>
                 <div className="font-mono text-xs text-fd-muted-foreground">{feature.id}</div>
               </td>
-              <td className="px-4 py-2.5">
+              <td className="px-4 py-2.5" data-label="Status">
                 <StatusBadge status={feature.status} />
               </td>
-              <td className="px-4 py-2.5 font-mono text-xs">{feature.milestone}</td>
-              <td className="px-4 py-2.5 text-xs text-fd-muted-foreground">{feature.layer}</td>
-              <td className="px-4 py-2.5 text-xs">{scenarioCell(feature)}</td>
-              <td className="px-4 py-2.5">
+              <td className="px-4 py-2.5 font-mono text-xs" data-label="Milestone">
+                {feature.milestone}
+              </td>
+              <td className="px-4 py-2.5 text-xs text-fd-muted-foreground" data-label="Layer">
+                {feature.layer}
+              </td>
+              <td className="px-4 py-2.5 text-xs" data-label="Scenarios">
+                {scenarioCell(feature)}
+              </td>
+              <td
+                className="px-4 py-2.5"
+                data-label="Triggers"
+                data-empty={feature.triggers.length === 0}
+              >
                 <div className="flex flex-wrap gap-1">
                   {feature.triggers.length === 0 ? (
                     <span className="text-xs text-fd-muted-foreground">—</span>
@@ -333,7 +346,7 @@ function Pair({
 
 export function ScenarioLedger() {
   return (
-    <div className="not-prose my-6 overflow-x-auto rounded-xl border">
+    <div className="cb-stack-table not-prose my-6 overflow-x-auto rounded-xl border">
       <table className="w-full min-w-[38rem] border-collapse text-sm">
         <thead className="bg-fd-muted/50 text-left">
           <tr>
@@ -348,16 +361,27 @@ export function ScenarioLedger() {
         <tbody>
           {progress.scenarios.map((row) => (
             <tr key={row.stem} className="border-t hover:bg-fd-muted/30">
-              <td className="px-4 py-2 font-mono text-xs">{row.stem}</td>
-              <td className="px-4 py-2 text-right tabular-nums">{row.spec || '—'}</td>
-              <td className="px-4 py-2 text-right tabular-nums">{row.ported || '—'}</td>
-              <td className="px-4 py-2 text-right tabular-nums">{row.green || '—'}</td>
+              <td className="px-4 py-2 font-mono text-xs" data-label="Spec">
+                {row.stem}
+              </td>
+              <td className="px-4 py-2 text-right tabular-nums" data-label="v1 scenarios">
+                {row.spec || '—'}
+              </td>
+              <td className="px-4 py-2 text-right tabular-nums" data-label="Ported">
+                {row.ported || '—'}
+              </td>
+              <td className="px-4 py-2 text-right tabular-nums" data-label="Green">
+                {row.green || '—'}
+              </td>
               <td
                 className={`px-4 py-2 text-right tabular-nums ${row.failing ? 'text-cb-error-ink dark:text-cb-error' : ''}`}
+                data-label="Failing"
               >
                 {row.failing || '—'}
               </td>
-              <td className="px-4 py-2 text-xs">{row.state}</td>
+              <td className="px-4 py-2 text-xs" data-label="State">
+                {row.state}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -368,7 +392,7 @@ export function ScenarioLedger() {
 
 export function DefectTable() {
   return (
-    <div className="not-prose my-6 overflow-x-auto rounded-xl border">
+    <div className="cb-stack-table not-prose my-6 overflow-x-auto rounded-xl border">
       <table className="w-full min-w-[36rem] border-collapse text-sm">
         <thead className="bg-fd-muted/50 text-left">
           <tr>
@@ -380,9 +404,13 @@ export function DefectTable() {
         <tbody>
           {progress.defects.map((defect: DefectRow) => (
             <tr key={defect.id} className="border-t align-top hover:bg-fd-muted/30">
-              <td className="px-4 py-2 font-mono text-xs">{defect.id}</td>
-              <td className="px-4 py-2">{defect.text}</td>
-              <td className="px-4 py-2 text-xs">
+              <td className="px-4 py-2 font-mono text-xs" data-label="Defect">
+                {defect.id}
+              </td>
+              <td className="px-4 py-2" data-label="Carried from v1">
+                <span>{defect.text}</span>
+              </td>
+              <td className="px-4 py-2 text-xs" data-label="Addressed">
                 {defect.addressed ? (
                   <span className="text-cb-success-ink dark:text-cb-success">yes</span>
                 ) : (

@@ -168,3 +168,115 @@
   mask-size: contain;
   background-color: currentColor;
 }
+
+/* --- Wide tables on a narrow screen --------------------------------------
+ * The command reference and the progress ledger are five- and six-column
+ * tables. On a laptop that is the right shape: a reader is scanning one
+ * column for one name. On a phone the same markup becomes a 46rem-wide
+ * sideways scroll, which hides four of the six columns behind a gesture
+ * nobody performs — so the numbers a person came to read are simply not
+ * seen.
+ *
+ * Below `md` the table re-flows into one card per row: the first cell is the
+ * card's heading, every other cell becomes a labelled line, and the label
+ * comes from the `data-label` the cell already carries. One markup, one
+ * source of truth for the header text, no duplicated row rendering and no
+ * JavaScript. A table without `data-label` on its cells is unaffected. */
+@media (width < 48rem) {
+  .cb-stack-table {
+    overflow-x: visible;
+  }
+
+  .cb-stack-table table {
+    display: block;
+    min-inline-size: 0;
+  }
+
+  .cb-stack-table thead {
+    /* The column names live on in each cell's `data-label`. */
+    display: none;
+  }
+
+  .cb-stack-table tbody,
+  .cb-stack-table tr {
+    display: block;
+  }
+
+  .cb-stack-table tr {
+    padding: 0.875rem 1rem;
+  }
+
+  .cb-stack-table td {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    border: 0;
+    padding: 0.1875rem 0;
+    text-align: start;
+  }
+
+  .cb-stack-table td::before {
+    content: attr(data-label);
+    flex: 0 0 6.5rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    color: var(--color-fd-muted-foreground);
+    text-transform: uppercase;
+  }
+
+  /* A cell with nothing to label (and the header cells, which are gone
+   * anyway) must not reserve the label gutter. */
+  .cb-stack-table td:not([data-label])::before {
+    content: none;
+  }
+
+  /* The first cell is the row's name — a heading, not a labelled field. */
+  .cb-stack-table td:first-child {
+    display: block;
+    padding-block-end: 0.375rem;
+    font-size: 0.9375rem;
+  }
+
+  .cb-stack-table td:first-child::before {
+    content: none;
+  }
+
+  /* A cell that says nothing on a phone (an em dash where a laptop shows a
+   * column) is noise; the row reads better without the empty line. */
+  .cb-stack-table td[data-empty='true'] {
+    display: none;
+  }
+}
+
+/* --- Touch ---------------------------------------------------------------
+ * Everything below applies to pointers that cannot hover — phones and
+ * tablets. Hover styling is not a substitute for a target big enough to hit:
+ * a 16px-tall inline link is a coin toss with a thumb, and the fix is the
+ * padding, not a bigger font. */
+@media (hover: none) {
+  /* iOS paints a grey box over anything tappable; the site has its own
+   * pressed state below. */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  a:active,
+  button:active {
+    opacity: 0.72;
+  }
+
+  /* A 16px-tall inline link is a coin toss with a thumb. Padding on an inline
+   * box grows the hit area without growing the line box, so the target reaches
+   * ~40px while the sentence around it keeps its rhythm. */
+  .cb-tap {
+    padding-block: 0.6875rem;
+    padding-inline: 0.25rem;
+    margin-inline: -0.25rem;
+  }
+
+  /* "Copy Markdown" and the view-options popover sit right under the page
+   * title, where a mis-tap costs the reader their scroll position. */
+  .cb-page-actions button {
+    min-block-size: 2.5rem;
+  }
+}

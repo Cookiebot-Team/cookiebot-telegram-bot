@@ -78,7 +78,7 @@ export function CommandTable({
   if (selected.length === 0) return <Empty />;
 
   return (
-    <div className="not-prose my-6 overflow-x-auto rounded-cb border border-fd-border bg-fd-card">
+    <div className="cb-stack-table not-prose my-6 overflow-x-auto rounded-cb border border-fd-border bg-fd-card">
       <table className="w-full min-w-[40rem] border-collapse text-sm">
         <thead className="bg-fd-muted/60 text-left">
           <tr>
@@ -94,10 +94,14 @@ export function CommandTable({
               key={row.primary}
               className="border-t border-fd-border align-top hover:bg-cb-gold-500/6"
             >
-              <td className="px-4 py-2.5">
+              <td className="px-4 py-2.5" data-label="Command">
                 <code className="font-mono whitespace-nowrap text-fd-primary">{row.primary}</code>
               </td>
-              <td className="px-4 py-2.5">
+              <td
+                className="px-4 py-2.5"
+                data-label="Also written"
+                data-empty={row.aliases.length === 0}
+              >
                 <div className="flex flex-wrap gap-1">
                   {row.aliases.length === 0 ? (
                     <span className="text-xs text-fd-muted-foreground">—</span>
@@ -113,18 +117,23 @@ export function CommandTable({
                   )}
                 </div>
               </td>
-              <td className="px-4 py-2.5">
-                {describe?.[row.primary] ?? row.title}
-                {row.url ? (
-                  <>
-                    {' '}
-                    <Link href={row.url} className="text-xs text-fd-muted-foreground underline">
-                      details
-                    </Link>
-                  </>
-                ) : null}
+              <td className="px-4 py-2.5" data-label="What it does">
+                <span>
+                  {describe?.[row.primary] ?? row.title}
+                  {row.url ? (
+                    <>
+                      {' '}
+                      <Link
+                        href={row.url}
+                        className="cb-tap text-xs text-fd-muted-foreground underline"
+                      >
+                        details
+                      </Link>
+                    </>
+                  ) : null}
+                </span>
               </td>
-              <td className="px-4 py-2.5">
+              <td className="px-4 py-2.5" data-label="In v2">
                 <Availability status={row.status} />
               </td>
             </tr>

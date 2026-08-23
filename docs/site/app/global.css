@@ -4,6 +4,16 @@
 
 html {
   scrollbar-gutter: stable;
+  /* Landscape on iOS otherwise inflates body text and leaves the nav, the
+   * sidebar and the tables at their portrait size — a layout nobody designed. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* A phone in a case, held one-handed, is the worst place to discover that a
+ * 60-character command ran off the side of the screen. */
+body {
+  overflow-wrap: break-word;
 }
 
 html > body[data-scroll-locked] {

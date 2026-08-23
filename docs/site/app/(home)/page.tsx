@@ -97,7 +97,7 @@ export default function HomePage() {
           className="cb-wire pointer-events-none absolute -right-24 bottom-4 -z-10 hidden size-56 text-cb-blush-400/15 md:block"
           style={{ '--cb-wire-src': `url(${asset('/brand/wire-right.svg')})` } as CSSProperties}
         />
-        <div className="mx-auto grid w-full max-w-5xl gap-10 px-6 pt-20 pb-10 md:grid-cols-[1.4fr_1fr] md:items-center">
+        <div className="mx-auto grid w-full max-w-5xl gap-8 px-5 pt-12 pb-8 sm:px-6 sm:pt-20 sm:pb-10 md:grid-cols-[1.4fr_1fr] md:gap-10 md:items-center">
           <div>
             <p className="font-mono text-xs tracking-widest text-fd-muted-foreground uppercase">
               Telegram group bot
@@ -111,16 +111,19 @@ export default function HomePage() {
               Portuguese and Spanish. Telegram is the whole interface: no account, no dashboard.
             </p>
 
-            <div className="mt-7 flex flex-wrap gap-3">
+            {/* Stacked and full-bleed on a phone: two side-by-side buttons at
+                44px of height each is the shape that gets mis-tapped, and there
+                is no second column competing for the width. */}
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link
                 href="/docs/using"
-                className="rounded-cb bg-fd-primary px-4 py-2 text-sm font-semibold text-fd-primary-foreground transition-opacity hover:opacity-90"
+                className="rounded-cb bg-fd-primary px-4 py-3 text-center text-sm font-semibold text-fd-primary-foreground transition-opacity hover:opacity-90 sm:py-2 sm:text-start"
               >
                 Set it up in five minutes
               </Link>
               <Link
                 href="/docs/using/commands"
-                className="rounded-cb border border-fd-border px-4 py-2 text-sm font-semibold transition-colors hover:bg-fd-accent"
+                className="rounded-cb border border-fd-border px-4 py-3 text-center text-sm font-semibold transition-colors hover:bg-fd-accent sm:py-2 sm:text-start"
               >
                 See every command
               </Link>
@@ -143,19 +146,19 @@ export default function HomePage() {
         </div>
 
         {/* The command surface, as a texture rather than a list. */}
-        <div className="mx-auto w-full max-w-5xl px-6 pb-12">
+        <div className="mx-auto w-full max-w-5xl px-5 pb-10 sm:px-6 sm:pb-12">
           <div className="flex flex-wrap gap-2">
             {sampler.map((command) => (
               <code
                 key={command}
-                className="rounded-full border border-fd-border bg-fd-card px-3 py-1 font-mono text-xs text-fd-muted-foreground"
+                className="rounded-full border border-fd-border bg-fd-card px-3 py-1.5 font-mono text-xs text-fd-muted-foreground sm:py-1"
               >
                 {command}
               </code>
             ))}
             <Link
               href="/docs/using/commands"
-              className="rounded-full border border-cb-gold-500/40 px-3 py-1 font-mono text-xs text-fd-primary"
+              className="rounded-full border border-cb-gold-500/40 px-3 py-1.5 font-mono text-xs text-fd-primary sm:py-1"
             >
               +{rest} more
             </Link>
@@ -164,7 +167,7 @@ export default function HomePage() {
       </section>
 
       {/* What it does */}
-      <section className="mx-auto w-full max-w-5xl px-6 pb-6">
+      <section className="mx-auto w-full max-w-5xl px-5 pb-6 sm:px-6">
         <h2 className="font-display text-2xl tracking-wide">What it does</h2>
         <hr className="cb-rule mt-3" />
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -185,7 +188,7 @@ export default function HomePage() {
       </section>
 
       {/* Built in the open */}
-      <section className="mx-auto w-full max-w-5xl px-6 pt-12 pb-24">
+      <section className="mx-auto w-full max-w-5xl px-5 pt-12 pb-20 sm:px-6 sm:pb-24">
         <h2 className="font-display text-2xl tracking-wide">Being rebuilt in the open</h2>
         <hr className="cb-rule mt-3" />
         <p className="mt-4 max-w-2xl text-fd-muted-foreground text-pretty">
@@ -195,7 +198,7 @@ export default function HomePage() {
           ported scenarios and a real test run — not typed in by hand.
         </p>
 
-        <div className="mt-6 rounded-cb border border-fd-border bg-fd-card p-6">
+        <div className="mt-6 rounded-cb border border-fd-border bg-fd-card p-5 sm:p-6">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <div>
               <div className="text-sm font-medium">Features ported</div>
@@ -207,7 +210,7 @@ export default function HomePage() {
                 </span>
               </div>
             </div>
-            <dl className="flex gap-6 text-sm">
+            <dl className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
               <div>
                 <dt className="text-fd-muted-foreground">v1 specs covered</dt>
                 <dd className="text-lg font-semibold tabular-nums">
@@ -256,13 +259,13 @@ export default function HomePage() {
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
             href="/docs/progress"
-            className="rounded-cb border border-fd-border px-4 py-2 text-sm font-medium transition-colors hover:bg-fd-accent"
+            className="rounded-cb border border-fd-border px-4 py-2.5 text-sm font-medium transition-colors hover:bg-fd-accent sm:py-2"
           >
             Progress board
           </Link>
           <Link
             href="/docs/architecture"
-            className="rounded-cb border border-fd-border px-4 py-2 text-sm font-medium transition-colors hover:bg-fd-accent"
+            className="rounded-cb border border-fd-border px-4 py-2.5 text-sm font-medium transition-colors hover:bg-fd-accent sm:py-2"
           >
             Architecture
           </Link>
