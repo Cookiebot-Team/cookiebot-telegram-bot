@@ -37,6 +37,12 @@ dev = [
     "setuptools>=75",
     "alembic>=1.14",
     "psycopg[binary]>=3.2",
+    # The contract layer in `qa/api/` validates every response against the
+    # published OpenAPI schema. `jsonschema-rs` is the Rust implementation with
+    # Python bindings — it compiles a schema once and validates thousands of
+    # payloads against it, which is exactly the shape of that suite, and it is
+    # the same trade the rest of this repo makes (ruff, uv, granian, msgspec).
+    "jsonschema-rs>=0.29",
 ]
 
 [tool.ruff]
@@ -88,6 +94,8 @@ filterwarnings = [
 ]
 markers = [
     "integration: needs a reachable Postgres/Citus; skipped by `make test`",
+    "smoke: HTTP against a *running* cb-api; skipped unless one answers (`cb.py api-test`)",
+    "contract: every response validated against docs/site/public/openapi.json",
     "e2e: real end-to-end suite against cb-gateway + telegram-sandbox subprocesses over HTTP; opt-in via `cb.py test-e2e`",
 ]
 

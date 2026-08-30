@@ -129,7 +129,12 @@ def lint(_: list[str]) -> int:
 
 @task("test", "unit + acceptance tests (no infrastructure)")
 def test(extra: list[str]) -> int:
-    return run("uv", "run", "pytest", "-q", "-m", "not integration", *extra)
+    """The offline gate. `smoke` is excluded as well as `integration`: those
+    tests talk to a *running* deployment, so on a machine that happens to have
+    one they would quietly stop being offline — and on one that does not they
+    would add a screen of skips to the suite people run most often.
+    `cb.py api-test` is where they belong."""
+    return run("uv", "run", "pytest", "-q", "-m", "not integration and not smoke", *extra)
 
 
 @task("test-integration", "integration tests against a real Postgres/Citus")
@@ -144,7 +149,7 @@ def test_all(extra: list[str]) -> int:
 
 @task("qa", "acceptance scenarios only")
 def qa(extra: list[str]) -> int:
-    return run("uv", "run", "pytest", "-q", "-m", "not integration", "qa", *extra)
+    return run("uv", "run", "pytest", "-q", "-m", "not integration and not smoke", "qa", *extra)
 
 
 @task("test-e2e", "real end-to-end: cb-gateway + telegram-sandbox as subprocesses over HTTP")
@@ -167,8 +172,17 @@ def test_pyramid(_: list[str]) -> int:
     """
     layers = [
         ("unit", ["uv", "run", "pytest", "-q", "packages"]),
-        ("acceptance", ["uv", "run", "pytest", "-q", "-m", "not integration", "qa"]),
+        (
+            "acceptance",
+            ["uv", "run", "pytest", "-q", "-m", "not integration", "--ignore", "qa/api", "qa"],
+        ),
         ("integration", ["uv", "run", "pytest", "-q", "-m", "integration", "qa/integration"]),
+        # The HTTP layers, last: contract before behaviour, because a response
+        # whose *shape* moved makes every behavioural failure below it noise.
+        ("api contract", ["uv", "run", "pytest", "-q", "-m", "contract", "qa/api"]),
+        ("api integration", ["uv", "run", "pytest", "-q", "qa/api/test_integration.py"]),
+        # Skips unless something is listening — `cb.py setup` is what starts one.
+        ("api smoke", ["uv", "run", "pytest", "-q", "-m", "smoke", "qa/api"]),
     ]
     for name, cmd in layers:
         print(f"\n\033[1m── {name} ──\033[0m")
@@ -616,6 +630,53 @@ def workflow(extra: list[str]) -> int:
     return run("act", "push", *(extra or ["--container-architecture", "linux/amd64"]))
 
 
+@task("api-lint", "fail on a REST endpoint nobody documented")
+def api_lint(_: list[str]) -> int:
+    """Ten rules over the OpenAPI document — a summary, a description, a named
+    response shape, the refusals each route can answer with, a description on
+    every query parameter, a docstring on every model.
+
+    A gate rather than a report because the document is a deliverable: the Mini
+    App's client is generated from it, `qa/api/test_contract.py` validates every
+    response against it, and neither can recover what a missing docstring would
+    have said.
+    """
+    return run("uv", "run", "python", str(ROOT / "scripts" / "api_spec.py"), "lint")
+
+
+@task("api-docs", "regenerate the published spec and the API reference page")
+def api_docs(extra: list[str]) -> int:
+    """Writes `docs/site/public/openapi.json` and the offline reference at
+    `docs/site/public/api-reference/index.html`. Both are committed; `--check` fails when
+    they are stale, which is what `check` runs."""
+    return run("uv", "run", "python", str(ROOT / "scripts" / "api_spec.py"), "generate", *extra)
+
+
+@task("api-test", "the HTTP suite: smoke, contract, integration")
+def api_test(extra: list[str]) -> int:
+    """`qa/api/` — three layers over one app.
+
+    `test_smoke.py` needs a *running* deployment and skips without one; run
+    `python scripts/cb.py setup` first to get one. The other two need only a
+    database and are what CI runs.
+    """
+    return run("uv", "run", "pytest", "-q", "qa/api", *extra)
+
+
+@task("setup", "stand the whole stack up and prove the API answers (for testers)")
+def setup(extra: list[str]) -> int:
+    """`scripts/qa_setup.py` — the one-command path from a fresh clone to a
+    running API with data in it and a token in your hand.
+
+    A separate script rather than a task here because it is a different shape
+    of thing: every task in this file does one step and assumes you know which
+    step you need, and that one knows the whole order, checks what is already
+    true, and reports what it proved. It carries its own dependencies (PEP 723),
+    so `uv run` gives it `rich` and `httpx` without touching this workspace.
+    """
+    return run("uv", "run", str(ROOT / "scripts" / "qa_setup.py"), *extra)
+
+
 @task("install", "sync the uv workspace")
 def install(_: list[str]) -> int:
     return run("uv", "sync", "--all-packages")
@@ -626,6 +687,11 @@ def check(_: list[str]) -> int:
     return chain(
         lambda: lint([]),
         lambda: types([]),
+        # Before the tests: an endpoint that lost its documentation fails here
+        # with one line, rather than as a contract test whose message is about a
+        # schema that no longer exists.
+        lambda: api_lint([]),
+        lambda: api_docs(["--check"]),
         lambda: test([]),
         lambda: bench([]),
         lambda: run("uv", "run", "python", "scripts/status.py", "--check"),
