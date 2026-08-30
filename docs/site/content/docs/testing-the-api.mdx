@@ -1,0 +1,453 @@
+---
+title: Testing the API
+description: A step-by-step guide — stand the API up, call it, then write the smoke, contract and integration tests that keep it honest
+---
+
+This is the guide for whoever tests the HTTP API rather than writing it. It
+assumes you can read Python and use `curl`, and nothing else about the project.
+
+Everything else in this section is written from the inside out — architecture,
+the migration spec, the Citus rules. This one is written in the order you will
+actually meet things: get it running, poke it, then write down what you found so
+it cannot come back.
+
+<Callout>
+**You need `uv` and Docker or podman.** Nothing else. No Telegram account, no
+bot token, no public URL — see [step 3](#step-3-understand-why-you-can-log-in-without-telegram).
+</Callout>
+
+---
+
+## Step 1 — stand it up
+
+```bash
+git clone https://github.com/Cookiebot-Team/cookiebot-telegram-bot
+cd cookiebot-telegram-bot
+uv run scripts/qa_setup.py
+```
+
+One command. It checks your machine, writes a `.env` if you have none, starts
+Postgres/Citus and Valkey, applies every migration, seeds a small deployment
+worth of demo data, starts `cb-api` in the background, mints three tokens, then
+calls **every endpoint** and prints what each answered next to what it was
+supposed to answer.
+
+```
+✓  python      3.14.7
+✓  containers  podman found
+✓  .env        created from .env.example; 2 local values filled in
+✓  database    citus + valkey up via podman
+✓  schema      10 migrations applied
+✓  demo data   3 groups, 30 days of rollups, 16 people
+✓  api         started on http://localhost:8000 (logs: .qa/api.log)
+✓  tokens      3 sessions minted; the owner's carries 4 scopes (admin:read granted)
+
+  as        request                              want  got   ms  what it proves
+  none      GET /healthz                          200  200    1  health is open, by design
+  none      GET /me                               401  401    1  everything else needs a token
+  admin     GET /groups/-1002000000000/config     200  200   44  the /config menu, as HTTP
+  stranger  GET /groups/-1002000000000/config     404  404   44  404 not 403 — a stranger may not
+                                                                 probe which chat ids exist
+  admin     GET /admin/overview                   403  403   42  403 here, not 404: /admin has no
+                                                                 chat id to hide
+  …
+```
+
+It is idempotent. Run it again whenever you want to know whether something is
+still true.
+
+| | |
+|---|---|
+| `uv run scripts/qa_setup.py` | the whole thing |
+| `uv run scripts/qa_setup.py doctor` | check prerequisites, change nothing |
+| `uv run scripts/qa_setup.py seed` | rewrite the demo data (`--groups`, `--days`) |
+| `uv run scripts/qa_setup.py reset` | delete everything `seed` wrote |
+| `uv run scripts/qa_setup.py token admin` | print a fresh token for one of the roles |
+| `uv run scripts/qa_setup.py smoke` | just the table |
+| `uv run scripts/qa_setup.py env` | the shell `export` lines |
+| `uv run scripts/qa_setup.py stop --all` | stop the API and the containers |
+
+### What it seeded
+
+Four people, three groups, thirty days of history. The point of the cast is that
+**every authorisation rule has someone who fails it**.
+
+| Role | Who they are | What they can reach |
+|---|---|---|
+| `owner` | a tenant owner **and** `CB_OWNER_ID` | everything, including `/admin/…` |
+| `admin` | creator of the **first** group | that group; 403 on `/admin/…` |
+| `other-admin` | creator of the **second** group | that group only — the reason "an admin of one group is a stranger to another" is testable |
+| `stranger` | in no group, runs nothing | nothing but `/healthz` |
+
+The third group is left deliberately quiet — no rollup rows at all — because "a
+group with no data" is a case worth being able to see rather than imagine.
+
+---
+
+## Step 2 — call it by hand
+
+```bash
+eval "$(uv run scripts/qa_setup.py env)"
+
+curl -s "$CB_QA_API/me" -H "Authorization: Bearer $CB_QA_ADMIN_TOKEN" | jq
+curl -s "$CB_QA_API/groups/$CB_QA_GROUP/analytics/summary" \
+     -H "Authorization: Bearer $CB_QA_ADMIN_TOKEN" | jq
+
+# a write, and then the audit row it left
+curl -s -X PATCH "$CB_QA_API/groups/$CB_QA_GROUP/config" \
+     -H "Authorization: Bearer $CB_QA_ADMIN_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"captcha_timeout_seconds": 600}' | jq
+curl -s "$CB_QA_API/groups/$CB_QA_GROUP/audit?limit=1" \
+     -H "Authorization: Bearer $CB_QA_ADMIN_TOKEN" | jq
+
+# the fleet, as the owner
+curl -s "$CB_QA_API/admin/overview" -H "Authorization: Bearer $CB_QA_OWNER_TOKEN" | jq
+```
+
+Three places to read what is available:
+
+- **[The API reference](https://cookiebot-team.github.io/cookiebot-telegram-bot/api-reference/)** —
+  every operation with its scopes, parameters, response fields and a copyable
+  request. Generated from the spec, offline, searchable; the local copy is
+  `docs/site/public/api-reference/index.html` and opens straight from disk.
+- **`http://localhost:8000/docs`** — the same API with an **Execute** button.
+  Served locally only; `/openapi.json` is served everywhere, the Swagger page is
+  not.
+- **`docs/site/public/openapi.json`** — point a client generator at it.
+
+---
+
+## Step 3 — understand why you can log in without Telegram
+
+Every endpoint but the health checks needs a bearer token, and the only way to
+get one is to present something Telegram signed: `initData` from a Mini App, or
+the login widget's payload. Taken literally, that makes the API impossible to
+test on a laptop.
+
+So the tooling does what Telegram does. `qa_setup.py` puts a **local-only bot
+token** in your `.env` and signs its own `initData` with it. Nothing is stubbed
+or bypassed — the HMAC is real, `cb_api.miniapp` verifies it exactly as it
+verifies Telegram's, and a payload signed with the wrong token is rejected here
+as it would be in production. What holding the key buys you is the ability to
+mint a session **as anyone**: an owner, an admin, a stranger, or an id nobody
+has ever seen (`token --user-id 12345`).
+
+That is what makes the refusals testable, and the refusals are most of this
+API's behaviour.
+
+<Callout type="warn">
+The dev token is written to `.env` only when no real token is configured, and
+`.env` is gitignored. If your checkout already has a real bot token, everything
+signs with **that** instead — because that is what the running API verifies
+against.
+</Callout>
+
+The signing itself is written out from Telegram's published algorithm in
+`qa/api/auth.py`, **not** imported from `cb_api.miniapp`. A fixture that builds
+its input by calling the code under test can only ever agree with it: if the
+data-check string grew a bug tomorrow, the module and its fixture would grow the
+same bug and every test would still pass.
+
+---
+
+## Step 4 — run the test suite
+
+```bash
+python scripts/cb.py api-test          # all three layers
+```
+
+Three files under `qa/api/`, each answering a different question. They are
+separate because they fail for different reasons and cost different amounts.
+
+| Layer | File | Question | Needs |
+|---|---|---|---|
+| **Smoke** | `test_smoke.py` | does the deployment I just started answer at all? | a **running** API |
+| **Contract** | `test_contract.py` | does every response match the shape `openapi.json` promises? | a database |
+| **Integration** | `test_integration.py` | does it behave correctly against real rows? | a database |
+
+```bash
+uv run pytest -m smoke qa/api             # just the live checks
+uv run pytest -m contract qa/api          # just the shapes
+uv run pytest qa/api/test_integration.py  # just the behaviour
+```
+
+Everything **skips loudly** when what it needs is absent, and names the command
+that would fix it. A suite that silently passes when it tested nothing is worse
+than no suite: it is a green tick over an untested deployment.
+
+### Smoke — is it alive and wired up?
+
+The narrowest layer and the only one that talks over a socket. It does not
+re-test behaviour; what only it can catch is everything *between* the code and a
+caller: a process that will not boot, a `.env` pointing at the wrong database, a
+middleware that swallowed the `WWW-Authenticate` header, a reverse proxy, a
+schema nobody migrated.
+
+```python
+def test_an_unauthenticated_request_is_challenged(client: httpx.Client) -> None:
+    response = call(client, "/me")
+
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+```
+
+Every request is also held to a time budget — five seconds against a local,
+seeded deployment is not "slow", it is wedged.
+
+### Contract — is the document still true?
+
+A contract test does not care whether the number is right. It cares that the
+**shape** is the one the published document describes, because that document is
+what the Mini App's client is generated from and what anyone writing against
+this API reads first.
+
+Every response is validated against `docs/site/public/openapi.json` with
+[`jsonschema-rs`](https://github.com/Stranger6667/jsonschema) — the Rust
+validator, which compiles a schema once and reuses it, and reports *every* way a
+payload drifted rather than the first.
+
+```python
+@pytest.mark.parametrize("case", CASES, ids=lambda case: case.id)
+def test_the_response_matches_its_declared_schema(api, tokens, group, case) -> None:
+    response = call(api, case, tokens, group)
+
+    assert response.status_code == case.expect
+    assert response.headers["content-type"].startswith("application/json")
+    assert_matches(case, response.status_code, response.json())
+```
+
+Three properties hold this together, and they are worth understanding before
+adding a case:
+
+1. **Validation is against the committed artifact**, never against the document
+   the app would build right now. An app checked against its own live
+   description agrees with itself by construction and can change shape freely.
+   `test_the_published_document_matches_the_app` is what keeps the artifact
+   honest.
+2. **`CASES` is a whitelist, not a sample.** A new endpoint fails
+   `test_every_documented_operation_has_a_case` until someone adds a row.
+3. **Refusals are contractual too.** The 401, 403 and 404 bodies are validated
+   as well as the 200. A client that cannot parse the 401 it was given cannot
+   tell "log in again" from "the server broke".
+
+Adding an endpoint means adding one line:
+
+```python
+CASES = (
+    ...,
+    Case("get", "/admin/overview", role="owner"),
+)
+```
+
+`role` is the **lowest-privileged** caller who should succeed. Using an owner
+everywhere would pass and prove less.
+
+### Integration — does it behave?
+
+The real app, over `httpx.ASGITransport`, against a real database — no port, no
+server, no waiting. This is where behaviour is pinned: that a write really lands
+and really audits, that a token minted by the token endpoint really verifies
+against the keys in `signing_keys`, that the boundary holds when `group_admins`
+is a table rather than a monkeypatched function.
+
+```python
+def test_a_change_leaves_an_audit_row_with_both_values(api, tokens, group) -> None:
+    api.patch(f"/groups/{group.group_id}/config",
+              token=tokens.admin, json={"functions_fun": False})
+
+    trail = api.get(f"/groups/{group.group_id}/audit", token=tokens.admin).json()
+
+    assert [event["action"] for event in trail["events"]] == ["config.updated"]
+    event = trail["events"][0]
+    assert event["before"] == {"functions_fun": True}
+    assert event["after"] == {"functions_fun": False}
+```
+
+---
+
+## Step 5 — write your own
+
+### Where it belongs
+
+Five layers now, and putting a test in the wrong one is the most common review
+comment on a first contribution.
+
+| Layer | Where | Needs | Use it for |
+|---|---|---|---|
+| **Unit** | `packages/*/tests/` | nothing | status codes, scope rules, window maths, anything expressible with the database faked |
+| **Acceptance** | `qa/features/` + `qa/test_*.py` | mock Telegram | a **command in a chat**. The HTTP API has no Telegram surface, so API work rarely lands here |
+| **API contract** | `qa/api/test_contract.py` | database | a response shape, a new endpoint, a refusal body |
+| **API integration** | `qa/api/test_integration.py` | database | behaviour end to end: writes, audit rows, pagination, real authorisation |
+| **API smoke** | `qa/api/test_smoke.py` | running API | "a deployment is up and wired correctly" — nothing finer |
+| **Core integration** | `qa/integration/` | database | `cb_core` repositories and Citus topology, below HTTP |
+
+Two dividing lines settle almost every case:
+
+- **If you can express it with the database faked, it is a unit test.** A test
+  that starts a database to check that a missing token gives a 401 is a slow
+  test of the wrong thing.
+- **If it would still pass with the server stopped, it is not a smoke test.**
+
+### The conventions this suite follows
+
+These are not style preferences; each one is a bug the suite has already caught
+or prevented.
+
+**One behaviour per test, named after the rule.**
+`test_a_stranger_gets_404_not_403` tells a reader what broke.
+`test_config_2` does not.
+
+**Arrange, act, assert — with a blank line between each.** The act is one line.
+If yours is five, the fixture is missing something.
+
+**Every test gets its own group.** The `group` fixture allocates a fresh chat id
+per test, so the file is order-independent and two tests that both write
+settings cannot see each other's writes.
+
+**Assert deltas, never absolutes, for anything fleet-wide.** The database is
+shared with the rest of the suite, and `/admin/overview` counts every group in
+it. Measure before, act, measure after:
+
+```python
+before = api.get("/admin/overview", token=tokens.owner).json()["reach"]["groups"]
+extra = World(run); extra.setup()
+try:
+    after = api.get("/admin/overview", token=tokens.owner).json()["reach"]["groups"]
+finally:
+    extra.teardown()
+
+assert after == before + 1
+```
+
+**Never hand-write an `INSERT` for a group or a user.** Use
+`qa/integration/factories.py`; the point of these layers is that the rows look
+like the ones production writes.
+
+**Clean up what has no foreign key.** Deleting a group cascades to its config,
+members and audit rows — but **not** to the rollup tables, which have no FK to
+`groups`. A test that seeds rollups deletes them itself.
+
+**Build fixtures from the published algorithm, not the code under test.** See
+[step 3](#step-3-understand-why-you-can-log-in-without-telegram).
+
+**No sleeps, no retries, no polling.** Everything runs on one event loop,
+in-process, against data the test created.
+
+### The fixtures you have
+
+Defined in `qa/api/conftest.py`:
+
+| Fixture | What it gives you |
+|---|---|
+| `api` | the real `cb_api.main.app` over ASGI, as a synchronous `Api` (`.get`, `.post`, `.patch`, `.put`, each taking `token=`) |
+| `group` | a disposable group with an admin, a member and three days of rollups |
+| `second_world` | a second, unrelated group — for the assertions that are *about* the boundary between two |
+| `tokens` | `tokens.owner`, `tokens.admin`, `tokens.stranger`, all minted through `/oauth2/token` |
+| `owner` | makes a caller the deployment's owner via `CB_OWNER_ID` |
+| `pg`, `world`, `run` | the shared database fixtures, re-exported from `qa/integration/` |
+
+Sessions are minted through the **real token endpoint** rather than signed and
+handed to the client, so every test in the directory also exercises the token
+path. A break there fails loudly rather than silently downgrading these tests to
+something weaker.
+
+The app is the real one **without its lifespan**: entering it would converge the
+schema, open a second pool, connect Valkey and object storage and bind the
+metrics port, none of which is what these tests are about. The pool comes from
+the `pg` fixture instead.
+
+---
+
+## Step 6 — keep the document honest
+
+The OpenAPI document is a deliverable here, not a by-product: the Mini App's
+client is generated from it and the contract layer validates against it. Two
+commands keep it true, and `cb.py check` runs both.
+
+```bash
+python scripts/cb.py api-lint     # fail on an endpoint nobody documented
+python scripts/cb.py api-docs     # regenerate the published spec + reference page
+```
+
+`api-lint` applies ten rules to every operation:
+
+| Rule | Why |
+|---|---|
+| `summary` | a generated client turns it into the method's own name |
+| `description` | the reference page and every client's docstring come from it |
+| `tag` | an untagged operation is unfiled in every reference that groups by tag |
+| `response-schema` | a response typed `object` hands a client author `Record<string, unknown>` and a guess |
+| `refusal-schema` | every declared 4xx names a body model — see below |
+| `declares-401` | a client that cannot tell "log in again" from "you may not" retries the wrong one |
+| `declares-404` | group-scoped paths answer 404 for a group you do not administer; that is a contract |
+| `declares-403` | fleet-wide paths refuse with 403 and must **not** answer 404 |
+| `parameter-description` | a query parameter with no description is a knob nobody knows how to turn |
+| `schema-description` | the reference renders the shape; without a docstring it renders a bare table of field names |
+
+`refusal-schema` exists because the contract tests found it: two routers were
+declaring 401 and 404 with a description and **no model**, so the document
+promised a status with no body while the service returned one. That is exactly
+the gap a generated client falls into, and it is now a lint error.
+
+`api-docs` writes two committed files:
+
+- `docs/site/public/openapi.json` — the published spec;
+- `docs/site/public/api-reference/index.html` — the offline reference page.
+
+`api-docs --check` fails when either is stale. A generated artifact nobody
+regenerated is worse than none: it is wrong and authoritative-looking at the same
+time.
+
+---
+
+## When something is wrong
+
+Two things to try before writing anything up:
+
+1. `uv run scripts/qa_setup.py doctor` — checks prerequisites and `.env`,
+   touches nothing else.
+2. `.qa/api.log` — the API's own output. Most "it returns 500" reports end here.
+
+| What you see | Usually |
+|---|---|
+| `database … nothing answered on postgresql://…` | the container is up but Postgres is still starting; run the script again |
+| every request 401 | the token expired — 15 minutes by default. `qa_setup.py token` mints a fresh one |
+| every request 404 | you are asking about a group id that was never seeded; `qa_setup.py seed` prints the real ones |
+| `api exited: …` in the report | read `.qa/api.log`; a bad value in `.env` is the usual cause |
+| every API test skipped | no database — `uv run scripts/qa_setup.py` or `python scripts/cb.py up` |
+| only the smoke tests skipped | no running API — `python scripts/cb.py setup` |
+| a contract test fails after you changed a model | run `python scripts/cb.py api-docs` and read the diff; that diff is what clients will see |
+
+Then file it. A report with the request, the token's role, what you expected and
+what came back is a complete bug report, and it is worth more than a patch:
+[bug](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/issues/new?template=bug_report.yml),
+[idea](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/issues/new?template=idea.yml),
+[docs](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/issues/new?template=docs.yml).
+A security problem goes in
+[a private advisory](https://github.com/Cookiebot-Team/cookiebot-telegram-bot/security/advisories/new),
+never a public issue.
+
+---
+
+## What a pull request needs
+
+1. **A branch** — `test/<short-name>` for tests, `fix/<short-name>` for a fix.
+2. **The failing test first.** A fix without one is a fix that comes back.
+3. **The layer justified** — see the table above; reviewers will ask.
+4. **The gate, green:**
+
+   ```bash
+   uv run python scripts/cb.py fmt
+   uv run python scripts/cb.py check     # lint, types, api-lint, api-docs --check, tests, bench
+   uv run python scripts/cb.py api-test  # the HTTP suite
+   ```
+
+5. **A conventional commit** — `test(x_admin_api): a stranger cannot page the
+   group directory`. The changelog is built from these.
+
+A new endpoint has three extra steps, all of which the gate will remind you
+about: add it to `MINIAPP_PATHS` in `packages/cb-api/tests/test_openapi.py`, add
+a `Case` to `qa/api/test_contract.py`, and run `python scripts/cb.py api-docs`.
+Each list is a whitelist rather than a sample, deliberately: an endpoint that is
+not on them ships with nothing describing or validating it.

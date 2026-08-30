@@ -54,10 +54,50 @@ cd cookiebot-telegram-bot
 cp .env.example .env
 python scripts/cb.py install     # uv sync --all-packages
 python scripts/cb.py test        # the whole offline suite — no bot token needed
+python scripts/cb.py setup       # …or stand the whole stack up and call it
 ```
 
 `python scripts/cb.py --list` prints every task. There is no Makefile: CI runs
 the same functions your terminal does.
+
+### Test the HTTP API — no Telegram account needed
+
+The Mini App and the web console talk to `cb-api`, and that surface is testable
+on a laptop with nothing but `uv` and Docker or podman:
+
+```bash
+uv run scripts/qa_setup.py
+```
+
+One command: it checks your machine, writes a `.env` if you have none, starts
+the database, applies the migrations, seeds a demo deployment, starts the API,
+mints three tokens — an owner, a group admin and a stranger — and then calls
+every endpoint and prints what each one answered next to what it was supposed
+to answer. Run it again any time; it is idempotent.
+
+You can log in without Telegram because the script signs its own `initData`
+with a local-only bot token it puts in your `.env`. The signature is real and
+verified the same way Telegram's is; what holding the key buys you is a session
+**as anyone**, which is what makes the refusals testable — and the refusals are
+most of this API's behaviour.
+
+Then run the suite against it:
+
+```bash
+python scripts/cb.py api-test
+```
+
+Three layers under `qa/api/`, each answering a different question: **smoke**
+(does a running deployment answer at all?), **contract** (does every response
+match the shape `openapi.json` promises?) and **integration** (does it behave
+correctly against real rows?). Each skips loudly, naming the command that would
+fix it, rather than passing quietly when it tested nothing.
+
+The [Testing the API](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/testing-the-api)
+guide takes it from there, step by step: what the demo world contains, which
+layer your case belongs in, a worked example at each, and the conventions the
+suite follows. **Adding a test is a contribution**, and a negative one — a
+caller who should be refused and is not — is worth more than most features.
 
 ### The one rule that matters most
 
@@ -84,8 +124,13 @@ diverges without that note will be asked for one.
 
    ```bash
    python scripts/cb.py fmt      # ruff autofix + format
-   python scripts/cb.py check    # lint, types, tests, benchmarks, spec consistency
+   python scripts/cb.py check    # lint, types, API docs, tests, benchmarks, spec consistency
    ```
+
+   A change to the HTTP API has two more steps, both of which `check` will
+   remind you about: `python scripts/cb.py api-lint` refuses an endpoint nobody
+   documented, and `python scripts/cb.py api-docs` regenerates the published
+   spec and the reference page.
 
 7. **Open a pull request.** The template asks three questions; answer them
    briefly.
