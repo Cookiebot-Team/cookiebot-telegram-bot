@@ -1,0 +1,4517 @@
+{
+  "components": {
+    "schemas": {
+      "AdministeredGroup": {
+        "description": "One group the caller administers, as `group_admins` records it.",
+        "properties": {
+          "anonymous": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anonymous"
+          },
+          "chat_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chat Type"
+          },
+          "group_id": {
+            "title": "Group Id",
+            "type": "integer"
+          },
+          "role": {
+            "description": "what `group_admins` says: `creator` or `administrator`",
+            "title": "Role",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "group_id",
+          "title",
+          "username",
+          "chat_type",
+          "role",
+          "anonymous"
+        ],
+        "title": "AdministeredGroup",
+        "type": "object"
+      },
+      "AuditEvent": {
+        "description": "One recorded change: what, who, from where, and both values.",
+        "properties": {
+          "action": {
+            "description": "`config.updated`, `rules.updated`, `welcome.updated`, \u2026",
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_kind": {
+            "title": "Actor Kind",
+            "type": "string"
+          },
+          "actor_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null when an anonymous admin made the change",
+            "title": "Actor User Id"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "id": {
+            "description": "UUIDv7 \u2014 ordering by it is ordering by time",
+            "title": "Id",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "surface": {
+            "description": "`telegram`, `miniapp`, `api` or `system`",
+            "title": "Surface",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ts",
+          "action",
+          "surface",
+          "actor_kind",
+          "summary",
+          "before",
+          "after",
+          "trace_id"
+        ],
+        "title": "AuditEvent",
+        "type": "object"
+      },
+      "AuditPage": {
+        "description": "A page of the trail, newest first, with the cursor for the next one.",
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "group_id": {
+            "title": "Group Id",
+            "type": "integer"
+          },
+          "next_before": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "pass as `before` for the following page; null on the last one",
+            "title": "Next Before"
+          }
+        },
+        "required": [
+          "group_id",
+          "events"
+        ],
+        "title": "AuditPage",
+        "type": "object"
+      },
+      "BudgetBody": {
+        "description": "The tenant's soft LLM budget against what the window actually cost.\n\n`monthly_llm_budget_usd` is what `cb_core.llm` refuses `chat` past, so an\nowner watching this number is watching the thing that will silently turn\nthe conversational features off.",
+        "properties": {
+          "monthly_llm_budget_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null when the tenant has no budget configured",
+            "title": "Monthly Llm Budget Usd"
+          },
+          "remaining_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null when there is no budget",
+            "title": "Remaining Usd"
+          },
+          "spent_usd": {
+            "description": "the requested window's spend, not the calendar month's",
+            "title": "Spent Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "spent_usd"
+        ],
+        "title": "BudgetBody",
+        "type": "object"
+      },
+      "CommandRow": {
+        "description": "One command's totals across the window, not one row per day.",
+        "properties": {
+          "command": {
+            "title": "Command",
+            "type": "string"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "invocations": {
+            "title": "Invocations",
+            "type": "integer"
+          },
+          "p95_latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Latency Ms"
+          }
+        },
+        "required": [
+          "command",
+          "invocations",
+          "errors",
+          "p95_latency_ms"
+        ],
+        "title": "CommandRow",
+        "type": "object"
+      },
+      "CommandsResponse": {
+        "description": "Which commands this group uses, busiest first.",
+        "properties": {
+          "commands": {
+            "items": {
+              "$ref": "#/components/schemas/CommandRow"
+            },
+            "title": "Commands",
+            "type": "array"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "group_id": {
+            "title": "Group Id",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group_id",
+          "start",
+          "end",
+          "commands"
+        ],
+        "title": "CommandsResponse",
+        "type": "object"
+      },
+      "ConfigPatch": {
+        "additionalProperties": false,
+        "description": "The writable half of `group_configs`, every field optional.\n\nWritten out rather than derived from `GroupConfig`'s dataclass fields: this\nis a public contract, and a column added to the table should not silently\nbecome writable over HTTP. The bounds are the ones the Telegram menu\nenforces by refusing to parse anything else, made explicit.",
+        "properties": {
+          "allow_furbots": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allow Furbots"
+          },
+          "captcha_timeout_seconds": {
+            "anyOf": [
+              {
+                "maximum": 86400.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captcha Timeout Seconds"
+          },
+          "doomlist_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doomlist Enabled"
+          },
+          "functions_fun": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Functions Fun"
+          },
+          "functions_utility": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Functions Utility"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "max_posts": {
+            "anyOf": [
+              {
+                "maximum": 9999.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Posts"
+          },
+          "media_restrict_seconds": {
+            "anyOf": [
+              {
+                "maximum": 604800.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Restrict Seconds"
+          },
+          "publisher_ask": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher Ask"
+          },
+          "publisher_members_only": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher Members Only"
+          },
+          "publisher_post": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher Post"
+          },
+          "sfw": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sfw"
+          },
+          "sticker_spam_limit": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sticker Spam Limit"
+          },
+          "sticker_spam_window_s": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sticker Spam Window S"
+          },
+          "thread_posts": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thread Posts"
+          }
+        },
+        "title": "ConfigPatch",
+        "type": "object"
+      },
+      "ConfigResponse": {
+        "description": "A group's effective settings: stored values over the tenant's defaults\nover v1's, which is the same resolution the bot itself reads.",
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/GroupConfigValues"
+          },
+          "group_id": {
+            "title": "Group Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "group_id",
+          "config"
+        ],
+        "title": "ConfigResponse",
+        "type": "object"
+      },
+      "ConfigUpdateResponse": {
+        "description": "The settings after the patch, and which of them actually moved.",
+        "properties": {
+          "changed": {
+            "description": "the fields whose value actually moved \u2014 a patch that asks for the value a setting already has changes nothing and audits nothing",
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed",
+            "type": "array"
+          },
+          "config": {
+            "$ref": "#/components/schemas/GroupConfigValues"
+          },
+          "group_id": {
+            "title": "Group Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "group_id",
+          "config",
+          "changed"
+        ],
+        "title": "ConfigUpdateResponse",
+        "type": "object"
+      },
+      "DailyResponse": {
+        "description": "One row per day the group was active \u2014 a chart's x-axis.",
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/DailyRow"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "group_id": {
+            "title": "Group Id",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group_id",
+          "start",
+          "end",
+          "days"
+        ],
+        "title": "DailyResponse",
+        "type": "object"
+      },
+      "DailyRow": {
+        "description": "One day. Days with no activity have no row at all.",
+        "properties": {
+          "active_users": {
+            "title": "Active Users",
+            "type": "integer"
+          },
+          "captcha_issued": {
+            "title": "Captcha Issued",
+            "type": "integer"
+          },
+          "captcha_solved": {
+            "title": "Captcha Solved",
+            "type": "integer"
+          },
+          "commands": {
+            "title": "Commands",
+            "type": "integer"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "joins": {
+            "title": "Joins",
+            "type": "integer"
+          },
+          "leaves": {
+            "title": "Leaves",
+            "type": "integer"
+          },
+          "llm_cost_usd": {
+            "title": "Llm Cost Usd",
+            "type": "number"
+          },
+          "llm_tokens": {
+            "title": "Llm Tokens",
+            "type": "integer"
+          },
+          "messages": {
+            "title": "Messages",
+            "type": "integer"
+          },
+          "p95_latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Latency Ms"
+          }
+        },
+        "required": [
+          "day",
+          "messages",
+          "commands",
+          "joins",
+          "leaves",
+          "captcha_issued",
+          "captcha_solved",
+          "active_users",
+          "errors",
+          "p95_latency_ms",
+          "llm_tokens",
+          "llm_cost_usd"
+        ],
+        "title": "DailyRow",
+        "type": "object"
+      },
+      "DirectoryPage": {
+        "description": "A page of the directory, ordered by `group_id`.",
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/DirectoryRow"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "next_after": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "pass as `after` for the following page; null on the last one",
+            "title": "Next After"
+          }
+        },
+        "required": [
+          "groups"
+        ],
+        "title": "DirectoryPage",
+        "type": "object"
+      },
+      "DirectoryRow": {
+        "description": "One group the bot knows \u2014 what it is in, not what it did.",
+        "properties": {
+          "admins": {
+            "title": "Admins",
+            "type": "integer"
+          },
+          "chat_type": {
+            "title": "Chat Type",
+            "type": "string"
+          },
+          "group_id": {
+            "title": "Group Id",
+            "type": "integer"
+          },
+          "joined_at": {
+            "format": "date-time",
+            "title": "Joined At",
+            "type": "string"
+          },
+          "left_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "set when the bot was removed; the row is kept for its history",
+            "title": "Left At"
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "skin": {
+            "description": "which bot persona serves it (`core_botskins`)",
+            "title": "Skin",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "group_id",
+          "title",
+          "username",
+          "chat_type",
+          "skin",
+          "joined_at",
+          "members",
+          "admins"
+        ],
+        "title": "DirectoryRow",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "description": "FastAPI's error envelope \u2014 `{\"detail\": \"...\"}` \u2014 named so the schema can\npoint at it and a generated client can read it.",
+        "properties": {
+          "detail": {
+            "description": "a sentence for a developer, never for an end user",
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "GroupActivityRow": {
+        "description": "One group's totals across the window, for the leaderboard.",
+        "properties": {
+          "commands": {
+            "title": "Commands",
+            "type": "integer"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "group_id": {
+            "title": "Group Id",
+            "type": "integer"
+          },
+          "llm_cost_usd": {
+            "title": "Llm Cost Usd",
+            "type": "number"
+          },
+          "messages": {
+            "title": "Messages",
+            "type": "integer"
+          },
+          "peak_active_users": {
+            "title": "Peak Active Users",
+            "type": "integer"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "group_id",
+          "title",
+          "username",
+          "messages",
+          "commands",
+          "errors",
+          "peak_active_users",
+          "llm_cost_usd"
+        ],
+        "title": "GroupActivityRow",
+        "type": "object"
+      },
+      "GroupConfigValues": {
+        "description": "The group's effective settings \u2014 the same fifteen columns `ConfigPatch`\nwrites, none of them optional here because a read always resolves to a\nvalue (stored, else the tenant's default, else v1's).",
+        "properties": {
+          "allow_furbots": {
+            "title": "Allow Furbots",
+            "type": "boolean"
+          },
+          "captcha_timeout_seconds": {
+            "title": "Captcha Timeout Seconds",
+            "type": "integer"
+          },
+          "doomlist_enabled": {
+            "title": "Doomlist Enabled",
+            "type": "boolean"
+          },
+          "functions_fun": {
+            "title": "Functions Fun",
+            "type": "boolean"
+          },
+          "functions_utility": {
+            "title": "Functions Utility",
+            "type": "boolean"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "max_posts": {
+            "title": "Max Posts",
+            "type": "integer"
+          },
+          "media_restrict_seconds": {
+            "title": "Media Restrict Seconds",
+            "type": "integer"
+          },
+          "publisher_ask": {
+            "title": "Publisher Ask",
+            "type": "boolean"
+          },
+          "publisher_members_only": {
+            "title": "Publisher Members Only",
+            "type": "boolean"
+          },
+          "publisher_post": {
+            "title": "Publisher Post",
+            "type": "boolean"
+          },
+          "sfw": {
+            "title": "Sfw",
+            "type": "boolean"
+          },
+          "sticker_spam_limit": {
+            "title": "Sticker Spam Limit",
+            "type": "integer"
+          },
+          "sticker_spam_window_s": {
+            "title": "Sticker Spam Window S",
+            "type": "integer"
+          },
+          "thread_posts": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the pinned topic id, or null for none (v1 wrote '9999')",
+            "title": "Thread Posts"
+          }
+        },
+        "required": [
+          "allow_furbots",
+          "sticker_spam_limit",
+          "sticker_spam_window_s",
+          "media_restrict_seconds",
+          "captcha_timeout_seconds",
+          "functions_fun",
+          "functions_utility",
+          "sfw",
+          "language",
+          "publisher_post",
+          "publisher_ask",
+          "publisher_members_only",
+          "max_posts",
+          "doomlist_enabled"
+        ],
+        "title": "GroupConfigValues",
+        "type": "object"
+      },
+      "GroupTextResponse": {
+        "description": "The rules or the welcome message, with its provenance. `body` is null\nwhen the group never set one; that is the normal state, not a 404.",
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "group_id": {
+            "title": "Group Id",
+            "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          }
+        },
+        "required": [
+          "group_id",
+          "body",
+          "updated_by",
+          "updated_at"
+        ],
+        "title": "GroupTextResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "JwksDocument": {
+        "description": "Every key the deployment might have signed with, so a rotation overlaps.",
+        "properties": {
+          "keys": {
+            "description": "public JWKs, `kid` and all",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Keys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "keys"
+        ],
+        "title": "JwksDocument",
+        "type": "object"
+      },
+      "Liveness": {
+        "description": "What a liveness probe gets: the process identifying itself.",
+        "properties": {
+          "cython": {
+            "description": "whether the compiled hot path is in this build",
+            "title": "Cython",
+            "type": "boolean"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "examples": [
+              "ok"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "service",
+          "version",
+          "cython"
+        ],
+        "title": "Liveness",
+        "type": "object"
+      },
+      "LlmResponse": {
+        "description": "What this group's AI features cost \u2014 the same numbers the tenant's\nbudget is spent against, so an admin can see why `chat` started refusing.",
+        "properties": {
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "group_id": {
+            "title": "Group Id",
+            "type": "integer"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelCostRow"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "total_cost_usd": {
+            "title": "Total Cost Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "group_id",
+          "start",
+          "end",
+          "total_cost_usd",
+          "models"
+        ],
+        "title": "LlmResponse",
+        "type": "object"
+      },
+      "LoginError": {
+        "description": "v1's error body. Not FastAPI's `{\"detail\": ...}`: the console branches on\n`error`, and changing the key would be the one break this codebase does not\nallow.",
+        "properties": {
+          "error": {
+            "examples": [
+              "Invalid bot token"
+            ],
+            "title": "Error",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "LoginError",
+        "type": "object"
+      },
+      "LoginToken": {
+        "description": "v1's success body, key for key. `COOKIEBOT-WebHub` reads `accessToken`\nby name (`src/lib/api/axios.ts`), so neither name may move.",
+        "properties": {
+          "accessToken": {
+            "description": "RS256, verifiable against `/.well-known/jwks.json`; carries no `scope` claim, which `cb_api.security` reads as read-only",
+            "title": "Accesstoken",
+            "type": "string"
+          },
+          "status": {
+            "examples": [
+              "Token generated"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "accessToken"
+        ],
+        "title": "LoginToken",
+        "type": "object"
+      },
+      "MeResponse": {
+        "description": "Who the token says you are, what it lets you do, and where.",
+        "properties": {
+          "audience": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the token's `aud`, if it carries one",
+            "title": "Audience"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/AdministeredGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "is_bot_admin": {
+            "default": false,
+            "description": "whether this caller runs the deployment \u2014 the Mini App draws its `/admin` screens from this rather than from a 403 it had to provoke",
+            "title": "Is Bot Admin",
+            "type": "boolean"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id",
+          "scopes",
+          "groups"
+        ],
+        "title": "MeResponse",
+        "type": "object"
+      },
+      "ModelCostRow": {
+        "description": "One provider/model's usage and spend across the window.",
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "refusals": {
+            "title": "Refusals",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "calls",
+          "input_tokens",
+          "output_tokens",
+          "cost_usd",
+          "refusals",
+          "errors"
+        ],
+        "title": "ModelCostRow",
+        "type": "object"
+      },
+      "OpenIDConfiguration": {
+        "description": "What a Mini App or an OAuth client library discovers this deployment\nwith. The first five keys are v1's, unchanged; the rest arrived with\n`x_miniapp_auth`.",
+        "properties": {
+          "grant_types_supported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Grant Types Supported",
+            "type": "array"
+          },
+          "id_token_signing_alg_values_supported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Id Token Signing Alg Values Supported",
+            "type": "array"
+          },
+          "issuer": {
+            "title": "Issuer",
+            "type": "string"
+          },
+          "jwks_uri": {
+            "title": "Jwks Uri",
+            "type": "string"
+          },
+          "response_types_supported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Response Types Supported",
+            "type": "array"
+          },
+          "revocation_endpoint": {
+            "title": "Revocation Endpoint",
+            "type": "string"
+          },
+          "scopes_supported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes Supported",
+            "type": "array"
+          },
+          "subject_types_supported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Subject Types Supported",
+            "type": "array"
+          },
+          "token_endpoint": {
+            "title": "Token Endpoint",
+            "type": "string"
+          },
+          "token_endpoint_auth_methods_supported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Token Endpoint Auth Methods Supported",
+            "type": "array"
+          }
+        },
+        "required": [
+          "issuer",
+          "jwks_uri",
+          "response_types_supported",
+          "subject_types_supported",
+          "id_token_signing_alg_values_supported",
+          "token_endpoint",
+          "revocation_endpoint",
+          "token_endpoint_auth_methods_supported",
+          "grant_types_supported",
+          "scopes_supported"
+        ],
+        "title": "OpenIDConfiguration",
+        "type": "object"
+      },
+      "OverviewResponse": {
+        "description": "One request for the dashboard's first screen.\n\nThree round trips server-side rather than three from the Mini App: a phone\ninside Telegram on a bad connection pays for each of them, and none of the\nthree is useful without the others.",
+        "properties": {
+          "budget": {
+            "$ref": "#/components/schemas/BudgetBody"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "reach": {
+            "$ref": "#/components/schemas/ReachBody"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PlatformSummary"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "tenant_id",
+          "display_name",
+          "reach",
+          "totals",
+          "budget"
+        ],
+        "title": "OverviewResponse",
+        "type": "object"
+      },
+      "PlatformCommandRow": {
+        "description": "One command across every group, with its reach as well as its volume.",
+        "properties": {
+          "command": {
+            "title": "Command",
+            "type": "string"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "groups": {
+            "description": "distinct groups that used it \u2014 one busy group is not reach",
+            "title": "Groups",
+            "type": "integer"
+          },
+          "invocations": {
+            "title": "Invocations",
+            "type": "integer"
+          },
+          "p95_latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Latency Ms"
+          }
+        },
+        "required": [
+          "command",
+          "invocations",
+          "errors",
+          "groups",
+          "p95_latency_ms"
+        ],
+        "title": "PlatformCommandRow",
+        "type": "object"
+      },
+      "PlatformCommandsResponse": {
+        "description": "What the whole deployment's users actually type.",
+        "properties": {
+          "commands": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformCommandRow"
+            },
+            "title": "Commands",
+            "type": "array"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "commands"
+        ],
+        "title": "PlatformCommandsResponse",
+        "type": "object"
+      },
+      "PlatformDailyResponse": {
+        "description": "The deployment's activity, one row per day.",
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformDayRow"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "days"
+        ],
+        "title": "PlatformDailyResponse",
+        "type": "object"
+      },
+      "PlatformDayRow": {
+        "description": "One day, summed across every group that was active on it.",
+        "properties": {
+          "active_users": {
+            "title": "Active Users",
+            "type": "integer"
+          },
+          "captcha_issued": {
+            "title": "Captcha Issued",
+            "type": "integer"
+          },
+          "captcha_solved": {
+            "title": "Captcha Solved",
+            "type": "integer"
+          },
+          "commands": {
+            "title": "Commands",
+            "type": "integer"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "groups": {
+            "description": "how many groups were active that day",
+            "title": "Groups",
+            "type": "integer"
+          },
+          "joins": {
+            "title": "Joins",
+            "type": "integer"
+          },
+          "leaves": {
+            "title": "Leaves",
+            "type": "integer"
+          },
+          "llm_cost_usd": {
+            "title": "Llm Cost Usd",
+            "type": "number"
+          },
+          "llm_tokens": {
+            "title": "Llm Tokens",
+            "type": "integer"
+          },
+          "messages": {
+            "title": "Messages",
+            "type": "integer"
+          },
+          "p95_latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Latency Ms"
+          }
+        },
+        "required": [
+          "day",
+          "groups",
+          "messages",
+          "commands",
+          "joins",
+          "leaves",
+          "captcha_issued",
+          "captcha_solved",
+          "active_users",
+          "errors",
+          "p95_latency_ms",
+          "llm_tokens",
+          "llm_cost_usd"
+        ],
+        "title": "PlatformDayRow",
+        "type": "object"
+      },
+      "PlatformLlmResponse": {
+        "description": "Fleet-wide AI spend, most expensive model first.",
+        "properties": {
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformLlmRow"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "total_cost_usd": {
+            "title": "Total Cost Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "total_cost_usd",
+          "models"
+        ],
+        "title": "PlatformLlmResponse",
+        "type": "object"
+      },
+      "PlatformLlmRow": {
+        "description": "One provider/model's spend across every group.",
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "refusals": {
+            "title": "Refusals",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "calls",
+          "input_tokens",
+          "output_tokens",
+          "cost_usd",
+          "refusals",
+          "errors"
+        ],
+        "title": "PlatformLlmRow",
+        "type": "object"
+      },
+      "PlatformSummary": {
+        "description": "The window's totals across every group, with the peaks called out\nrather than averaged \u2014 an average of daily percentiles means nothing.",
+        "properties": {
+          "captcha_issued": {
+            "title": "Captcha Issued",
+            "type": "integer"
+          },
+          "captcha_solve_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null when nobody was challenged anywhere",
+            "title": "Captcha Solve Rate"
+          },
+          "captcha_solved": {
+            "title": "Captcha Solved",
+            "type": "integer"
+          },
+          "commands": {
+            "title": "Commands",
+            "type": "integer"
+          },
+          "days": {
+            "description": "how many days in the window had any activity at all",
+            "title": "Days",
+            "type": "integer"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "joins": {
+            "title": "Joins",
+            "type": "integer"
+          },
+          "leaves": {
+            "title": "Leaves",
+            "type": "integer"
+          },
+          "llm_cost_usd": {
+            "title": "Llm Cost Usd",
+            "type": "number"
+          },
+          "llm_tokens": {
+            "title": "Llm Tokens",
+            "type": "integer"
+          },
+          "messages": {
+            "title": "Messages",
+            "type": "integer"
+          },
+          "peak_active_users": {
+            "title": "Peak Active Users",
+            "type": "integer"
+          },
+          "peak_groups": {
+            "description": "the busiest day's count of active groups",
+            "title": "Peak Groups",
+            "type": "integer"
+          },
+          "worst_p95_latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worst P95 Latency Ms"
+          }
+        },
+        "required": [
+          "days",
+          "peak_groups",
+          "messages",
+          "commands",
+          "joins",
+          "leaves",
+          "errors",
+          "captcha_issued",
+          "captcha_solved",
+          "peak_active_users",
+          "worst_p95_latency_ms",
+          "llm_tokens",
+          "llm_cost_usd"
+        ],
+        "title": "PlatformSummary",
+        "type": "object"
+      },
+      "ReachBody": {
+        "description": "Where the bot is right now \u2014 no window, because this is the present.",
+        "properties": {
+          "admins": {
+            "title": "Admins",
+            "type": "integer"
+          },
+          "groups": {
+            "description": "groups the bot is currently in",
+            "title": "Groups",
+            "type": "integer"
+          },
+          "groups_left": {
+            "description": "groups it was removed from, kept for their history",
+            "title": "Groups Left",
+            "type": "integer"
+          },
+          "members": {
+            "description": "current memberships, summed \u2014 a person in three groups is three",
+            "title": "Members",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "groups",
+          "groups_left",
+          "members",
+          "admins"
+        ],
+        "title": "ReachBody",
+        "type": "object"
+      },
+      "Readiness": {
+        "description": "Each dependency, separately. One flag for \"should I get traffic\" would\nmake the two failures indistinguishable in the one place they need to be\ntold apart.",
+        "properties": {
+          "postgres": {
+            "title": "Postgres",
+            "type": "boolean"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "valkey": {
+            "title": "Valkey",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ready",
+          "postgres",
+          "valkey"
+        ],
+        "title": "Readiness",
+        "type": "object"
+      },
+      "RevokeResponse": {
+        "description": "Always `true`, including for a token this deployment never issued\n(RFC 7009): the caller's goal is that it cannot be used, and it cannot.",
+        "properties": {
+          "revoked": {
+            "title": "Revoked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "revoked"
+        ],
+        "title": "RevokeResponse",
+        "type": "object"
+      },
+      "ServiceBanner": {
+        "description": "v1's `/` \u2014 what `COOKIEBOT-WebHub` polls to decide the bot is alive.",
+        "properties": {
+          "number_chats": {
+            "description": "the real count; v1 returned a module constant nothing updated",
+            "title": "Number Chats",
+            "type": "integer"
+          },
+          "status": {
+            "examples": [
+              "Bot is online"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "number_chats"
+        ],
+        "title": "ServiceBanner",
+        "type": "object"
+      },
+      "SummaryResponse": {
+        "description": "`cb_core.analytics.summarise`, plus the window.",
+        "properties": {
+          "captcha_issued": {
+            "title": "Captcha Issued",
+            "type": "integer"
+          },
+          "captcha_solve_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null when nobody was challenged \u2014 not the same fact as 0.0",
+            "title": "Captcha Solve Rate"
+          },
+          "captcha_solved": {
+            "title": "Captcha Solved",
+            "type": "integer"
+          },
+          "commands": {
+            "title": "Commands",
+            "type": "integer"
+          },
+          "days": {
+            "description": "how many days had a row, not the window's length",
+            "title": "Days",
+            "type": "integer"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "group_id": {
+            "title": "Group Id",
+            "type": "integer"
+          },
+          "joins": {
+            "title": "Joins",
+            "type": "integer"
+          },
+          "leaves": {
+            "title": "Leaves",
+            "type": "integer"
+          },
+          "llm_cost_usd": {
+            "title": "Llm Cost Usd",
+            "type": "number"
+          },
+          "llm_tokens": {
+            "title": "Llm Tokens",
+            "type": "integer"
+          },
+          "messages": {
+            "title": "Messages",
+            "type": "integer"
+          },
+          "peak_active_users": {
+            "title": "Peak Active Users",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "worst_p95_latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the worst day's p95, never an average of percentiles",
+            "title": "Worst P95 Latency Ms"
+          }
+        },
+        "required": [
+          "group_id",
+          "start",
+          "end",
+          "days",
+          "messages",
+          "commands",
+          "joins",
+          "leaves",
+          "errors",
+          "captcha_issued",
+          "captcha_solved",
+          "peak_active_users",
+          "llm_tokens",
+          "llm_cost_usd"
+        ],
+        "title": "SummaryResponse",
+        "type": "object"
+      },
+      "TenantResponse": {
+        "description": "What this deployment is configured as. Read-only on purpose \u2014 see the\nnote on the endpoint.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "default_locale": {
+            "title": "Default Locale",
+            "type": "string"
+          },
+          "disabled_commands": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disabled Commands",
+            "type": "array"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "handler_pack": {
+            "title": "Handler Pack",
+            "type": "string"
+          },
+          "monthly_llm_budget_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Llm Budget Usd"
+          },
+          "owner_ids": {
+            "description": "who else can reach this router",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Owner Ids",
+            "type": "array"
+          },
+          "storage_prefix": {
+            "title": "Storage Prefix",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "display_name",
+          "handler_pack",
+          "default_locale",
+          "disabled_commands",
+          "storage_prefix",
+          "monthly_llm_budget_usd",
+          "active",
+          "owner_ids"
+        ],
+        "title": "TenantResponse",
+        "type": "object"
+      },
+      "TextBody": {
+        "additionalProperties": false,
+        "description": "The rules, or a welcome message. Length is Telegram's message limit \u2014\ntext this endpoint accepts that the bot could never send would be a setting\nthat saves and then fails silently in the chat.",
+        "properties": {
+          "body": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "TextBody",
+        "type": "object"
+      },
+      "TokenError": {
+        "description": "RFC 6749 \u00a75.2. `invalid_grant` is one answer for a bad signature, a stale\npayload and a payload with no user in it, on purpose.",
+        "properties": {
+          "error": {
+            "examples": [
+              "invalid_grant"
+            ],
+            "title": "Error",
+            "type": "string"
+          },
+          "error_description": {
+            "title": "Error Description",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "error_description"
+        ],
+        "title": "TokenError",
+        "type": "object"
+      },
+      "TokenResponse": {
+        "description": "RFC 6749 \u00a75.1. The access token is the same RS256 JWT `/login` mints,\nverifiable against `/.well-known/jwks.json`.",
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "expires_in": {
+            "description": "access-token life in seconds",
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "refresh_token": {
+            "description": "rotates on every use; presenting a spent one revokes the whole family",
+            "title": "Refresh Token",
+            "type": "string"
+          },
+          "scope": {
+            "description": "space-separated",
+            "examples": [
+              "groups:read groups:write audit:read"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "token_type": {
+            "default": "Bearer",
+            "examples": [
+              "Bearer"
+            ],
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "expires_in",
+          "refresh_token",
+          "scope"
+        ],
+        "title": "TokenResponse",
+        "type": "object"
+      },
+      "TopGroupsResponse": {
+        "description": "The busiest groups. A leaderboard, not a directory: a group with no\nactivity in the window is absent here and present in `/admin/groups`.",
+        "properties": {
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/GroupActivityRow"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "groups"
+        ],
+        "title": "TopGroupsResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "summary": "The HTTP surface behind the Telegram Mini App and the web console.",
+    "title": "Cookiebot API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/": {
+      "get": {
+        "description": "v1 `Server.py:55-57`. `number_chats` was the module constant\n`NUMBER_CHATS = 1275` (`:17`) that nothing ever updated; here it is the\nreal count.",
+        "operationId": "home__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceBanner"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Is the bot online, and in how many groups?",
+        "tags": [
+          "webhub"
+        ]
+      }
+    },
+    "/.well-known/jwks.json": {
+      "get": {
+        "description": "v1 `Server.py:78-84`. v1 published the key of whichever gunicorn worker\nanswered; this publishes every key the deployment might have signed with,\nso a rotation can overlap.",
+        "operationId": "jwks__well_known_jwks_json_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JwksDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The signing keys every token here verifies against",
+        "tags": [
+          "webhub"
+        ]
+      }
+    },
+    "/.well-known/openid-configuration": {
+      "get": {
+        "description": "v1 `Server.py:86-95`, plus what `x_miniapp_auth` added.\n\nThe five v1 keys are unchanged and in place; the rest describe the token\nendpoint, its two Telegram grants and the revocation endpoint, which is\nwhat a Mini App or an OAuth client library discovers this deployment with.\nAdditive by construction: a consumer written against v1 reads the same five\nvalues it always did.",
+        "operationId": "openid_configuration__well_known_openid_configuration_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenIDConfiguration"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Discovery \u2014 where the token endpoint is and which grants it takes",
+        "tags": [
+          "webhub"
+        ]
+      }
+    },
+    "/admin/analytics/commands": {
+      "get": {
+        "description": "Which commands the deployment uses, busiest first, with how many groups\neach one reaches \u2014 a command with 10,000 invocations in one group and one\nused everywhere are different facts, and a decision to retire a command\nshould not confuse them.",
+        "operationId": "commands_admin_analytics_commands_get",
+        "parameters": [
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "End"
+            }
+          },
+          {
+            "description": "how many commands to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "how many commands to return",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformCommandsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the window is reversed or longer than a year"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not an owner of this deployment \u2014 or an owner whose token lacks the scope"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Which commands the whole deployment uses",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/analytics/daily": {
+      "get": {
+        "description": "One row per day, summed across every group that was active that day.\n\n`active_users` is summed per group, so one person in three groups counts\nthree times \u2014 deduplicating across groups would need the raw events rather\nthan the rollups, which is a much more expensive question.",
+        "operationId": "daily_admin_analytics_daily_get",
+        "parameters": [
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformDailyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the window is reversed or longer than a year"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not an owner of this deployment \u2014 or an owner whose token lacks the scope"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "One row per day, summed across every group",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/analytics/groups": {
+      "get": {
+        "description": "The busiest groups in the window, most messages first.\n\nA leaderboard, not a directory: a group with no activity in the window is\nabsent here and present in `/admin/groups`.",
+        "operationId": "top_groups_admin_analytics_groups_get",
+        "parameters": [
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "End"
+            }
+          },
+          {
+            "description": "how many groups to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "how many groups to return",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopGroupsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the window is reversed or longer than a year"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not an owner of this deployment \u2014 or an owner whose token lacks the scope"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The busiest groups in the window",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/analytics/llm": {
+      "get": {
+        "description": "Fleet-wide LLM spend, per provider and model, most expensive first.",
+        "operationId": "llm_admin_analytics_llm_get",
+        "parameters": [
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformLlmResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the window is reversed or longer than a year"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not an owner of this deployment \u2014 or an owner whose token lacks the scope"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What every group's AI features cost together",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/groups": {
+      "get": {
+        "description": "The directory, ordered by `group_id` and keyset-paginated (D11).\n\nThe cursor is the id itself, which is stable and unique, so a group added\nbetween two pages cannot make a row repeat or vanish the way an OFFSET\nwould.",
+        "operationId": "directory_admin_groups_get",
+        "parameters": [
+          {
+            "description": "groups per page",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "groups per page",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "last group_id of the previous page",
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "last group_id of the previous page",
+              "title": "After"
+            }
+          },
+          {
+            "description": "title or @username",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "title or @username",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "also list groups the bot was removed from",
+            "in": "query",
+            "name": "include_left",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "also list groups the bot was removed from",
+              "title": "Include Left",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectoryPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not an owner of this deployment \u2014 or an owner whose token lacks the scope"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Every group the bot knows, keyset-paginated",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/overview": {
+      "get": {
+        "description": "Reach, the window's totals and the LLM budget, in one request.",
+        "operationId": "overview_admin_overview_get",
+        "parameters": [
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the window is reversed or longer than a year"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not an owner of this deployment \u2014 or an owner whose token lacks the scope"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The whole deployment in one object: reach, the window's totals, the budget",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/tenant": {
+      "get": {
+        "description": "The tenant's own row, read-only.\n\nRead-only because every field here changes how the *bot* behaves \u2014 which\ncommands exist, which model answers, where media is written \u2014 and a Mini\nApp form that could flip `active` or empty `owner_ids` would be one\nmis-tap from an outage nobody could undo through the same API. Editing a\ntenant is a deliberate database change, and it stays one.\n\n`bot_tokens` is deliberately absent: an owner who needs it has it already,\nand an endpoint that returns bot tokens is one stolen owner token away\nfrom being the whole deployment.",
+        "operationId": "tenant_admin_tenant_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not an owner of this deployment \u2014 or an owner whose token lacks the scope"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "How this deployment is configured",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/groups/{group_id}/analytics/commands": {
+      "get": {
+        "description": "Which commands this group actually uses, busiest first, totalled across\nthe window rather than broken down per day.",
+        "operationId": "commands_groups__group_id__analytics_commands_get",
+        "parameters": [
+          {
+            "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+              "title": "Group Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "End"
+            }
+          },
+          {
+            "description": "how many commands to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "how many commands to return",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the window is reversed or longer than a year"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "an admin whose token lacks the scope; ask /oauth2/token for a better one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no such group \u2014 or the caller does not administer it, which answers alike"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Which commands the group actually uses, busiest first",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/groups/{group_id}/analytics/daily": {
+      "get": {
+        "description": "One row per day the group was active. Days with no activity have no row\n\u2014 the rollup writes only what it saw, and inventing zeros here would be\nindistinguishable from a real quiet day.",
+        "operationId": "daily_groups__group_id__analytics_daily_get",
+        "parameters": [
+          {
+            "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+              "title": "Group Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the window is reversed or longer than a year"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "an admin whose token lacks the scope; ask /oauth2/token for a better one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no such group \u2014 or the caller does not administer it, which answers alike"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "One row per day the group was active",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/groups/{group_id}/analytics/llm": {
+      "get": {
+        "description": "What this group's AI features cost, per provider and model.\n\nThe same numbers `Tenant.monthly_llm_budget_usd` is spent against, so an\nadmin can see why the conversational AI started refusing before asking\nanyone.",
+        "operationId": "llm_groups__group_id__analytics_llm_get",
+        "parameters": [
+          {
+            "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+              "title": "Group Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the window is reversed or longer than a year"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "an admin whose token lacks the scope; ask /oauth2/token for a better one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no such group \u2014 or the caller does not administer it, which answers alike"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What the group's AI features cost, per provider and model",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/groups/{group_id}/analytics/summary": {
+      "get": {
+        "description": "The window in one object \u2014 totals, the peak day's active users, the\nworst day's p95, and the captcha solve rate (`null` when nobody was\nchallenged, which is not the same fact as nobody solving it).",
+        "operationId": "summary_groups__group_id__analytics_summary_get",
+        "parameters": [
+          {
+            "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+              "title": "Group Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "inclusive, UTC",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "inclusive, UTC",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the window is reversed or longer than a year"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "an admin whose token lacks the scope; ask /oauth2/token for a better one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no such group \u2014 or the caller does not administer it, which answers alike"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The whole window in one object",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/groups/{group_id}/audit": {
+      "get": {
+        "description": "The group's trail, newest first, keyset-paginated (D11 \u2014 no OFFSET, no\nunbounded list).\n\n`next_before` is the cursor for the following page and is `null` on the last\none. Filtering by `action` or `actor_user_id` narrows without changing the\ncursor's meaning.",
+        "operationId": "read_audit_groups__group_id__audit_get",
+        "parameters": [
+          {
+            "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+              "title": "Group Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "events per page",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "events per page",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "last id of the previous page",
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "last id of the previous page",
+              "title": "Before"
+            }
+          },
+          {
+            "description": "only this action, e.g. `config.updated`",
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only this action, e.g. `config.updated`",
+              "title": "Action"
+            }
+          },
+          {
+            "description": "only changes this Telegram user made",
+            "in": "query",
+            "name": "actor_user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only changes this Telegram user made",
+              "title": "Actor User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "an admin whose token lacks the scope; ask /oauth2/token for a better one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no such group \u2014 or the caller does not administer it, which answers alike"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read the group's audit trail, newest first",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/groups/{group_id}/config": {
+      "get": {
+        "description": "The group's effective settings \u2014 stored values over tenant defaults over\nv1's defaults, which is the same resolution the bot itself reads.",
+        "operationId": "read_config_groups__group_id__config_get",
+        "parameters": [
+          {
+            "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+              "title": "Group Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "an admin whose token lacks the scope; ask /oauth2/token for a better one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no such group \u2014 or the caller does not administer it, which answers alike"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read a group's settings",
+        "tags": [
+          "groups"
+        ]
+      },
+      "patch": {
+        "description": "Change some settings. Absent fields are left alone \u2014 this is a PATCH,\nnot a PUT, because a Mini App form that round-trips every column would\noverwrite a change another admin made while it was open.\n\nAn empty patch is a 400 rather than a no-op success: a client that sent\nnothing meant to send something.",
+        "operationId": "update_config_groups__group_id__config_patch",
+        "parameters": [
+          {
+            "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+              "title": "Group Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigUpdateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the patch carried no settings"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "an admin whose token lacks the scope; ask /oauth2/token for a better one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no such group \u2014 or the caller does not administer it, which answers alike"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Change some of a group's settings",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/groups/{group_id}/rules": {
+      "get": {
+        "description": "The text `/rules` prints in the chat, with who last set it and when.\n\nA group that never set any reads back `\"body\": null` rather than 404 \u2014 not\nhaving rules is a normal state of a group, not a missing resource.",
+        "operationId": "read_rules_groups__group_id__rules_get",
+        "parameters": [
+          {
+            "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+              "title": "Group Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupTextResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "an admin whose token lacks the scope; ask /oauth2/token for a better one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no such group \u2014 or the caller does not administer it, which answers alike"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read the group's rules",
+        "tags": [
+          "groups"
+        ]
+      },
+      "put": {
+        "description": "What `/newrules` sets, set from the Mini App instead. Same table, same\nupsert (`cb_core.group_texts`), so `/rules` in the chat shows this text\nimmediately.",
+        "operationId": "write_rules_groups__group_id__rules_put",
+        "parameters": [
+          {
+            "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+              "title": "Group Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupTextResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "an admin whose token lacks the scope; ask /oauth2/token for a better one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no such group \u2014 or the caller does not administer it, which answers alike"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set the group's rules \u2014 what /newrules does, over HTTP",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/groups/{group_id}/welcome": {
+      "get": {
+        "description": "The message new members are greeted with, exactly as stored.\n\nThe `<user>` placeholders are substituted when the bot sends it, not here,\nso what comes back is what `/newwelcome` was given. `null` when the group\nnever set one.",
+        "operationId": "read_welcome_groups__group_id__welcome_get",
+        "parameters": [
+          {
+            "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+              "title": "Group Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupTextResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "an admin whose token lacks the scope; ask /oauth2/token for a better one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no such group \u2014 or the caller does not administer it, which answers alike"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read the group's welcome message",
+        "tags": [
+          "groups"
+        ]
+      },
+      "put": {
+        "description": "`<user>` and its eight sibling spellings are substituted when the message\nis sent, not here \u2014 the body is stored exactly as given, which is what\n`/newwelcome` does.",
+        "operationId": "write_welcome_groups__group_id__welcome_put",
+        "parameters": [
+          {
+            "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "description": "the Telegram chat id \u2014 negative, as Telegram writes it",
+              "title": "Group Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupTextResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "an admin whose token lacks the scope; ask /oauth2/token for a better one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no such group \u2014 or the caller does not administer it, which answers alike"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set the group's welcome message \u2014 what /newwelcome does, over HTTP",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/healthz": {
+      "get": {
+        "description": "Process is up. No dependency checks \u2014 a DB blip must not trigger restarts.",
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Liveness"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Is the process up?",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/login": {
+      "post": {
+        "description": "Exchange a Telegram login-widget payload for a JWT.\n\nv1 `Server.py:59-76`. The status codes and the two error bodies are v1's,\nbecause the client branches on them.",
+        "operationId": "login_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginToken"
+                }
+              }
+            },
+            "description": "v1's body, key for key"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginError"
+                }
+              }
+            },
+            "description": "an empty payload \u2014 v1's `Missing data`"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginError"
+                }
+              }
+            },
+            "description": "the signature did not verify, or the payload is stale where `CB_WEBHUB_AUTH_MAX_AGE_SECONDS` is set \u2014 one answer for both, so a forgery cannot learn which of the two it got closest to"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Exchange a Telegram login-widget payload for a JWT (v1's endpoint)",
+        "tags": [
+          "webhub"
+        ]
+      }
+    },
+    "/me": {
+      "get": {
+        "description": "Who the token says you are, what it lets you do, and which groups you\nadminister.\n\nThe Mini App's first call: it has `initData` telling it who the user is,\nbut not which of that user's groups this deployment knows about, nor\nwhether they run the whole thing. The list comes from `group_admins`,\nwhich the gateway maintains \u2014 so a promotion\nmade a minute ago appears once the bot has seen an admin-gated command in\nthat group, and not before (`cb_api.security`'s note on why this service\nnever calls Telegram to refresh it).",
+        "operationId": "me_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The caller, their scopes, and the groups they administer",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/oauth2/revoke": {
+      "post": {
+        "description": "RFC 7009. Revoking an unknown token is a success: the caller's goal is\nthat the token cannot be used, and it cannot.",
+        "operationId": "revoke_oauth2_revoke_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "token": {
+                    "description": "an access or refresh token; unknown values succeed",
+                    "title": "Token",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token"
+                ],
+                "title": "RevokeRequest",
+                "type": "object"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "properties": {
+                  "token": {
+                    "description": "an access or refresh token; unknown values succeed",
+                    "title": "Token",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token"
+                ],
+                "title": "RevokeRequest",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Revoke a refresh token (RFC 7009)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/oauth2/token": {
+      "post": {
+        "description": "Exchange a Telegram proof \u2014 or a refresh token \u2014 for an access token.",
+        "operationId": "token_oauth2_token_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "The union of the three grants' bodies. Which fields are required depends\non `grant_type`, which is why they are all optional here and checked in the\nhandler \u2014 an OpenAPI schema cannot express \"this one, then that one\"\nwithout `oneOf` branches no generated client would read well.",
+                "properties": {
+                  "auth_data": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": true,
+                        "type": "object"
+                      },
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "the Telegram login widget's payload, as an object or its JSON string. Required for the login grant.",
+                    "title": "Auth Data"
+                  },
+                  "grant_type": {
+                    "description": "urn:cookiebot:params:oauth:grant-type:telegram-miniapp | urn:cookiebot:params:oauth:grant-type:telegram-login | refresh_token",
+                    "title": "Grant Type",
+                    "type": "string"
+                  },
+                  "init_data": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "`window.Telegram.WebApp.initData`, verbatim \u2014 reordering or re-encoding it breaks the signature. Required for the miniapp grant.",
+                    "title": "Init Data"
+                  },
+                  "refresh_token": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "a refresh token this endpoint issued. Required for `refresh_token`.",
+                    "title": "Refresh Token"
+                  }
+                },
+                "required": [
+                  "grant_type"
+                ],
+                "title": "TokenRequest",
+                "type": "object"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "description": "The union of the three grants' bodies. Which fields are required depends\non `grant_type`, which is why they are all optional here and checked in the\nhandler \u2014 an OpenAPI schema cannot express \"this one, then that one\"\nwithout `oneOf` branches no generated client would read well.",
+                "properties": {
+                  "auth_data": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": true,
+                        "type": "object"
+                      },
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "the Telegram login widget's payload, as an object or its JSON string. Required for the login grant.",
+                    "title": "Auth Data"
+                  },
+                  "grant_type": {
+                    "description": "urn:cookiebot:params:oauth:grant-type:telegram-miniapp | urn:cookiebot:params:oauth:grant-type:telegram-login | refresh_token",
+                    "title": "Grant Type",
+                    "type": "string"
+                  },
+                  "init_data": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "`window.Telegram.WebApp.initData`, verbatim \u2014 reordering or re-encoding it breaks the signature. Required for the miniapp grant.",
+                    "title": "Init Data"
+                  },
+                  "refresh_token": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "a refresh token this endpoint issued. Required for `refresh_token`.",
+                    "title": "Refresh Token"
+                  }
+                },
+                "required": [
+                  "grant_type"
+                ],
+                "title": "TokenRequest",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "a fresh access token and its refresh token"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenError"
+                }
+              }
+            },
+            "description": "`unsupported_grant_type`, `invalid_request` or `invalid_grant`"
+          }
+        },
+        "summary": "Exchange a Telegram proof \u2014 or a refresh token \u2014 for an access token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/readyz": {
+      "get": {
+        "description": "Dependencies reachable. Fails -> pulled from rotation, not restarted.",
+        "operationId": "readyz_readyz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            },
+            "description": "pulled from rotation, not restarted"
+          }
+        },
+        "summary": "Are this process's dependencies reachable?",
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "description": "Liveness and readiness, split on purpose: restart on `/healthz`, pull from the load balancer on `/readyz`. The only two endpoints that take no token.",
+      "name": "health"
+    },
+    {
+      "description": "v1's own surface, unchanged: the web console's `/login`, the service banner, and the two discovery documents every token here is verified against. `/login`'s token carries no scopes and is read-only.",
+      "name": "webhub"
+    },
+    {
+      "description": "The OAuth2 token endpoint. A Mini App posts Telegram's `initData`, the web console posts the login widget's payload, both refresh. Discover it from `/.well-known/openid-configuration`.",
+      "name": "auth"
+    },
+    {
+      "description": "Everything `/config` does in a Telegram chat: settings, rules, the welcome message, and the audit trail. Every path carries the group, and only its admins (and the tenant's owners) get an answer.",
+      "name": "groups"
+    },
+    {
+      "description": "Per-group rollups, keyset-paginated.",
+      "name": "analytics"
+    },
+    {
+      "description": "The deployment's own numbers, for whoever runs it: reach, fleet-wide rollups, the group directory and the LLM budget. Owners only \u2014 the `admin:read` scope is granted to a session only when its subject is one, so an ordinary admin's token cannot reach these at all.",
+      "name": "admin"
+    }
+  ]
+}

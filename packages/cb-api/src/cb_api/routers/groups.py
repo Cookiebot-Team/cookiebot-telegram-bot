@@ -36,10 +36,17 @@ from datetime import datetime
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from cb_api.security import Caller, current_caller, group_admin_caller
+from cb_api.refusals import UNAUTHORIZED, ErrorBody, group_errors
+from cb_api.security import (
+    GROUP_ID,
+    Caller,
+    current_caller,
+    group_admin_caller,
+    is_bot_admin,
+)
 from cb_core import audit, db, group_config, group_texts, locales
 from cb_core.logging import get_logger
 
@@ -68,29 +75,6 @@ SELECT g.group_id, g.title, g.username, g.chat_type, ga.role, ga.anonymous
 _ACCEPTED_LANGUAGES = frozenset(
     {"en", "eng", "english", "pt", "pt-br", "portuguese", "es", "spanish"}
 )
-
-
-class ErrorBody(BaseModel):
-    """FastAPI's error envelope, named so the schema can point at it."""
-
-    detail: str
-
-
-#: The refusals every group-scoped endpoint here can answer with. Documented on
-#: each route rather than assumed: a client that cannot tell 403 from 404 will
-#: retry the wrong one, and the difference between them is the whole reason
-#: `security.group_admin_caller` orders its checks the way it does.
-_GROUP_ERRORS: dict[int | str, dict[str, Any]] = {
-    401: {"model": ErrorBody, "description": "no bearer token, or one that did not verify"},
-    403: {
-        "model": ErrorBody,
-        "description": "an admin whose token lacks the scope; ask /oauth2/token for a better one",
-    },
-    404: {
-        "model": ErrorBody,
-        "description": "no such group — or the caller does not administer it, which answers alike",
-    },
-}
 
 
 class ConfigPatch(BaseModel):
@@ -172,11 +156,16 @@ class GroupConfigValues(BaseModel):
 
 
 class ConfigResponse(BaseModel):
+    """A group's effective settings: stored values over the tenant's defaults
+    over v1's, which is the same resolution the bot itself reads."""
+
     group_id: int
     config: GroupConfigValues
 
 
 class ConfigUpdateResponse(ConfigResponse):
+    """The settings after the patch, and which of them actually moved."""
+
     changed: list[str] = Field(
         description="the fields whose value actually moved — a patch that asks for "
         "the value a setting already has changes nothing and audits nothing"
@@ -194,6 +183,8 @@ class GroupTextResponse(BaseModel):
 
 
 class AdministeredGroup(BaseModel):
+    """One group the caller administers, as `group_admins` records it."""
+
     group_id: int
     title: str | None
     username: str | None
@@ -203,13 +194,22 @@ class AdministeredGroup(BaseModel):
 
 
 class MeResponse(BaseModel):
+    """Who the token says you are, what it lets you do, and where."""
+
     user_id: int
     scopes: list[str]
     audience: str | None = Field(default=None, description="the token's `aud`, if it carries one")
+    is_bot_admin: bool = Field(
+        default=False,
+        description="whether this caller runs the deployment — the Mini App draws its "
+        "`/admin` screens from this rather than from a 403 it had to provoke",
+    )
     groups: list[AdministeredGroup]
 
 
 class AuditEvent(BaseModel):
+    """One recorded change: what, who, from where, and both values."""
+
     id: str = Field(description="UUIDv7 — ordering by it is ordering by time")
     ts: datetime
     action: str = Field(description="`config.updated`, `rules.updated`, `welcome.updated`, …")
@@ -225,6 +225,8 @@ class AuditEvent(BaseModel):
 
 
 class AuditPage(BaseModel):
+    """A page of the trail, newest first, with the cursor for the next one."""
+
     group_id: int
     events: list[AuditEvent]
     next_before: str | None = Field(
@@ -259,19 +261,24 @@ def _config_dict(config: group_config.GroupConfig) -> dict[str, Any]:
 # ------------------------------------------------------------------------ me
 
 
+#: Every group-scoped route here answers with the same three refusals.
+_GROUP_ERRORS = group_errors()
+
+
 @router.get(
     "/me",
     summary="The caller, their scopes, and the groups they administer",
     response_model=MeResponse,
-    responses={401: _GROUP_ERRORS[401]},
+    responses=UNAUTHORIZED,
 )
 async def me(caller: Annotated[Caller, Depends(current_caller)]) -> dict[str, Any]:
     """Who the token says you are, what it lets you do, and which groups you
     administer.
 
     The Mini App's first call: it has `initData` telling it who the user is,
-    but not which of that user's groups this deployment knows about. The list
-    comes from `group_admins`, which the gateway maintains — so a promotion
+    but not which of that user's groups this deployment knows about, nor
+    whether they run the whole thing. The list comes from `group_admins`,
+    which the gateway maintains — so a promotion
     made a minute ago appears once the bot has seen an admin-gated command in
     that group, and not before (`cb_api.security`'s note on why this service
     never calls Telegram to refresh it).
@@ -281,6 +288,11 @@ async def me(caller: Annotated[Caller, Depends(current_caller)]) -> dict[str, An
         "user_id": caller.user_id,
         "scopes": sorted(caller.scopes),
         "audience": caller.audience,
+        # Read from the tenant, not inferred from `admin:read` being in the
+        # token: ownership can be revoked while an issued token still carries
+        # the scope (see `oauth._scopes_for`), and a Mini App drawing an admin
+        # tab that every request then refuses is worse than not drawing it.
+        "is_bot_admin": await is_bot_admin(caller.user_id),
         "groups": [
             {
                 "group_id": row["group_id"],
@@ -305,7 +317,7 @@ async def me(caller: Annotated[Caller, Depends(current_caller)]) -> dict[str, An
     responses=_GROUP_ERRORS,
 )
 async def read_config(
-    group_id: Annotated[int, Path()],
+    group_id: Annotated[int, GROUP_ID],
     _caller: Annotated[Caller, Depends(group_admin_caller("groups:read"))],
 ) -> dict[str, Any]:
     """The group's effective settings — stored values over tenant defaults over
@@ -318,13 +330,12 @@ async def read_config(
     "/groups/{group_id}/config",
     summary="Change some of a group's settings",
     response_model=ConfigUpdateResponse,
-    responses={
-        400: {"model": ErrorBody, "description": "the patch carried no settings"},
-        **_GROUP_ERRORS,
-    },
+    responses=group_errors(
+        {400: {"model": ErrorBody, "description": "the patch carried no settings"}}
+    ),
 )
 async def update_config(
-    group_id: Annotated[int, Path()],
+    group_id: Annotated[int, GROUP_ID],
     patch: ConfigPatch,
     caller: Annotated[Caller, Depends(group_admin_caller("groups:write"))],
 ) -> dict[str, Any]:
@@ -370,9 +381,14 @@ async def update_config(
     responses=_GROUP_ERRORS,
 )
 async def read_rules(
-    group_id: Annotated[int, Path()],
+    group_id: Annotated[int, GROUP_ID],
     _caller: Annotated[Caller, Depends(group_admin_caller("groups:read"))],
 ) -> dict[str, Any]:
+    """The text `/rules` prints in the chat, with who last set it and when.
+
+    A group that never set any reads back `"body": null` rather than 404 — not
+    having rules is a normal state of a group, not a missing resource.
+    """
     return _text_response(group_id, await group_texts.get_rules(group_id))
 
 
@@ -383,7 +399,7 @@ async def read_rules(
     responses=_GROUP_ERRORS,
 )
 async def write_rules(
-    group_id: Annotated[int, Path()],
+    group_id: Annotated[int, GROUP_ID],
     payload: TextBody,
     caller: Annotated[Caller, Depends(group_admin_caller("groups:write"))],
 ) -> dict[str, Any]:
@@ -411,9 +427,15 @@ async def write_rules(
     responses=_GROUP_ERRORS,
 )
 async def read_welcome(
-    group_id: Annotated[int, Path()],
+    group_id: Annotated[int, GROUP_ID],
     _caller: Annotated[Caller, Depends(group_admin_caller("groups:read"))],
 ) -> dict[str, Any]:
+    """The message new members are greeted with, exactly as stored.
+
+    The `<user>` placeholders are substituted when the bot sends it, not here,
+    so what comes back is what `/newwelcome` was given. `null` when the group
+    never set one.
+    """
     return _text_response(group_id, await group_texts.get_welcome(group_id))
 
 
@@ -424,7 +446,7 @@ async def read_welcome(
     responses=_GROUP_ERRORS,
 )
 async def write_welcome(
-    group_id: Annotated[int, Path()],
+    group_id: Annotated[int, GROUP_ID],
     payload: TextBody,
     caller: Annotated[Caller, Depends(group_admin_caller("groups:write"))],
 ) -> dict[str, Any]:
@@ -467,12 +489,17 @@ def _text_response(group_id: int, record: group_texts.GroupText | None) -> dict[
     responses=_GROUP_ERRORS,
 )
 async def read_audit(
-    group_id: Annotated[int, Path()],
+    group_id: Annotated[int, GROUP_ID],
     _caller: Annotated[Caller, Depends(group_admin_caller("audit:read"))],
-    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    limit: Annotated[int, Query(ge=1, le=100, description="events per page")] = 50,
     before: Annotated[UUID | None, Query(description="last id of the previous page")] = None,
-    action: Annotated[str | None, Query(max_length=64)] = None,
-    actor_user_id: Annotated[int | None, Query()] = None,
+    action: Annotated[
+        str | None,
+        Query(max_length=64, description="only this action, e.g. `config.updated`"),
+    ] = None,
+    actor_user_id: Annotated[
+        int | None, Query(description="only changes this Telegram user made")
+    ] = None,
 ) -> dict[str, Any]:
     """The group's trail, newest first, keyset-paginated (D11 — no OFFSET, no
     unbounded list).

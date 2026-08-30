@@ -138,6 +138,24 @@ Then add `CB_BOT_TOKENS` to `.env` and run `python scripts/cb.py gateway`.
 
 Dashboards land on <http://localhost:3000>.
 
+Testing the HTTP API instead of the bot? One command does the whole thing —
+database, schema, demo data, a running API, three tokens, and a table of what
+every endpoint answered:
+
+```bash
+uv run scripts/qa_setup.py
+```
+
+No Telegram account or bot token needed; it signs its own `initData` with a
+local-only key it writes to `.env`. Then:
+
+```bash
+python scripts/cb.py api-test    # smoke, contract and integration, over the HTTP API
+```
+
+[Testing the API](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/testing-the-api)
+is the step-by-step guide.
+
 ## Documentation
 
 Everything below lives in the documentation site (`docs/site`, Fumadocs) —
@@ -161,7 +179,9 @@ published at **https://cookiebot-team.github.io/cookiebot-telegram-bot**, or run
 | [Progress board](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/progress) | what's ported, which scenarios pass — all measured |
 | [Features](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/features) | one page per feature: what it does, what must not change |
 | [Architecture](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/architecture) | how v2 is built and why |
-| [Mini App API](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/miniapp-api) | the OAuth2 token flow a Telegram Mini App uses, and the admin-gated config and audit endpoints behind it |
+| [Mini App API](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/miniapp-api) | the OAuth2 token flow a Telegram Mini App uses, the config and audit endpoints a group's admins get, and the fleet-wide reads its owners do |
+| [API reference](https://cookiebot-team.github.io/cookiebot-telegram-bot/api-reference/) | every endpoint, generated from `openapi.json`: scopes, parameters, response fields, a copyable request |
+| [Testing the API](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/testing-the-api) | step by step: stand it up, call it, and write the smoke, contract and integration tests |
 | [Development](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/development) | setup, tasks, testing, the compiled hot path |
 | [Sandbox](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/sandbox) | driving the real bot by hand against [telegram-sandbox](https://github.com/Cookiebot-Team/telegram-sandbox), the local Telegram we open-sourced out of this repo |
 | [v1 feature map](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/feature-map) | every v1 feature traced to its source, with the known bugs |

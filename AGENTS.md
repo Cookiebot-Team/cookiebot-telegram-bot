@@ -135,6 +135,7 @@ Bottom to top, widest to narrowest:
 | **Unit** | `packages/*/tests/` | no | pure functions, parsers, cooldown maths, catalog gating, key derivation. Fast, hundreds of them. |
 | **Integration** | `qa/integration/` | Postgres/Citus | repositories and services against a real database, with real users and groups seeded. Also Citus topology assertions. |
 | **Acceptance (BDD)** | `qa/features/` + `qa/test_*.py` | mock Telegram, sometimes DB | one scenario per QA feature file, in Gherkin, driving the real handler stack. |
+| **API** | `qa/api/` | DB; smoke also needs a running service | the HTTP surface: `test_contract.py` validates every response against the committed `openapi.json`, `test_integration.py` drives the real app over ASGI against real rows, `test_smoke.py` checks a running deployment. |
 
 Rules:
 
@@ -148,6 +149,18 @@ Rules:
   they diverge, fix the divergence — do not fork the spec.
 - No mocking of our own code in acceptance tests. Mock the outside world only
   (Telegram, LLM providers, object storage).
+- **An HTTP endpoint is not done until the document describes it.**
+  `python scripts/cb.py api-lint` is part of `check`: a summary, a description,
+  a named response shape, a body model on every declared refusal, a description
+  on every query parameter, a docstring on every response model. Adding an
+  endpoint also means a row in `MINIAPP_PATHS`
+  (`packages/cb-api/tests/test_openapi.py`), a `Case` in
+  `qa/api/test_contract.py`, and `cb.py api-docs`. All three lists are
+  whitelists rather than samples, so a route that skips them fails the suite.
+- Fixtures that build a signed payload (Telegram's `initData`, the login
+  widget's) are written from the published algorithm, never by importing the
+  module under test — a fixture that calls the code it tests can only agree
+  with it.
 
 ## 7. Style
 

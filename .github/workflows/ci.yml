@@ -47,6 +47,14 @@ jobs:
         run: |
           uv run ruff check .
           uv run ruff format --check .
+      # The OpenAPI document is a deliverable: the Mini App's client is generated
+      # from it and `qa/api/test_contract.py` validates against the committed
+      # copy. `lint` fails on an endpoint nobody documented; `--check` fails when
+      # that copy is stale.
+      - name: api documentation
+        run: |
+          uv run python scripts/api_spec.py lint
+          uv run python scripts/api_spec.py generate --check
       - name: types
         # mypy catches what ANN cannot (a body degrading to Any, a hint that
         # disagrees with the return), and hot_types.py catches what neither can:
@@ -76,7 +84,7 @@ jobs:
         env:
           CB_PG_DSN: postgresql://cookiebot:cookiebot@localhost:5432/cookiebot
           CB_TEST_PG_DSN: postgresql://cookiebot:cookiebot@localhost:5432/cookiebot
-        run: uv run pytest -q -m "not integration" qa
+        run: uv run pytest -q -m "not integration and not smoke" qa
 
   cython-gate:
     runs-on: ubuntu-latest
@@ -171,3 +179,12 @@ jobs:
           CB_PG_DSN: postgresql://cookiebot:cookiebot@localhost:5432/cookiebot
           CB_TEST_PG_DSN: postgresql://cookiebot:cookiebot@localhost:5432/cookiebot
         run: uv run pytest -q -m integration qa/integration
+      # The HTTP suite: contract (every response against the committed
+      # openapi.json) and API integration (the real app over ASGI, real rows).
+      # `test_smoke.py` skips here by design — it needs a *running* deployment,
+      # which is `scripts/qa_setup.py`'s job and a developer's machine.
+      - name: api tests (contract + integration over the real app)
+        env:
+          CB_PG_DSN: postgresql://cookiebot:cookiebot@localhost:5432/cookiebot
+          CB_TEST_PG_DSN: postgresql://cookiebot:cookiebot@localhost:5432/cookiebot
+        run: uv run pytest -q qa/api

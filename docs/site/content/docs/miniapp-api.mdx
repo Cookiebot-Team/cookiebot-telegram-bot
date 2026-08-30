@@ -21,6 +21,11 @@ deployment — request bodies, response shapes and the refusals each one can
 answer with. Point a client generator at it rather than typing these types out
 twice. (The Swagger *page* at `/docs` is local-only; the document is not.)
 
+**[The full API reference](https://cookiebot-team.github.io/cookiebot-telegram-bot/api-reference/)**
+is generated from that document: every operation with its scopes, parameters,
+response fields and a copyable request. This page is the narrative; that one is
+the index.
+
 ## 1. Get a token
 
 ```http
@@ -112,6 +117,7 @@ Authorization: Bearer <access_token>
   "user_id": 424243,
   "scopes": ["audit:read", "groups:read", "groups:write"],
   "audience": "cookiebot-miniapp",
+  "is_bot_admin": false,
   "groups": [
     { "group_id": -1001234567890, "title": "Furry Chat", "username": null,
       "chat_type": "supergroup", "role": "creator", "anonymous": false }
@@ -121,6 +127,11 @@ Authorization: Bearer <access_token>
 
 The list comes from what the bot has seen, not from a live call to Telegram: a
 promotion appears once the bot has handled an admin-gated command in that group.
+
+`is_bot_admin` says whether this caller runs the **deployment** rather than a
+group — draw the `/admin` screens from that flag, not from a 403 you had to
+provoke. It is read from the tenant, so it stays honest even if the token in
+your hand still carries `admin:read` from before ownership changed.
 
 ## 3. Read and change a group's settings
 
@@ -202,13 +213,70 @@ Actions today are `config.updated`, `rules.updated` and `welcome.updated`.
 produces a row with no `actor_user_id`: Telegram gives the bot GroupAnonymousBot
 rather than an account, and a guess would be worse than a gap.
 
+## 5. If you run the bot
+
+Everything above is scoped to one group. These seven are scoped to the whole
+deployment, and only its **owners** can reach them — a tenant `owner_id`, or
+`CB_OWNER_ID`, which is what the owner-only Telegram commands already answer to.
+
+| | | |
+|---|---|---|
+| `GET` | `/admin/overview` | reach, the window's totals and the LLM budget, in one request |
+| `GET` | `/admin/analytics/daily` | one row per day, summed across every active group |
+| `GET` | `/admin/analytics/groups` | the busiest groups in the window |
+| `GET` | `/admin/analytics/commands` | every command, and how many groups use each |
+| `GET` | `/admin/analytics/llm` | fleet-wide spend, per provider and model |
+| `GET` | `/admin/groups` | the group directory, keyset-paginated on `group_id` |
+| `GET` | `/admin/tenant` | how this deployment is configured |
+
+All seven take `admin:read`, and all seven take the same `?start=`/`?end=`
+window the per-group analytics take.
+
+```http
+GET /admin/overview
+Authorization: Bearer <access_token>
+```
+
+```json
+{
+  "start": "2026-07-22", "end": "2026-08-20",
+  "tenant_id": "cookiebot", "display_name": "Cookiebot",
+  "reach":  { "groups": 128, "groups_left": 9, "members": 41207, "admins": 361 },
+  "totals": { "days": 30, "peak_groups": 96, "messages": 1840223, "commands": 51204,
+              "captcha_solve_rate": 0.87, "llm_cost_usd": 32.9, "…": "…" },
+  "budget": { "monthly_llm_budget_usd": 50.0, "spent_usd": 32.9, "remaining_usd": 17.1 }
+}
+```
+
+<Callout type="warn">
+**`admin:read` is granted, not requested.** `/oauth2/token` adds it to a session
+only when the subject really is an owner. Asking for it does nothing; a
+non-owner's token cannot carry it, so it cannot reach these endpoints however
+the request is edited. It is also **not re-evaluated on refresh** — an owner
+removed today keeps the scope until their refresh token expires or the session
+is revoked.
+</Callout>
+
+**These refuse with 403, not 404** — the opposite of every group endpoint above,
+and deliberate. A group endpoint hides behind a 404 because whether a chat id
+exists is worth hiding. `/admin/…` is a fixed path in this very document: there
+is nothing to hide, and a 404 would tell an owner holding a stale token exactly
+what it tells an outsider.
+
+Two things are deliberately absent. There is **no write** — every field on
+`/admin/tenant` changes how the bot behaves, and a Mini App form one mis-tap
+from emptying `owner_ids` would be an outage nobody could undo through the same
+API. And there is **no member data**: no message, no member name, no group's
+rules. An owner who wants a group's settings calls `/groups/{id}/config` like
+anybody else.
+
 ## Errors
 
 | Status | Meaning |
 |---|---|
 | **400** | An OAuth error body: `invalid_request`, `invalid_grant`, `unsupported_grant_type` |
 | **401** | No token, or one that does not verify. `WWW-Authenticate: Bearer` |
-| **403** | Your token is missing a scope. The challenge names which |
+| **403** | Your token is missing a scope (the challenge names which) — or, on `/admin/…`, you do not run this deployment |
 | **404** | The group does not exist, **or** you do not administer it — deliberately the same answer |
 | **422** | A value or field name the endpoint will not accept |
 
@@ -221,6 +289,8 @@ rather than an account, and a guess would be worse than a gap.
 | `CB_MINIAPP_INIT_DATA_MAX_AGE_SECONDS` | `86400` | how old `initData` may be — **on**, unlike the widget's window |
 | `CB_MINIAPP_AUDIENCE` | `cookiebot-miniapp` | `aud` on the tokens |
 | `CB_MINIAPP_SCOPES` | `groups:read groups:write audit:read` | what a Mini App session may do |
+| `CB_MINIAPP_ADMIN_SCOPES` | `admin:read` | added **only** for a session whose subject is an owner |
+| `CB_OWNER_ID` | `0` | an owner in addition to the tenant's `owner_ids`; `0` means none |
 | `CB_WEBHUB_ALLOWED_ORIGINS` | — | the Mini App's origin goes here; never `*` |
 
 Refresh tokens live in `refresh_tokens` as SHA-256 hashes — a database dump is

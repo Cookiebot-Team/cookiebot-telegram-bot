@@ -59,7 +59,12 @@ def _settings(**kw: Any) -> Settings:
         "telegram_api_file_base": "",
         "telegram_files_root": "",
     }
-    return Settings(**{**defaults, **kw})
+    # `_env_file=None` for the same reason the fixture above strips `CB_*`, and
+    # for the half it cannot reach: `.env` is a *file* source, so a developer
+    # who has one (CONTRIBUTING says to make one, and `scripts/qa_setup.py`
+    # writes one) gets its `CB_BOT_TOKENS` merged into the dict passed here and
+    # these assertions fail on their machine and nowhere else.
+    return Settings(**{**defaults, **kw}, _env_file=None)
 
 
 class TestPrimaryToken:

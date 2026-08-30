@@ -52,7 +52,10 @@ run identical commands.
 
 ```bash
 python scripts/cb.py --list          # all tasks
+python scripts/cb.py setup           # the whole stack, seeded, with the API answering
 python scripts/cb.py install         # uv sync --all-packages
+python scripts/cb.py api-lint        # fail on a REST endpoint nobody documented
+python scripts/cb.py api-docs        # regenerate the published spec + the reference page
 python scripts/cb.py up              # citus, valkey, otel, prometheus, tempo, grafana
 python scripts/cb.py migrate         # create and distribute the schema
 python scripts/cb.py types           # mypy + the compiled-module type audit
@@ -71,15 +74,30 @@ python scripts/cb.py worker    #        arq + cron          metrics :9103
 
 | Layer | Where | Infrastructure | What belongs there |
 |---|---|---|---|
-| Unit | `packages/*/tests/` | none | pure functions, parsing, cooldown maths, model gating |
+| Unit | `packages/*/tests/` | none | pure functions, parsing, cooldown maths, model gating, HTTP logic with the database faked |
 | Integration | `qa/integration/` | Postgres/Citus | services against real rows, with seeded users and groups |
 | Acceptance | `qa/features/` + `qa/test_*.py` | mock Telegram | one scenario per QA feature, driving the real handler stack |
+| API contract | `qa/api/test_contract.py` | Postgres/Citus | every response validated against the committed `openapi.json` |
+| API integration | `qa/api/test_integration.py` | Postgres/Citus | the real app over ASGI: writes, audit rows, pagination, authorisation |
+| API smoke | `qa/api/test_smoke.py` | a **running** cb-api | a deployment is up and wired correctly — nothing finer |
 
 ```bash
 python scripts/cb.py test              # unit + acceptance, offline
 python scripts/cb.py test-integration  # needs a database
+python scripts/cb.py api-test          # the HTTP suite: smoke, contract, integration
 python scripts/cb.py test-pyramid      # each layer separately, stops at the first failure
 ```
+
+The HTTP layers are new with the Mini App API and have their own guide:
+[Testing the API](/docs/testing-the-api) covers standing a deployment up, the
+fixtures, and the conventions each layer follows. The contract layer validates
+against `docs/site/public/openapi.json` with `jsonschema-rs`, which is why that
+file is committed and why `cb.py check` fails when it is stale.
+
+`setup` is the other door into all of this, and the one to point a tester at:
+`uv run scripts/qa_setup.py` goes from a fresh clone to a running API with data
+in it, three tokens in your hand and a table of what every endpoint answered.
+[Testing the API](/docs/testing-the-api) is its manual.
 
 Integration tests skip cleanly when no database is reachable, so the offline
 suite always runs. They seed data through `qa/integration/factories.py` — a

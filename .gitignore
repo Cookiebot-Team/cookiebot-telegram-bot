@@ -2,8 +2,13 @@ __pycache__/
 *.py[cod]
 *.so
 *.c
+# Cython's `annotate=True` output, next to the module it annotates.
 *.html
 !ops/**/*.html
+# The generated API reference IS committed: it is published with the docs site,
+# `scripts/api_spec.py generate --check` fails when it is stale, and a fresh
+# clone should be able to read the API without building anything.
+!docs/site/public/api-reference/*.html
 .venv/
 uv.lock.bak
 .pytest_cache/
@@ -48,3 +53,7 @@ videos/*/.hyperframes/
 demo.duckdb
 demo.duckdb.wal
 videos/*/.media/
+
+# what `scripts/qa_setup.py` keeps between runs: the background API's pid and
+# log, and the last session's tokens. Tokens, so never committed.
+.qa/

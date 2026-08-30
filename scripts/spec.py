@@ -343,6 +343,16 @@ FEATURES: tuple[Feature, ...] = (
             "scopes, 404 (not 403) for a group you do not administer, PATCH semantics so "
             "two admins do not overwrite each other, and the same cb_core.group_texts "
             "upsert the Telegram handlers use"),
+    Feature("x_admin_api", "platform", "Fleet-wide analytics and the group directory, owners only", "M4", Status.DONE,
+            Layer.API, "", (),
+            "net-new: v1 had no analytics at all, and x_analytics_api deliberately has "
+            "no fleet-wide endpoint. Seven owner-only reads (overview, daily, top groups, "
+            "commands, llm, directory, tenant) behind a new admin:read scope that "
+            "/oauth2/token grants only when the subject is a tenant owner or CB_OWNER_ID. "
+            "403 here rather than the group endpoints' 404: /admin has no chat id to hide. "
+            "The one place in the codebase where a query does not filter on group_id - "
+            "confined to cb_core/platform_analytics.py, aggregate-only, off the reply "
+            "path, and argued in that module's docstring"),
     Feature("x_audit_log", "platform", "Per-group audit trail", "M4", Status.DONE,
             Layer.API, "", (),
             "net-new: v1 kept no trail at all. group_audit_events is distributed on "

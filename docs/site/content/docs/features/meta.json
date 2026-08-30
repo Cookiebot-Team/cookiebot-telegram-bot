@@ -67,6 +67,7 @@
     "platform_locales",
     "platform_tenancy",
     "platform_migration_etl",
+    "x_admin_api",
     "x_analytics_api",
     "x_audit_log",
     "x_group_config_api",
