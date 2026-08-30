@@ -23,6 +23,17 @@ from prometheus_client import (
 )
 from prometheus_client.registry import Collector
 
+# `PROMETHEUS_MULTIPROC_DIR` names a directory the client writes one mmap file
+# per metric into, and it must exist *before the first metric is declared* — a
+# `Gauge(..., multiprocess_mode=...)` below opens its file in its constructor,
+# at import time. `start_metrics_server` also creates it, which is far too late:
+# with the variable set (as `.env.example` sets it) and the directory absent,
+# importing this module raises `FileNotFoundError` and every service dies during
+# startup. A fresh clone that copied `.env.example` hit exactly that.
+_MULTIPROC_DIR = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+if _MULTIPROC_DIR:
+    os.makedirs(_MULTIPROC_DIR, exist_ok=True)
+
 # Latency buckets tuned for a chat bot: the interesting region is 5ms-2s.
 _LATENCY_BUCKETS = (0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
 
@@ -165,6 +176,8 @@ def start_metrics_server(port: int, service: str, version: str, cython_compiled:
     registry: Collector = REGISTRY
     mp_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
     if mp_dir:
+        # Import time already created it (see `_MULTIPROC_DIR`); repeated here
+        # for the case where the variable was set after this module loaded.
         os.makedirs(mp_dir, exist_ok=True)
         multiproc_registry = CollectorRegistry()
         multiprocess.MultiProcessCollector(multiproc_registry)
