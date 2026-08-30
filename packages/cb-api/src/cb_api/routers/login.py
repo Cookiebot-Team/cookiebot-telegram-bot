@@ -27,6 +27,34 @@ log = get_logger("cb.api.login")
 router = APIRouter(tags=["webhub"])
 
 
+class ServiceBanner(BaseModel):
+    """v1's `/` — what `COOKIEBOT-WebHub` polls to decide the bot is alive."""
+
+    status: str = Field(examples=["Bot is online"])
+    number_chats: int = Field(
+        description="the real count; v1 returned a module constant nothing updated"
+    )
+
+
+class LoginToken(BaseModel):
+    """v1's success body, key for key. `COOKIEBOT-WebHub` reads `accessToken`
+    by name (`src/lib/api/axios.ts`), so neither name may move."""
+
+    status: str = Field(examples=["Token generated"])
+    accessToken: str = Field(  # noqa: N815 - v1's key, and the console reads it by name
+        description="RS256, verifiable against `/.well-known/jwks.json`; carries no "
+        "`scope` claim, which `cb_api.security` reads as read-only"
+    )
+
+
+class LoginError(BaseModel):
+    """v1's error body. Not FastAPI's `{"detail": ...}`: the console branches on
+    `error`, and changing the key would be the one break this codebase does not
+    allow."""
+
+    error: str = Field(examples=["Invalid bot token"])
+
+
 class JwksDocument(BaseModel):
     """Every key the deployment might have signed with, so a rotation overlaps."""
 
@@ -62,7 +90,17 @@ def _issuer(request: Request) -> str:
     return configured or str(request.base_url).rstrip("/")
 
 
-@router.get("/")
+# Documented through `responses` rather than `response_model` — the same reason
+# the two `.well-known` documents below are: these are v1's shapes, and a model
+# that filtered an unlisted key back out would turn "additive" into "silently
+# truncated" the day one is added. The document gains the shape; the bytes on
+# the wire are untouched.
+@router.get(
+    "/",
+    summary="Is the bot online, and in how many groups?",
+    responses={200: {"model": ServiceBanner}},
+    response_model=None,
+)
 async def home() -> dict[str, Any]:
     """v1 `Server.py:55-57`. `number_chats` was the module constant
     `NUMBER_CHATS = 1275` (`:17`) that nothing ever updated; here it is the
@@ -70,7 +108,21 @@ async def home() -> dict[str, Any]:
     return {"status": "Bot is online", "number_chats": await ops.count_groups()}
 
 
-@router.post("/login")
+@router.post(
+    "/login",
+    summary="Exchange a Telegram login-widget payload for a JWT (v1's endpoint)",
+    responses={
+        200: {"model": LoginToken, "description": "v1's body, key for key"},
+        400: {"model": LoginError, "description": "an empty payload — v1's `Missing data`"},
+        401: {
+            "model": LoginError,
+            "description": "the signature did not verify, or the payload is stale where "
+            "`CB_WEBHUB_AUTH_MAX_AGE_SECONDS` is set — one answer for both, so a "
+            "forgery cannot learn which of the two it got closest to",
+        },
+    },
+    response_model=None,
+)
 async def login(payload: dict[str, Any], request: Request, response: Response) -> dict[str, Any]:
     """Exchange a Telegram login-widget payload for a JWT.
 
