@@ -43,7 +43,7 @@ from typing import Any
 from fastapi import APIRouter, Request, Response, status
 from pydantic import BaseModel, Field
 
-from cb_api import auth, keys, miniapp, sessions
+from cb_api import auth, keys, miniapp, security, sessions
 from cb_core import metrics
 from cb_core.logging import get_logger
 from cb_core.settings import get_settings
@@ -110,6 +110,9 @@ class RevokeRequest(BaseModel):
 
 
 class RevokeResponse(BaseModel):
+    """Always `true`, including for a token this deployment never issued
+    (RFC 7009): the caller's goal is that it cannot be used, and it cannot."""
+
     revoked: bool
 
 
@@ -273,7 +276,7 @@ async def _telegram_grant(
             description="the Telegram payload did not verify",
         )
 
-    scope = " ".join(settings.miniapp_scopes)
+    scope = await _scopes_for(subject, settings)
     audience = settings.miniapp_audience
     key = await keys.signing_key()
     access = _issue_access(
@@ -293,6 +296,27 @@ async def _telegram_grant(
     metrics.auth_tokens_issued_total.labels(grant=grant).inc()
     log.info("auth.token_issued", grant=grant, user_id=subject)
     return _token_response(access, refresh.token, scope, settings.miniapp_access_token_ttl_seconds)
+
+
+async def _scopes_for(subject: int, settings: Any) -> str:
+    """The session's scopes: the deployment's, plus the admin ones when this
+    subject really runs it.
+
+    Checked here, at the one moment the deployment decides what a session may
+    do, rather than left to the endpoints — a scope the token does not carry is
+    a scope no request can claim, and `/me` can then tell the Mini App which
+    screens to draw without a second round trip.
+
+    A refresh re-reads nothing: it reissues `session.scope` as stored. That is
+    deliberate for the access token's short life and wrong for a long one, so
+    an owner removed today keeps `admin:read` until their refresh token expires
+    — at most `CB_MINIAPP_REFRESH_TOKEN_TTL_SECONDS`. Revoking the session
+    (`/oauth2/revoke`) is what ends it now.
+    """
+    granted = list(settings.miniapp_scopes)
+    if settings.miniapp_admin_scopes and await security.is_bot_admin(subject):
+        granted.extend(scope for scope in settings.miniapp_admin_scopes if scope not in granted)
+    return " ".join(granted)
 
 
 async def _refresh(form: dict[str, Any], request: Request, response: Response) -> dict[str, Any]:

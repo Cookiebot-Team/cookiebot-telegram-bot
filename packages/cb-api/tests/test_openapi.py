@@ -39,7 +39,23 @@ MINIAPP_PATHS = (
     ("get", "/groups/{group_id}/analytics/commands"),
     ("get", "/groups/{group_id}/analytics/llm"),
     ("get", "/groups/{group_id}/analytics/summary"),
+    # x_admin_api: only an owner's session ever calls these, but the Mini App
+    # is one generated client and the document has to describe them all.
+    ("get", "/admin/overview"),
+    ("get", "/admin/analytics/daily"),
+    ("get", "/admin/analytics/groups"),
+    ("get", "/admin/analytics/commands"),
+    ("get", "/admin/analytics/llm"),
+    ("get", "/admin/groups"),
+    ("get", "/admin/tenant"),
 )
+
+#: The fleet-wide half. Split out so the assertion below can say what is true of
+#: these and of nothing else: **403**, never 404. The group endpoints hide
+#: behind a 404 because `{group_id}` is worth hiding; `/admin/...` is a fixed
+#: path in this very document, so a 404 there would only mislead an owner
+#: holding the wrong token.
+ADMIN_PATHS = tuple(entry for entry in MINIAPP_PATHS if entry[1].startswith("/admin"))
 
 #: v1's two, exempt for the reason in this module's docstring.
 UNMODELLED = {("get", "/"), ("post", "/login")}
@@ -89,6 +105,16 @@ def test_the_group_endpoints_declare_their_refusals(
     assert "401" in responses
     if "{group_id}" in path:
         assert "404" in responses
+
+
+@pytest.mark.parametrize(("method", "path"), ADMIN_PATHS)
+def test_the_admin_endpoints_refuse_with_403_not_404(
+    spec: dict[str, Any], method: str, path: str
+) -> None:
+    responses = _operation(spec, method, path)["responses"]
+    assert "401" in responses
+    assert "403" in responses
+    assert "404" not in responses
 
 
 def test_the_token_endpoint_documents_both_content_types() -> None:

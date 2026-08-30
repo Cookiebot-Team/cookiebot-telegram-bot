@@ -375,3 +375,13 @@ def test_me_lists_the_groups_you_administer(client: TestClient) -> None:
 def test_me_is_empty_for_someone_who_administers_nothing(client: TestClient) -> None:
     body = client.get("/me", headers=_auth(STRANGER_ID)).json()
     assert body["groups"] == []
+
+
+def test_me_tells_an_owner_they_are_one(client: TestClient) -> None:
+    """The Mini App draws its `/admin` screens from this flag rather than from
+    a 403 it had to provoke."""
+    assert client.get("/me", headers=_auth(OWNER_ID)).json()["is_bot_admin"] is True
+
+
+def test_me_does_not_promote_a_group_admin(client: TestClient) -> None:
+    assert client.get("/me", headers=_auth(ADMIN_ID)).json()["is_bot_admin"] is False

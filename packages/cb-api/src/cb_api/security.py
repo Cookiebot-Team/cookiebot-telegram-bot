@@ -44,6 +44,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from cb_api import keys
 from cb_core import db, tenancy
 from cb_core.logging import get_logger
+from cb_core.settings import get_settings
 
 log = get_logger("cb.api.security")
 
@@ -176,8 +177,14 @@ async def administers(group_id: int, user_id: int) -> bool:
     return bool(tenant.owns(user_id))
 
 
+#: The one path parameter every group-scoped endpoint carries. Declared once
+#: here because both dependencies below inject it, and a description repeated
+#: eleven times is a description that will disagree with itself.
+GROUP_ID = Path(description="the Telegram chat id — negative, as Telegram writes it")
+
+
 async def group_admin(
-    group_id: Annotated[int, Path()],
+    group_id: Annotated[int, GROUP_ID],
     user_id: Annotated[int, Depends(current_user)],
 ) -> int:
     """Returns `group_id` once the caller is allowed to read it.
@@ -190,6 +197,62 @@ async def group_admin(
         return group_id
     log.info("api.analytics.denied", user_id=user_id)
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="group not found")
+
+
+async def is_bot_admin(user_id: int) -> bool:
+    """Whether this Telegram id runs the *deployment*, not a group.
+
+    Two sources, both already in use elsewhere: the tenant's `owner_ids`
+    (`Tenant.owns`, which `administers` above already honours) and
+    `CB_OWNER_ID`, which is v1's single `ownerID` and what the owner-only
+    Telegram commands read (`cb_gateway.handlers.owner`). Keeping both means
+    the HTTP surface and the chat surface answer to the same people — an
+    owner who can `/broadcast` in Telegram but gets a 403 from the Mini App
+    would be a discrepancy nobody would guess at.
+    """
+    owner_id = get_settings().owner_id
+    if owner_id and user_id == owner_id:
+        return True
+    tenant = await tenancy.registry.by_id(tenancy.DEFAULT_TENANT)
+    return bool(tenant.owns(user_id))
+
+
+def bot_admin_caller(*required: str) -> Callable[..., Awaitable[Caller]]:
+    """Dependency: the caller, once they run the deployment **and** hold every
+    named scope.
+
+    **403 here, where the group endpoints answer 404.** The reason those hide
+    behind a 404 is that `{group_id}` is a secret worth protecting — whether a
+    chat id is known to this deployment is not something a stranger may probe.
+    `/admin/...` carries no such secret: the path is the same for everyone and
+    exists in the OpenAPI document every client generator reads. A 404 there
+    would tell an authorised owner with a mistyped token exactly the same
+    thing as it tells an outsider, which is the one case where hiding costs
+    more than it buys.
+    """
+
+    async def dependency(caller: Annotated[Caller, Depends(current_caller)]) -> Caller:
+        if not await is_bot_admin(caller.user_id):
+            log.info("api.admin.denied", user_id=caller.user_id, reason="not_owner")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="not an owner of this deployment",
+            )
+        missing = [scope for scope in required if not caller.can(scope)]
+        if missing:
+            log.info("api.admin.denied", user_id=caller.user_id, reason="scope")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"token is missing scope: {' '.join(missing)}",
+                headers={
+                    "WWW-Authenticate": (
+                        f'Bearer error="insufficient_scope", scope="{" ".join(required)}"'
+                    )
+                },
+            )
+        return caller
+
+    return dependency
 
 
 def group_admin_caller(*required: str) -> Callable[..., Awaitable[Caller]]:
@@ -210,7 +273,7 @@ def group_admin_caller(*required: str) -> Callable[..., Awaitable[Caller]]:
     """
 
     async def dependency(
-        group_id: Annotated[int, Path()],
+        group_id: Annotated[int, GROUP_ID],
         caller: Annotated[Caller, Depends(current_caller)],
     ) -> Caller:
         if not await administers(group_id, caller.user_id):
@@ -234,11 +297,14 @@ def group_admin_caller(*required: str) -> Callable[..., Awaitable[Caller]]:
 
 
 __all__ = [
+    "GROUP_ID",
     "LEGACY_SCOPES",
     "Caller",
     "administers",
+    "bot_admin_caller",
     "current_caller",
     "current_user",
     "group_admin",
     "group_admin_caller",
+    "is_bot_admin",
 ]

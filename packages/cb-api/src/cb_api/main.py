@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-from cb_api.routers import analytics, groups, health, login, oauth
+from cb_api.routers import admin, analytics, groups, health, login, oauth
 from cb_core import cache, db, metrics, storage
 from cb_core.logging import configure_logging, get_logger
 from cb_core.migrations import ensure_schema
@@ -57,6 +57,22 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 # client generator can point at any environment and get the shapes.
 _TAGS = [
     {
+        "name": "health",
+        "description": (
+            "Liveness and readiness, split on purpose: restart on `/healthz`, pull "
+            "from the load balancer on `/readyz`. The only two endpoints that take "
+            "no token."
+        ),
+    },
+    {
+        "name": "webhub",
+        "description": (
+            "v1's own surface, unchanged: the web console's `/login`, the service "
+            "banner, and the two discovery documents every token here is verified "
+            "against. `/login`'s token carries no scopes and is read-only."
+        ),
+    },
+    {
         "name": "auth",
         "description": (
             "The OAuth2 token endpoint. A Mini App posts Telegram's `initData`, "
@@ -73,6 +89,15 @@ _TAGS = [
         ),
     },
     {"name": "analytics", "description": "Per-group rollups, keyset-paginated."},
+    {
+        "name": "admin",
+        "description": (
+            "The deployment's own numbers, for whoever runs it: reach, fleet-wide "
+            "rollups, the group directory and the LLM budget. Owners only — the "
+            "`admin:read` scope is granted to a session only when its subject is "
+            "one, so an ordinary admin's token cannot reach these at all."
+        ),
+    },
 ]
 
 app = FastAPI(
@@ -114,4 +139,7 @@ app.include_router(oauth.router)
 # x_group_config_api / x_audit_log: the settings a group's admins may read and
 # change over HTTP, and the trail of who changed what.
 app.include_router(groups.router)
+# x_admin_api: the fleet-wide reads, behind `admin:read` and the deployment's
+# owners. Registered last so a route here can never shadow a group's own.
+app.include_router(admin.router)
 FastAPIInstrumentor.instrument_app(app, excluded_urls="healthz,readyz")

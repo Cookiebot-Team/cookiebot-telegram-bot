@@ -325,3 +325,55 @@ def test_revoking_an_unknown_token_is_a_success(client: TestClient) -> None:
     """RFC 7009: the caller's goal is that the token cannot be used, and it
     cannot."""
     assert client.post("/oauth2/revoke", json={"token": "never-issued"}).status_code == 200
+
+
+# ------------------------------------------------------- the admin scope grant
+
+
+@pytest.fixture
+def owner(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`USER_ID` runs this deployment. Patched at the predicate rather than by
+    building a tenant row, because *which* of the two owner sources said so is
+    `test_admin_endpoints.py`'s subject, not this one's."""
+
+    async def _is_owner(user_id: int) -> bool:
+        return user_id == USER_ID
+
+    monkeypatch.setattr(oauth.security, "is_bot_admin", _is_owner)
+
+
+def test_an_owners_session_is_granted_the_admin_scope(client: TestClient, owner: None) -> None:
+    body = client.post(
+        "/oauth2/token", json={"grant_type": oauth.MINIAPP_GRANT, "init_data": _init_data()}
+    ).json()
+    assert "admin:read" in body["scope"].split()
+    assert "admin:read" in _claims(body["access_token"])["scope"].split()
+
+
+def test_everyone_elses_session_is_not(client: TestClient, owner: None) -> None:
+    """The scope is granted, never assumed: a non-owner's token cannot reach
+    `/admin/...` however the client edits its own request, because the claim
+    the endpoint reads was never minted."""
+    body = client.post(
+        "/oauth2/token",
+        json={"grant_type": oauth.MINIAPP_GRANT, "init_data": _init_data(user_id=1234)},
+    ).json()
+    assert "admin:read" not in body["scope"].split()
+    assert "groups:write" in body["scope"].split()
+
+
+def test_a_refresh_reissues_the_scope_the_session_was_granted(
+    client: TestClient, owner: None
+) -> None:
+    """Not re-evaluated per refresh, deliberately — see `oauth._scopes_for`.
+    An owner removed today keeps the scope until the refresh token expires or
+    the session is revoked, and that bound is what makes the TTL a security
+    setting rather than a convenience one."""
+    issued = client.post(
+        "/oauth2/token", json={"grant_type": oauth.MINIAPP_GRANT, "init_data": _init_data()}
+    ).json()
+    refreshed = client.post(
+        "/oauth2/token",
+        json={"grant_type": "refresh_token", "refresh_token": issued["refresh_token"]},
+    ).json()
+    assert refreshed["scope"] == issued["scope"]

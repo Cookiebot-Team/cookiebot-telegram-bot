@@ -264,6 +264,13 @@ class Settings(BaseSettings):
     miniapp_scopes: list[str] = Field(
         default_factory=lambda: ["groups:read", "groups:write", "audit:read"]
     )
+    #: Extra scopes added to a session **only when its subject runs the
+    #: deployment** — a tenant owner or `owner_id` (`x_admin_api`). Granting
+    #: rather than assuming is the point: every token then carries a true
+    #: statement about who asked for it, so a non-owner's token cannot reach
+    #: `/admin/...` however it is edited, and revoking someone's ownership
+    #: stops their next refresh rather than only their next login.
+    miniapp_admin_scopes: list[str] = Field(default_factory=lambda: ["admin:read"])
 
     @field_validator("trace_sample_ratio")
     @classmethod

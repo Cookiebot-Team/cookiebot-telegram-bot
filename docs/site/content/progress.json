@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-08-15",
-  "commit": "eadc339",
-  "test_summary": "3343 passed, 44 skipped, 217 deselected, 2 warnings in 36.16s",
+  "generated_at": "2026-08-30",
+  "commit": "1aa8c83",
+  "test_summary": "2 failed, 3445 passed, 44 skipped, 232 deselected, 2 warnings in 32.19s",
   "totals": {
-    "features": 65,
-    "done": 65,
+    "features": 66,
+    "done": 66,
     "partial": 0,
     "planned": 0,
     "blocked": 0,
@@ -44,8 +44,8 @@
     {
       "id": "M4",
       "title": "Analytics surface, web console, data migration",
-      "done": 6,
-      "total": 6
+      "done": 7,
+      "total": 7
     }
   ],
   "features": [
@@ -1404,6 +1404,25 @@
         "failing": 0
       },
       "url": "/docs/features/x_group_config_api"
+    },
+    {
+      "id": "x_admin_api",
+      "title": "Fleet-wide analytics and the group directory, owners only",
+      "area": "platform",
+      "layer": "api",
+      "milestone": "M4",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "",
+      "notes": "net-new: v1 had no analytics at all, and x_analytics_api deliberately has no fleet-wide endpoint. Seven owner-only reads (overview, daily, top groups, commands, llm, directory, tenant) behind a new admin:read scope that /oauth2/token grants only when the subject is a tenant owner or CB_OWNER_ID. 403 here rather than the group endpoints' 404: /admin has no chat id to hide. The one place in the codebase where a query does not filter on group_id - confined to cb_core/platform_analytics.py, aggregate-only, off the reply path, and argued in that module's docstring",
+      "contract": "docs/contracts/x_admin_api.md",
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/x_admin_api"
     },
     {
       "id": "x_audit_log",

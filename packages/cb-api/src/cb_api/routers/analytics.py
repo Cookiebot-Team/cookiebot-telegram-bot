@@ -30,6 +30,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
+from cb_api.refusals import BAD_WINDOW, group_errors
 from cb_api.security import group_admin
 from cb_core import analytics
 
@@ -107,10 +108,14 @@ class DailyRow(BaseModel):
 
 
 class DailyResponse(WindowedResponse):
+    """One row per day the group was active — a chart's x-axis."""
+
     days: list[DailyRow]
 
 
 class CommandRow(BaseModel):
+    """One command's totals across the window, not one row per day."""
+
     command: str
     invocations: int
     errors: int
@@ -118,10 +123,14 @@ class CommandRow(BaseModel):
 
 
 class CommandsResponse(WindowedResponse):
+    """Which commands this group uses, busiest first."""
+
     commands: list[CommandRow]
 
 
 class ModelCostRow(BaseModel):
+    """One provider/model's usage and spend across the window."""
+
     provider: str
     model: str
     calls: int
@@ -133,6 +142,9 @@ class ModelCostRow(BaseModel):
 
 
 class LlmResponse(WindowedResponse):
+    """What this group's AI features cost — the same numbers the tenant's
+    budget is spent against, so an admin can see why `chat` started refusing."""
+
     total_cost_usd: float
     models: list[ModelCostRow]
 
@@ -160,12 +172,10 @@ class SummaryResponse(WindowedResponse):
 
 
 #: The window is checked before the group is read, so a bad range answers 400
-#: even for a group the caller may see; everything else is `security`'s.
-_ERRORS: dict[int | str, dict[str, Any]] = {
-    400: {"description": "the window is reversed or longer than a year"},
-    401: {"description": "no bearer token, or one that did not verify"},
-    404: {"description": "no such group — or the caller does not administer it"},
-}
+#: even for a group the caller may see; everything else is `security`'s. Shared
+#: with the other routers (`cb_api.refusals`) so all three describe a 404 the
+#: same way — and, since `qa/api/test_contract.py`, name a model for it.
+_ERRORS = group_errors(BAD_WINDOW)
 
 
 @router.get(
@@ -202,7 +212,7 @@ async def commands(
     group_id: Annotated[int, Depends(group_admin)],
     start: Window = None,
     end: Window = None,
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    limit: Annotated[int, Query(ge=1, le=100, description="how many commands to return")] = 20,
 ) -> dict[str, Any]:
     """Which commands this group actually uses, busiest first, totalled across
     the window rather than broken down per day."""
