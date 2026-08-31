@@ -156,6 +156,31 @@ python scripts/cb.py api-test    # smoke, contract and integration, over the HTT
 [Testing the API](https://cookiebot-team.github.io/cookiebot-telegram-bot/docs/testing-the-api)
 is the step-by-step guide.
 
+## Repository Structure
+
+```
+cookiebot-telegram-bot/
+├── deploy/                 # Deployment configurations (Docker & Helm charts)
+├── docs/                   # Project documentation and feature contracts
+│   ├── contracts/          # Per-feature behavior contracts referenced by tests
+│   └── site/               # Fumadocs progress and documentation website
+├── ops/                    # Observability setup (Grafana dashboards, Loki/Tempo scrape rules, OpenTelemetry)
+├── packages/               # Core Python application packages (monorepo design)
+│   ├── cb-api/             # FastAPI backend service & Alembic migrations (Citus DDL)
+│   ├── cb-core/            # Shared runtime, main bot engine, and Cython-compiled hot modules
+│   ├── cb-gateway/         # Webhook ingest server routing updates to the core bot
+│   └── cb-worker/          # Background worker (arq jobs) handling slow or fan-out operations
+├── qa/                     # Comprehensive testing suite (unit, integration, and BDD)
+│   ├── e2e/                # End-to-end sandbox testing scenarios
+│   ├── features/           # Gherkin (.feature) specifications defining bot requirements
+│   └── integration/        # Database integration and Citus topology assertions
+├── scripts/                # Development utility scripts and CLI tools
+├── AGENTS.md               # Behavioral rules and repository shape for developers/agents
+├── CONTRIBUTING.md         # Instructions on how to set up development, write features, and run checks
+├── HANDOFF.md              # Current project status and progress notes
+└── pyproject.toml          # Workspace configuration, dependencies, and linting rules
+```
+
 ## Documentation
 
 Everything below lives in the documentation site (`docs/site`, Fumadocs) —
