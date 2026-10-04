@@ -21,6 +21,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
+from uuid import UUID, uuid4
 
 import jwt
 import pytest
@@ -29,7 +30,7 @@ from fastapi.testclient import TestClient
 
 from cb_api import keys, security
 from cb_api.routers import admin as router_module
-from cb_core import platform_analytics, tenancy
+from cb_core import audit, platform_analytics, tenancy
 from cb_core.settings import get_settings
 
 PEM = keys.generate_private_pem()
@@ -259,6 +260,7 @@ def test_a_legacy_console_token_cannot_reach_the_fleet(client: TestClient) -> No
         "/admin/analytics/llm",
         "/admin/groups",
         "/admin/tenant",
+        "/admin/audit",
     ],
 )
 def test_every_endpoint_is_behind_the_boundary(client: TestClient, path: str) -> None:
@@ -408,3 +410,116 @@ async def test_only_owners_are_bot_admins(user_id: int, expected: bool) -> None:
     reports. Tested directly because both callers are one `if` away from
     granting it to everybody."""
     assert await security.is_bot_admin(user_id) is expected
+
+
+# ---------------------------------------------------------------- fleet audit
+
+
+@pytest.fixture
+def fleet_calls(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+    calls: list[dict[str, Any]] = []
+    cursor = uuid4()
+
+    async def _fleet_page(**kwargs: Any) -> audit.FleetAuditSlice:
+        calls.append(kwargs)
+        event = audit.AuditEvent(
+            id=UUID("019267f1-0000-7000-8000-000000000001"),
+            group_id=-1001,
+            ts=datetime(2026, 8, 15, 18, 22, tzinfo=UTC),
+            action="config.updated",
+            surface="miniapp",
+            actor_user_id=42,
+            summary="changed sfw",
+            before={"sfw": True},
+            after={"sfw": False},
+            trace_id="abc",
+        )
+        return audit.FleetAuditSlice(
+            events=(
+                audit.FleetAuditEvent(event=event, group_title="Busy Chat"),
+                audit.FleetAuditEvent(event=event, group_title=None),
+            ),
+            next_before=cursor,
+        )
+
+    monkeypatch.setattr(router_module.audit, "fleet_page", _fleet_page)
+    calls.append({"cursor": cursor})
+    return calls
+
+
+def test_fleet_audit_refuses_a_non_owner(client: TestClient) -> None:
+    assert client.get("/admin/audit", headers=_auth(GROUP_ADMIN)).status_code == 403
+
+
+def test_fleet_audit_needs_audit_read_too(client: TestClient) -> None:
+    response = client.get("/admin/audit", headers=_auth(scope="admin:read groups:read"))
+    assert response.status_code == 403
+    assert 'error="insufficient_scope"' in response.headers["www-authenticate"]
+    assert "audit:read" in response.headers["www-authenticate"]
+
+
+def test_fleet_audit_shape_carries_group_and_title(
+    client: TestClient, fleet_calls: list[dict[str, Any]]
+) -> None:
+    cursor = fleet_calls.pop(0)["cursor"]
+    body = client.get("/admin/audit", headers=_auth()).json()
+    assert body["next_before"] == str(cursor)
+    first, second = body["events"]
+    assert first["group_id"] == -1001
+    assert first["group_title"] == "Busy Chat"
+    assert second["group_title"] is None
+    assert first["id"] == "019267f1-0000-7000-8000-000000000001"
+    assert first["action"] == "config.updated"
+    assert first["before"] == {"sfw": True}
+    assert first["after"] == {"sfw": False}
+    assert first["surface"] == "miniapp"
+    assert fleet_calls[0]["tenant_id"] == tenancy.DEFAULT_TENANT
+
+
+def test_fleet_audit_passes_every_filter_through(
+    client: TestClient, fleet_calls: list[dict[str, Any]]
+) -> None:
+    fleet_calls.pop(0)
+    before = uuid4()
+    response = client.get(
+        "/admin/audit",
+        params={
+            "limit": 7,
+            "before": str(before),
+            "group_id": -1001,
+            "action": "config.updated",
+            "actor_user_id": 42,
+            "surface": "miniapp",
+            "since": "2026-01-01T00:00:00Z",
+            "until": "2026-02-01T00:00:00Z",
+        },
+        headers=_auth(),
+    )
+    assert response.status_code == 200
+    assert fleet_calls == [
+        {
+            "tenant_id": tenancy.DEFAULT_TENANT,
+            "limit": 7,
+            "before": before,
+            "group_id": -1001,
+            "action": "config.updated",
+            "actor_user_id": 42,
+            "surface": "miniapp",
+            "since": datetime(2026, 1, 1, tzinfo=UTC),
+            "until": datetime(2026, 2, 1, tzinfo=UTC),
+        }
+    ]
+
+
+def test_fleet_audit_reversed_window_is_a_400(
+    client: TestClient, fleet_calls: list[dict[str, Any]]
+) -> None:
+    fleet_calls.pop(0)
+    response = client.get(
+        "/admin/audit",
+        params={"since": "2026-02-01T00:00:00Z", "until": "2026-01-01T00:00:00Z"},
+        headers=_auth(),
+    )
+    assert response.status_code == 400
+    assert response.json() == {"detail": "invalid_window"}
+    assert fleet_calls == []

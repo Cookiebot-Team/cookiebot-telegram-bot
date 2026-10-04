@@ -1,6 +1,153 @@
 {
   "components": {
     "schemas": {
+      "AdminAuditEvent": {
+        "description": "An audit event plus the group it belongs to.",
+        "properties": {
+          "action": {
+            "description": "`config.updated`, `rules.updated`, `welcome.updated`, \u2026",
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_kind": {
+            "title": "Actor Kind",
+            "type": "string"
+          },
+          "actor_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null when an anonymous admin made the change",
+            "title": "Actor User Id"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "group_id": {
+            "title": "Group Id",
+            "type": "integer"
+          },
+          "group_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the group's current title; null if it has none on record",
+            "title": "Group Title"
+          },
+          "id": {
+            "description": "UUIDv7 \u2014 ordering by it is ordering by time",
+            "title": "Id",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "surface": {
+            "description": "`telegram`, `miniapp`, `api` or `system`",
+            "title": "Surface",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ts",
+          "action",
+          "surface",
+          "actor_kind",
+          "summary",
+          "before",
+          "after",
+          "trace_id",
+          "group_id"
+        ],
+        "title": "AdminAuditEvent",
+        "type": "object"
+      },
+      "AdminAuditPage": {
+        "description": "A page of the fleet's trail, newest first, with the cursor for the next.",
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAuditEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "next_before": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "pass as `before` for the following page; null on the last one",
+            "title": "Next Before"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "title": "AdminAuditPage",
+        "type": "object"
+      },
       "AdministeredGroup": {
         "description": "One group the caller administers, as `group_admins` records it.",
         "properties": {
@@ -2651,6 +2798,225 @@
           }
         ],
         "summary": "What every group's AI features cost together",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/audit": {
+      "get": {
+        "description": "Every group's audit events for this deployment, newest first,\nkeyset-paginated (D11).\n\nThe same filters as `/groups/{group_id}/audit`, plus `group_id` to narrow to\none group. Each event carries its `group_id` and the group's `group_title`.\n`since` is inclusive and `until` exclusive; `since >= until` is a 400\n`invalid_window`.",
+        "operationId": "fleet_audit_admin_audit_get",
+        "parameters": [
+          {
+            "description": "events per page",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "events per page",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "last id of the previous page",
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "last id of the previous page",
+              "title": "Before"
+            }
+          },
+          {
+            "description": "only this group",
+            "in": "query",
+            "name": "group_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only this group",
+              "title": "Group Id"
+            }
+          },
+          {
+            "description": "only this action, e.g. `config.updated`",
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only this action, e.g. `config.updated`",
+              "title": "Action"
+            }
+          },
+          {
+            "description": "only changes this Telegram user made",
+            "in": "query",
+            "name": "actor_user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only changes this Telegram user made",
+              "title": "Actor User Id"
+            }
+          },
+          {
+            "description": "only changes made from this surface: `telegram`, `miniapp`, `api`, `system`",
+            "in": "query",
+            "name": "surface",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "telegram",
+                    "miniapp",
+                    "api",
+                    "system"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only changes made from this surface: `telegram`, `miniapp`, `api`, `system`",
+              "title": "Surface"
+            }
+          },
+          {
+            "description": "only events at or after this instant (inclusive)",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only events at or after this instant (inclusive)",
+              "title": "Since"
+            }
+          },
+          {
+            "description": "only events before this instant (exclusive)",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only events before this instant (exclusive)",
+              "title": "Until"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAuditPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "`since` is not before `until`"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no bearer token, or one that did not verify"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not an owner of this deployment \u2014 or an owner whose token lacks the scope"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read the audit trail across every group, newest first",
         "tags": [
           "admin"
         ]

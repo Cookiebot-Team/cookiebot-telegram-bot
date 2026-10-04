@@ -111,6 +111,14 @@ CASES: tuple[Case, ...] = (
     Case("get", "/admin/analytics/llm", role="owner"),
     Case("get", "/admin/groups", role="owner"),
     Case("get", "/admin/tenant", role="owner"),
+    Case("get", "/admin/audit", role="owner"),
+    Case(
+        "get",
+        "/admin/audit",
+        role="owner",
+        params={"since": "2026-02-01T00:00:00Z", "until": "2026-01-01T00:00:00Z"},
+        expect=400,
+    ),
 )
 
 

@@ -48,6 +48,7 @@ MINIAPP_PATHS = (
     ("get", "/admin/analytics/llm"),
     ("get", "/admin/groups"),
     ("get", "/admin/tenant"),
+    ("get", "/admin/audit"),
 )
 
 #: The fleet-wide half. Split out so the assertion below can say what is true of
