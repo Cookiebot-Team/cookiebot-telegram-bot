@@ -205,7 +205,10 @@ GET /groups/-1001234567890/audit?limit=50
 ```
 
 Newest first. Pass `next_before` back as `?before=` for the following page; it
-is `null` on the last one. `?action=` and `?actor_user_id=` narrow the list.
+is `null` on the last one. `?action=`, `?actor_user_id=` and `?surface=`
+(`telegram`, `miniapp`, `api` or `system`) narrow the list, and `?since=` (inclusive)
+and `?until=` (exclusive) bound it in time. A `since` that is not before `until`
+is a **400** `invalid_window`.
 
 Actions today are `config.updated`, `rules.updated` and `welcome.updated`.
 `surface` says where the change came from — `telegram` for the `/config` menu,
@@ -215,7 +218,7 @@ rather than an account, and a guess would be worse than a gap.
 
 ## 5. If you run the bot
 
-Everything above is scoped to one group. These seven are scoped to the whole
+Everything above is scoped to one group. These eight are scoped to the whole
 deployment, and only its **owners** can reach them — a tenant `owner_id`, or
 `CB_OWNER_ID`, which is what the owner-only Telegram commands already answer to.
 
@@ -228,9 +231,11 @@ deployment, and only its **owners** can reach them — a tenant `owner_id`, or
 | `GET` | `/admin/analytics/llm` | fleet-wide spend, per provider and model |
 | `GET` | `/admin/groups` | the group directory, keyset-paginated on `group_id` |
 | `GET` | `/admin/tenant` | how this deployment is configured |
+| `GET` | `/admin/audit` | the audit trail across every group, keyset-paginated |
 
-All seven take `admin:read`, and all seven take the same `?start=`/`?end=`
-window the per-group analytics take.
+All eight take `admin:read`; `/admin/audit` also takes `audit:read`. The seven
+analytics and directory routes take the same `?start=`/`?end=` window the
+per-group analytics take.
 
 ```http
 GET /admin/overview
@@ -262,6 +267,12 @@ and deliberate. A group endpoint hides behind a 404 because whether a chat id
 exists is worth hiding. `/admin/…` is a fixed path in this very document: there
 is nothing to hide, and a 404 would tell an owner holding a stale token exactly
 what it tells an outsider.
+
+`/admin/audit` is the group audit trail (section 4) across every group: the same
+`?limit=`, `?before=`, `?action=`, `?actor_user_id=`, `?surface=`, `?since=` and
+`?until=` filters, plus `?group_id=` to narrow to one group. Every event carries
+its `group_id` and the group's `group_title`, and `next_before` is `null` on the
+last page. A `since` that is not before `until` is a **400** `invalid_window`.
 
 Two things are deliberately absent. There is **no write** — every field on
 `/admin/tenant` changes how the bot behaves, and a Mini App form one mis-tap

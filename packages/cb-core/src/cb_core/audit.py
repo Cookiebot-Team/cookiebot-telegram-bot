@@ -27,8 +27,8 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from datetime import datetime
-from typing import Any
+from datetime import UTC, datetime
+from typing import Any, Literal
 from uuid import UUID
 
 from cb_core import db, ids, metrics
@@ -50,6 +50,8 @@ SESSION_STARTED = "session.started"
 #: chat; `miniapp` and `api` are HTTP callers; `system` is the bot itself.
 SURFACES = ("telegram", "miniapp", "api", "system")
 
+Surface = Literal["telegram", "miniapp", "api", "system"]
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class AuditEvent:
@@ -64,6 +66,32 @@ class AuditEvent:
     before: dict[str, Any] | None = None
     after: dict[str, Any] | None = None
     trace_id: str | None = None
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class AuditSlice:
+    """One page plus the cursor for the next, or `None` on the last page.
+
+    `next_before` is set only when an older matching row exists (D1): the read
+    fetches `limit + 1` and the extra row is the proof, never `len == limit`.
+    """
+
+    events: tuple[AuditEvent, ...]
+    next_before: UUID | None
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class FleetAuditEvent:
+    """An event from the fleet read, with the title of the group it belongs to."""
+
+    event: AuditEvent
+    group_title: str | None
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class FleetAuditSlice:
+    events: tuple[FleetAuditEvent, ...]
+    next_before: UUID | None
 
 
 _INSERT = """
@@ -83,9 +111,43 @@ SELECT group_id, id, ts, actor_user_id, actor_kind, action, surface,
    AND ($2::uuid IS NULL OR id < $2::uuid)
    AND ($3::text IS NULL OR action = $3::text)
    AND ($4::bigint IS NULL OR actor_user_id = $4::bigint)
+   AND ($5::text IS NULL OR surface = $5::text)
+   AND ($6::timestamptz IS NULL OR ts >= $6::timestamptz)
+   AND ($7::timestamptz IS NULL OR ts < $7::timestamptz)
  ORDER BY id DESC
- LIMIT $5
+ LIMIT $8
 """
+
+# The fleet read. `groups` is colocated with `group_id`, so the join is pushed
+# down per shard. `{group_filter}` is spliced as one of two fixed fragments (never
+# user input). With a group the predicate is a bare `e.group_id = $2` so the router
+# can prune to one shard (proven by the one-shard EXPLAIN test, which uses a
+# custom plan); an `($2 IS NULL OR ...)` form is avoided on purpose as it gives
+# the planner no direct equality on the shard key.
+_FLEET_PAGE = """
+SELECT e.group_id, e.id, e.ts, e.actor_user_id, e.actor_kind, e.action, e.surface,
+       e.summary, e.before, e.after, e.trace_id, g.title AS group_title
+  FROM group_audit_events e
+  JOIN groups g ON g.group_id = e.group_id
+ WHERE g.tenant_id = $1
+   {group_filter}
+   AND ($3::uuid IS NULL OR e.id < $3::uuid)
+   AND ($4::text IS NULL OR e.action = $4::text)
+   AND ($5::bigint IS NULL OR e.actor_user_id = $5::bigint)
+   AND ($6::text IS NULL OR e.surface = $6::text)
+   AND ($7::timestamptz IS NULL OR e.ts >= $7::timestamptz)
+   AND ($8::timestamptz IS NULL OR e.ts < $8::timestamptz)
+ ORDER BY e.id DESC
+ LIMIT $9
+"""
+_FLEET_ALL_GROUPS = "AND $2::bigint IS NULL"
+_FLEET_ONE_GROUP = "AND e.group_id = $2::bigint"
+
+
+def fleet_sql(group_id: int | None) -> str:
+    """The fleet statement for a given-or-not `group_id` (public for EXPLAIN tests)."""
+    fragment = _FLEET_ONE_GROUP if group_id is not None else _FLEET_ALL_GROUPS
+    return _FLEET_PAGE.replace("{group_filter}", fragment)
 
 
 def diff(before: dict[str, Any], after: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -166,18 +228,90 @@ async def page(
     before_id: UUID | None = None,
     action: str | None = None,
     actor_user_id: int | None = None,
-) -> tuple[AuditEvent, ...]:
-    """One page, newest first. `before_id` is the last id of the previous page."""
+    surface: Surface | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
+) -> AuditSlice:
+    """One page, newest first. `before_id` is the last id of the previous page.
+
+    Single-shard: `group_id` is the first predicate. `since` is inclusive and
+    `until` exclusive, on `ts`; naive datetimes are read as UTC.
+    """
+    if limit < 1:
+        raise ValueError("limit must be at least 1")
     rows = await db.fetch(
         _PAGE,
         group_id,
         before_id,
         action,
         actor_user_id,
-        limit,
+        surface,
+        _utc(since),
+        _utc(until),
+        limit + 1,
         name="audit_page",
     )
-    return tuple(_from_row(row) for row in rows)
+    events = tuple(_from_row(row) for row in rows[:limit])
+    return AuditSlice(events, events[-1].id if len(rows) > limit else None)
+
+
+async def fleet_page(
+    *,
+    tenant_id: str,
+    limit: int = 50,
+    before: UUID | None = None,
+    group_id: int | None = None,
+    action: str | None = None,
+    actor_user_id: int | None = None,
+    surface: Surface | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
+) -> FleetAuditSlice:
+    """The tenant's audit trail across every group, newest first.
+
+    Like `cb_core.platform_analytics`, this is a deliberate fan-out: with no
+    `group_id` it omits the shard key, which AGENTS.md section 4.1 forbids on the
+    reply path. It is acceptable here because it is owner-only (a handful of
+    callers), never on a message's reply path, and keyset + `LIMIT` bound it:
+    each shard returns at most `limit + 1` rows, served from the
+    `group_audit_events (id DESC)` index without a sort. The tenant is scoped
+    through `groups.tenant_id`, colocated on `group_id`, exactly as
+    `cb_core.llm.budget` does. With `group_id` given the read is single-shard.
+
+    The tenant follows the group's *current* `groups.tenant_id`: re-tenanting a
+    group moves its whole audit history to the new tenant's view.
+    """
+    if limit < 1:
+        raise ValueError("limit must be at least 1")
+    rows = await db.fetch(
+        fleet_sql(group_id),
+        tenant_id,
+        group_id,
+        before,
+        action,
+        actor_user_id,
+        surface,
+        _utc(since),
+        _utc(until),
+        limit + 1,
+        name="audit_fleet_page" if group_id is None else "audit_fleet_group_page",
+    )
+    events = tuple(FleetAuditEvent(_from_row(row), row["group_title"]) for row in rows[:limit])
+    return FleetAuditSlice(events, events[-1].event.id if len(rows) > limit else None)
+
+
+def _utc(value: datetime | None) -> datetime | None:
+    return value.replace(tzinfo=UTC) if value is not None and value.tzinfo is None else value
+
+
+def reversed_window(since: datetime | None, until: datetime | None) -> bool:
+    """True when both bounds are given and `since` is not before `until`.
+
+    Naive datetimes are read as UTC (as `page` does), so a naive and an aware
+    bound compare instead of raising `TypeError`.
+    """
+    lo, hi = _utc(since), _utc(until)
+    return lo is not None and hi is not None and lo >= hi
 
 
 def _from_row(row: Any) -> AuditEvent:
@@ -208,8 +342,6 @@ def _loads(value: Any) -> dict[str, Any] | None:
 
 
 def _now() -> datetime:
-    from datetime import UTC
-
     return datetime.now(UTC)
 
 
@@ -220,7 +352,14 @@ __all__ = [
     "SURFACES",
     "WELCOME_UPDATED",
     "AuditEvent",
+    "AuditSlice",
+    "FleetAuditEvent",
+    "FleetAuditSlice",
+    "Surface",
     "diff",
+    "fleet_page",
+    "fleet_sql",
     "page",
     "record",
+    "reversed_window",
 ]

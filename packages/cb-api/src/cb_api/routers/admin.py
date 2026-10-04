@@ -35,14 +35,16 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Annotated, Any
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from cb_api.refusals import BAD_WINDOW, fleet_errors
+from cb_api.refusals import BAD_AUDIT_WINDOW, BAD_WINDOW, fleet_errors
 from cb_api.routers.analytics import Window, resolve_window
+from cb_api.routers.groups import AuditEvent
 from cb_api.security import Caller, bot_admin_caller
-from cb_core import platform_analytics, tenancy
+from cb_core import audit, platform_analytics, tenancy
 from cb_core.logging import get_logger
 from cb_core.settings import get_settings
 
@@ -64,6 +66,9 @@ _ERRORS = fleet_errors(BAD_WINDOW)
 _NO_WINDOW = fleet_errors()
 
 Admin = Annotated[Caller, Depends(bot_admin_caller(_READ))]
+
+#: The fleet audit trail needs the group audit's own scope on top of `admin:read`.
+AuditAdmin = Annotated[Caller, Depends(bot_admin_caller(_READ, "audit:read"))]
 
 
 class ReachBody(BaseModel):
@@ -511,7 +516,102 @@ async def tenant(_admin: Admin) -> dict[str, Any]:
     }
 
 
+class AdminAuditEvent(AuditEvent):
+    """An audit event plus the group it belongs to."""
+
+    group_id: int
+    group_title: str | None = Field(
+        default=None, description="the group's current title; null if it has none on record"
+    )
+
+
+class AdminAuditPage(BaseModel):
+    """A page of the fleet's trail, newest first, with the cursor for the next."""
+
+    events: list[AdminAuditEvent]
+    next_before: UUID | None = Field(
+        default=None,
+        description="pass as `before` for the following page; null on the last one",
+    )
+
+
+@router.get(
+    "/audit",
+    summary="Read the audit trail across every group, newest first",
+    response_model=AdminAuditPage,
+    responses=fleet_errors(BAD_AUDIT_WINDOW),
+)
+async def fleet_audit(
+    _admin: AuditAdmin,
+    limit: Annotated[int, Query(ge=1, le=100, description="events per page")] = 50,
+    before: Annotated[UUID | None, Query(description="last id of the previous page")] = None,
+    group_id: Annotated[int | None, Query(description="only this group")] = None,
+    action: Annotated[
+        str | None,
+        Query(max_length=64, description="only this action, e.g. `config.updated`"),
+    ] = None,
+    actor_user_id: Annotated[
+        int | None, Query(description="only changes this Telegram user made")
+    ] = None,
+    surface: Annotated[
+        audit.Surface | None,
+        Query(
+            description="only changes made from this surface: `telegram`, `miniapp`, `api`, `system`"
+        ),
+    ] = None,
+    since: Annotated[
+        datetime | None, Query(description="only events at or after this instant (inclusive)")
+    ] = None,
+    until: Annotated[
+        datetime | None, Query(description="only events before this instant (exclusive)")
+    ] = None,
+) -> dict[str, Any]:
+    """Every group's audit events for this deployment, newest first,
+    keyset-paginated (D11).
+
+    The same filters as `/groups/{group_id}/audit`, plus `group_id` to narrow to
+    one group. Each event carries its `group_id` and the group's `group_title`.
+    `since` is inclusive and `until` exclusive; `since >= until` is a 400
+    `invalid_window`.
+    """
+    if audit.reversed_window(since, until):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_window")
+    result = await audit.fleet_page(
+        tenant_id=tenancy.DEFAULT_TENANT,
+        limit=limit,
+        before=before,
+        group_id=group_id,
+        action=action,
+        actor_user_id=actor_user_id,
+        surface=surface,
+        since=since,
+        until=until,
+    )
+    return {
+        "events": [
+            {
+                "id": str(item.event.id),
+                "group_id": item.event.group_id,
+                "group_title": item.group_title,
+                "ts": item.event.ts,
+                "action": item.event.action,
+                "surface": item.event.surface,
+                "actor_user_id": item.event.actor_user_id,
+                "actor_kind": item.event.actor_kind,
+                "summary": item.event.summary,
+                "before": item.event.before,
+                "after": item.event.after,
+                "trace_id": item.event.trace_id,
+            }
+            for item in result.events
+        ],
+        "next_before": result.next_before,
+    }
+
+
 __all__ = [
+    "AdminAuditEvent",
+    "AdminAuditPage",
     "DirectoryPage",
     "OverviewResponse",
     "PlatformCommandsResponse",

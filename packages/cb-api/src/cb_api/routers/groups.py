@@ -39,7 +39,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from cb_api.refusals import UNAUTHORIZED, ErrorBody, group_errors
+from cb_api.refusals import BAD_AUDIT_WINDOW, UNAUTHORIZED, ErrorBody, group_errors
 from cb_api.security import (
     GROUP_ID,
     Caller,
@@ -486,7 +486,7 @@ def _text_response(group_id: int, record: group_texts.GroupText | None) -> dict[
     "/groups/{group_id}/audit",
     summary="Read the group's audit trail, newest first",
     response_model=AuditPage,
-    responses=_GROUP_ERRORS,
+    responses=group_errors(BAD_AUDIT_WINDOW),
 )
 async def read_audit(
     group_id: Annotated[int, GROUP_ID],
@@ -500,20 +500,38 @@ async def read_audit(
     actor_user_id: Annotated[
         int | None, Query(description="only changes this Telegram user made")
     ] = None,
+    surface: Annotated[
+        audit.Surface | None,
+        Query(
+            description="only changes made from this surface: `telegram`, `miniapp`, `api`, `system`"
+        ),
+    ] = None,
+    since: Annotated[
+        datetime | None, Query(description="only events at or after this instant (inclusive)")
+    ] = None,
+    until: Annotated[
+        datetime | None, Query(description="only events before this instant (exclusive)")
+    ] = None,
 ) -> dict[str, Any]:
     """The group's trail, newest first, keyset-paginated (D11 — no OFFSET, no
     unbounded list).
 
     `next_before` is the cursor for the following page and is `null` on the last
     one. Filtering by `action` or `actor_user_id` narrows without changing the
-    cursor's meaning.
+    cursor's meaning. `since` is inclusive and `until` exclusive; `since >= until`
+    is a 400 `invalid_window`.
     """
-    events = await audit.page(
+    if audit.reversed_window(since, until):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_window")
+    result = await audit.page(
         group_id,
         limit=limit,
         before_id=before,
         action=action,
         actor_user_id=actor_user_id,
+        surface=surface,
+        since=since,
+        until=until,
     )
     return {
         "group_id": group_id,
@@ -530,9 +548,9 @@ async def read_audit(
                 "after": event.after,
                 "trace_id": event.trace_id,
             }
-            for event in events
+            for event in result.events
         ],
-        "next_before": str(events[-1].id) if len(events) == limit else None,
+        "next_before": str(result.next_before) if result.next_before else None,
     }
 
 

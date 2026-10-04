@@ -106,7 +106,8 @@ async def test_page_passes_the_keyset_and_filters_through(
 
     await audit.page(GROUP_ID, limit=25, action=audit.RULES_UPDATED, actor_user_id=ACTOR)
 
-    assert captured["args"] == (GROUP_ID, None, audit.RULES_UPDATED, ACTOR, 25)
+    # (group_id, before_id, action, actor, surface, since, until, limit + 1)
+    assert captured["args"] == (GROUP_ID, None, audit.RULES_UPDATED, ACTOR, None, None, None, 26)
     assert "ORDER BY id DESC" in captured["stmt"]
     assert "OFFSET" not in captured["stmt"]  # D11: keyset, never offset
 
