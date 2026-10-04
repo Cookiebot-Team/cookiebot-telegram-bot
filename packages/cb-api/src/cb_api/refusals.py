@@ -71,6 +71,11 @@ BAD_WINDOW: dict[str | int, dict[str, Any]] = {
     400: {"model": ErrorBody, "description": "the window is reversed or longer than a year"}
 }
 
+#: The audit trail's window has no length cap — only an order.
+BAD_AUDIT_WINDOW: dict[str | int, dict[str, Any]] = {
+    400: {"model": ErrorBody, "description": "`since` is not before `until`"}
+}
+
 
 def group_errors(*extra: dict[str | int, dict[str, Any]]) -> dict[str | int, dict[str, Any]]:
     """The three a group-scoped endpoint can answer with, plus anything else it
@@ -95,6 +100,7 @@ def fleet_errors(*extra: dict[str | int, dict[str, Any]]) -> dict[str | int, dic
 
 
 __all__ = [
+    "BAD_AUDIT_WINDOW",
     "BAD_WINDOW",
     "FORBIDDEN_SCOPE",
     "NOT_AN_OWNER",

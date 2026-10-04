@@ -21,7 +21,7 @@ from fastapi.testclient import TestClient
 
 from cb_api import keys, security
 from cb_api.routers import groups as router_module
-from cb_core import audit, group_config, group_texts, tenancy
+from cb_core import audit, group_config, group_texts, ids, tenancy
 
 PEM = keys.generate_private_pem()
 KID = "cookiebot-test"
@@ -112,8 +112,6 @@ def state(monkeypatch: pytest.MonkeyPatch) -> FakeState:
         )
 
     async def _record(group_id: int, action: str, **kwargs: Any) -> audit.AuditEvent:
-        from cb_core import ids
-
         event = audit.AuditEvent(
             id=ids.uuid7(),
             group_id=group_id,
@@ -132,6 +130,12 @@ def state(monkeypatch: pytest.MonkeyPatch) -> FakeState:
         rows = [e for e in reversed(fake.audit) if e.group_id == group_id]
         if kwargs.get("action"):
             rows = [e for e in rows if e.action == kwargs["action"]]
+        if kwargs.get("surface"):
+            rows = [e for e in rows if e.surface == kwargs["surface"]]
+        if kwargs.get("since"):
+            rows = [e for e in rows if e.ts >= _as_utc(kwargs["since"])]
+        if kwargs.get("until"):
+            rows = [e for e in rows if e.ts < _as_utc(kwargs["until"])]
         limit = kwargs.get("limit", 50)
         events = tuple(rows[:limit])
         return audit.AuditSlice(events, events[-1].id if len(rows) > limit else None)
@@ -364,6 +368,98 @@ def test_a_full_page_carries_a_cursor(client: TestClient) -> None:
 
     short = client.get(f"/groups/{GROUP_ID}/audit", params={"limit": 50}, headers=_auth()).json()
     assert short["next_before"] is None
+
+
+def _as_utc(value: datetime) -> datetime:
+    """What `audit.page` does with a naive bound, so the fake matches it."""
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value
+
+
+def _seed_two_surfaces(state: FakeState) -> None:
+    """Two rows with known surfaces and timestamps, oldest first."""
+    for action, surface, ts in (
+        (audit.CONFIG_UPDATED, "telegram", datetime(2026, 1, 1, tzinfo=UTC)),
+        (audit.RULES_UPDATED, "miniapp", datetime(2026, 2, 1, tzinfo=UTC)),
+    ):
+        state.audit.append(
+            audit.AuditEvent(
+                id=ids.uuid7(),
+                group_id=GROUP_ID,
+                ts=ts,
+                action=action,
+                surface=surface,
+                actor_user_id=ADMIN_ID,
+                summary=None,
+                before=None,
+                after=None,
+            )
+        )
+
+
+def test_the_audit_page_can_be_filtered_by_surface(client: TestClient, state: FakeState) -> None:
+    _seed_two_surfaces(state)
+    response = client.get(
+        f"/groups/{GROUP_ID}/audit", params={"surface": "telegram"}, headers=_auth()
+    )
+    assert [e["surface"] for e in response.json()["events"]] == ["telegram"]
+
+
+def test_an_unknown_surface_is_a_422(client: TestClient) -> None:
+    response = client.get(f"/groups/{GROUP_ID}/audit", params={"surface": "fax"}, headers=_auth())
+    assert response.status_code == 422
+
+
+def test_since_is_inclusive_and_until_is_exclusive(client: TestClient, state: FakeState) -> None:
+    _seed_two_surfaces(state)
+    url = f"/groups/{GROUP_ID}/audit"
+    since = client.get(url, params={"since": "2026-02-01T00:00:00Z"}, headers=_auth()).json()
+    assert [e["action"] for e in since["events"]] == [audit.RULES_UPDATED]
+    until = client.get(url, params={"until": "2026-02-01T00:00:00Z"}, headers=_auth()).json()
+    assert [e["action"] for e in until["events"]] == [audit.CONFIG_UPDATED]
+
+
+@pytest.mark.parametrize(
+    ("since", "until"),
+    [
+        ("2026-02-01T00:00:00Z", "2026-01-01T00:00:00Z"),
+        ("2026-02-01T00:00:00Z", "2026-02-01T00:00:00Z"),
+    ],
+)
+def test_a_reversed_or_empty_window_is_a_400(client: TestClient, since: str, until: str) -> None:
+    response = client.get(
+        f"/groups/{GROUP_ID}/audit", params={"since": since, "until": until}, headers=_auth()
+    )
+    assert response.status_code == 400
+    assert response.json() == {"detail": "invalid_window"}
+
+
+def test_a_mixed_naive_and_aware_window_compares_as_utc(
+    client: TestClient, state: FakeState
+) -> None:
+    _seed_two_surfaces(state)
+    url = f"/groups/{GROUP_ID}/audit"
+    ok = client.get(
+        url,
+        params={"since": "2026-01-01T00:00:00", "until": "2026-03-01T00:00:00Z"},
+        headers=_auth(),
+    )
+    assert ok.status_code == 200
+    assert len(ok.json()["events"]) == 2
+    bad = client.get(
+        url,
+        params={"since": "2026-03-01T00:00:00", "until": "2026-01-01T00:00:00Z"},
+        headers=_auth(),
+    )
+    assert bad.status_code == 400
+
+
+def test_a_filtered_last_page_has_a_null_cursor(client: TestClient, state: FakeState) -> None:
+    _seed_two_surfaces(state)
+    body = client.get(
+        f"/groups/{GROUP_ID}/audit", params={"surface": "miniapp", "limit": 1}, headers=_auth()
+    ).json()
+    assert len(body["events"]) == 1
+    assert body["next_before"] is None
 
 
 # ------------------------------------------------------------------- /me

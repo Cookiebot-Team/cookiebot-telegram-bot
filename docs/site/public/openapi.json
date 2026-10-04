@@ -3460,7 +3460,7 @@
     },
     "/groups/{group_id}/audit": {
       "get": {
-        "description": "The group's trail, newest first, keyset-paginated (D11 \u2014 no OFFSET, no\nunbounded list).\n\n`next_before` is the cursor for the following page and is `null` on the last\none. Filtering by `action` or `actor_user_id` narrows without changing the\ncursor's meaning.",
+        "description": "The group's trail, newest first, keyset-paginated (D11 \u2014 no OFFSET, no\nunbounded list).\n\n`next_before` is the cursor for the following page and is `null` on the last\none. Filtering by `action` or `actor_user_id` narrows without changing the\ncursor's meaning. `since` is inclusive and `until` exclusive; `since >= until`\nis a 400 `invalid_window`.",
         "operationId": "read_audit_groups__group_id__audit_get",
         "parameters": [
           {
@@ -3543,6 +3543,68 @@
               "description": "only changes this Telegram user made",
               "title": "Actor User Id"
             }
+          },
+          {
+            "description": "only changes made from this surface: `telegram`, `miniapp`, `api`, `system`",
+            "in": "query",
+            "name": "surface",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "telegram",
+                    "miniapp",
+                    "api",
+                    "system"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only changes made from this surface: `telegram`, `miniapp`, `api`, `system`",
+              "title": "Surface"
+            }
+          },
+          {
+            "description": "only events at or after this instant (inclusive)",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only events at or after this instant (inclusive)",
+              "title": "Since"
+            }
+          },
+          {
+            "description": "only events before this instant (exclusive)",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only events before this instant (exclusive)",
+              "title": "Until"
+            }
           }
         ],
         "responses": {
@@ -3555,6 +3617,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "`since` is not before `until`"
           },
           "401": {
             "content": {

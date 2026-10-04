@@ -304,6 +304,16 @@ def _utc(value: datetime | None) -> datetime | None:
     return value.replace(tzinfo=UTC) if value is not None and value.tzinfo is None else value
 
 
+def reversed_window(since: datetime | None, until: datetime | None) -> bool:
+    """True when both bounds are given and `since` is not before `until`.
+
+    Naive datetimes are read as UTC (as `page` does), so a naive and an aware
+    bound compare instead of raising `TypeError`.
+    """
+    lo, hi = _utc(since), _utc(until)
+    return lo is not None and hi is not None and lo >= hi
+
+
 def _from_row(row: Any) -> AuditEvent:
     return AuditEvent(
         id=row["id"],
@@ -351,4 +361,5 @@ __all__ = [
     "fleet_sql",
     "page",
     "record",
+    "reversed_window",
 ]

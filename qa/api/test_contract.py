@@ -83,6 +83,23 @@ CASES: tuple[Case, ...] = (
     Case("get", "/groups/{group_id}/welcome", role="admin"),
     Case("put", "/groups/{group_id}/welcome", role="admin", json={"body": "hello <user>"}),
     Case("get", "/groups/{group_id}/audit", role="admin"),
+    Case(
+        "get",
+        "/groups/{group_id}/audit",
+        role="admin",
+        params={
+            "surface": "miniapp",
+            "since": "2026-01-01T00:00:00Z",
+            "until": "2099-01-01T00:00:00Z",
+        },
+    ),
+    Case(
+        "get",
+        "/groups/{group_id}/audit",
+        role="admin",
+        params={"since": "2026-02-01T00:00:00Z", "until": "2026-01-01T00:00:00Z"},
+        expect=400,
+    ),
     Case("get", "/groups/{group_id}/analytics/daily", role="admin"),
     Case("get", "/groups/{group_id}/analytics/commands", role="admin"),
     Case("get", "/groups/{group_id}/analytics/llm", role="admin"),
