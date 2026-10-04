@@ -11,15 +11,18 @@ other.
 Everything here is pure: a string and a token in, a decision out. No clock it
 did not receive, no database, no HTTP.
 
-## The three fields that are not part of the signature
+## What the HMAC covers
 
-`hash` is the signature itself. `signature` is Telegram's *third-party*
-Ed25519 signature, present since Bot API 7.10 and explicitly excluded from the
-HMAC check — a client that includes it in the data-check string computes a
-different digest than Telegram did and rejects every real payload. Everything
-else, including fields this codebase does not read, is signed and must be fed
-back exactly as received: an unknown future field dropped here is a valid
-payload that fails to verify.
+Every received field except `hash`, which is the HMAC itself. That includes
+`signature`, Telegram's *third-party* Ed25519 signature (Bot API 7.10+): the
+Ed25519 check leaves both `hash` and `signature` out of its data-check
+string, but the bot-token HMAC leaves out only `hash` ("Validating data
+received via the Mini App", core.telegram.org/bots/webapps). Dropping
+`signature` here computes a digest Telegram never signed and rejects every
+real payload — which is what this module did until UAT's first real Mini App
+launch. Everything else, including fields this codebase does not read, is
+signed and must be fed back exactly as received: an unknown future field
+dropped here is a valid payload that fails to verify.
 """
 
 from __future__ import annotations
@@ -37,7 +40,7 @@ _WEBAPP_KEY = b"WebAppData"
 
 _HASH_FIELD = "hash"
 #: Excluded from the data-check string — see the module docstring.
-_UNSIGNED_FIELDS = frozenset({_HASH_FIELD, "signature"})
+_UNSIGNED_FIELDS = frozenset({_HASH_FIELD})
 
 
 def parse_init_data(raw: str) -> dict[str, str]:
@@ -51,8 +54,7 @@ def parse_init_data(raw: str) -> dict[str, str]:
 
 
 def data_check_string(fields: dict[str, str]) -> str:
-    """`key=value` pairs, sorted by key, newline-joined, minus the two
-    unsigned fields."""
+    """`key=value` pairs, sorted by key, newline-joined, minus `hash`."""
     signed = {k: v for k, v in fields.items() if k not in _UNSIGNED_FIELDS}
     return "\n".join(f"{key}={signed[key]}" for key in sorted(signed))
 

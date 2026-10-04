@@ -60,12 +60,12 @@ def init_data() -> InitDataFactory:
                 },
                 separators=(",", ":"),
             )
+        if signature is not None:
+            # Bot API 7.10's Ed25519 signature: present in real payloads, and
+            # covered by the bot-token HMAC like every field but `hash`.
+            fields["signature"] = signature
         signed = dict(fields)
         signed["hash"] = _sign(fields, token)
-        if signature is not None:
-            # Bot API 7.10's Ed25519 signature: present in real payloads and
-            # deliberately outside the HMAC.
-            signed["signature"] = signature
         return urlencode(signed)
 
     return _build
@@ -87,11 +87,20 @@ def test_a_tampered_field_does_not_verify(init_data: InitDataFactory) -> None:
     assert not miniapp.validate_init_data(fields, BOT_TOKEN)
 
 
-def test_the_signature_field_is_not_part_of_the_hash(init_data: InitDataFactory) -> None:
-    """A payload carrying Telegram's third-party signature still verifies —
-    including it in the data-check string would break every real Mini App."""
+def test_the_signature_field_is_part_of_the_hash(init_data: InitDataFactory) -> None:
+    """Telegram's HMAC covers `signature` — only the third-party Ed25519
+    check leaves it out. Real payloads always carry it, so excluding it here
+    rejected every real Mini App launch."""
     fields = miniapp.parse_init_data(init_data(signature="Zm9vYmFy"))
     assert miniapp.validate_init_data(fields, BOT_TOKEN)
+
+
+def test_a_payload_stripped_of_its_signature_does_not_verify(
+    init_data: InitDataFactory,
+) -> None:
+    fields = miniapp.parse_init_data(init_data(signature="Zm9vYmFy"))
+    del fields["signature"]
+    assert not miniapp.validate_init_data(fields, BOT_TOKEN)
 
 
 def test_an_unknown_future_field_is_signed_and_kept(init_data: InitDataFactory) -> None:
