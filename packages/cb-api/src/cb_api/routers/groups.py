@@ -508,7 +508,7 @@ async def read_audit(
     one. Filtering by `action` or `actor_user_id` narrows without changing the
     cursor's meaning.
     """
-    events = await audit.page(
+    result = await audit.page(
         group_id,
         limit=limit,
         before_id=before,
@@ -530,9 +530,9 @@ async def read_audit(
                 "after": event.after,
                 "trace_id": event.trace_id,
             }
-            for event in events
+            for event in result.events
         ],
-        "next_before": str(events[-1].id) if len(events) == limit else None,
+        "next_before": str(result.next_before) if result.next_before else None,
     }
 
 

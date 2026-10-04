@@ -128,11 +128,13 @@ def state(monkeypatch: pytest.MonkeyPatch) -> FakeState:
         fake.audit.append(event)
         return event
 
-    async def _page(group_id: int, **kwargs: Any) -> tuple[audit.AuditEvent, ...]:
+    async def _page(group_id: int, **kwargs: Any) -> audit.AuditSlice:
         rows = [e for e in reversed(fake.audit) if e.group_id == group_id]
         if kwargs.get("action"):
             rows = [e for e in rows if e.action == kwargs["action"]]
-        return tuple(rows[: kwargs.get("limit", 50)])
+        limit = kwargs.get("limit", 50)
+        events = tuple(rows[:limit])
+        return audit.AuditSlice(events, events[-1].id if len(rows) > limit else None)
 
     async def _my_groups(stmt: str, *args: Any, name: str = "") -> list[dict[str, Any]]:
         user_id = args[0]
@@ -353,8 +355,12 @@ def test_the_audit_page_can_be_filtered_by_action(client: TestClient) -> None:
 def test_a_full_page_carries_a_cursor(client: TestClient) -> None:
     client.patch(f"/groups/{GROUP_ID}/config", json={"sfw": False}, headers=_auth())
     client.put(f"/groups/{GROUP_ID}/rules", json={"body": "hi"}, headers=_auth())
+    client.put(f"/groups/{GROUP_ID}/welcome", json={"body": "hello"}, headers=_auth())
     body = client.get(f"/groups/{GROUP_ID}/audit", params={"limit": 2}, headers=_auth()).json()
     assert body["next_before"] == body["events"][-1]["id"]
+
+    exact = client.get(f"/groups/{GROUP_ID}/audit", params={"limit": 3}, headers=_auth()).json()
+    assert exact["next_before"] is None  # D1: no trailing empty page
 
     short = client.get(f"/groups/{GROUP_ID}/audit", params={"limit": 50}, headers=_auth()).json()
     assert short["next_before"] is None
