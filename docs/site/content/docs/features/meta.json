@@ -72,6 +72,7 @@
     "x_analytics_api",
     "x_audit_log",
     "x_group_config_api",
+    "x_live_stats",
     "x_miniapp_auth",
     "x_webhub_login"
   ]

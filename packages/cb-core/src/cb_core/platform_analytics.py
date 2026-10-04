@@ -34,6 +34,14 @@ hurt, the fix is a `platform_daily_stats` rollup written by `cb-worker`, not a
 LIMIT bolted onto the query; the shapes below are already what such a rollup
 would return.
 
+## Freshness
+
+These read the rollups only, never the raw tables. `cb-worker` rolls up today
+(UTC) every minute (`x_live_stats`), so the fleet numbers are at most about a
+minute stale (plus the rollup's own duration). The per-group module computes
+today live from raw events instead; a cross-shard raw scan per request is
+exactly what this module must not do.
+
 ## Windows, not LIMITs
 
 Same rule as the per-group module: the caller bounds the window and this trusts

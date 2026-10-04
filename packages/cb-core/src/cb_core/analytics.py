@@ -2,9 +2,9 @@
 
 The rollups themselves have existed since migration `0001`
 (`group_daily_stats`, `command_daily_stats`) and `0002` (`llm_daily_cost`), and
-`cb-worker` has been filling them nightly (`cb_rollup_day`,
-`cb_rollup_llm_day`). Nothing read them: the numbers were in Grafana by way of
-Postgres, and there was no HTTP surface. This module is that surface's data
+`cb-worker` fills them every minute for today (UTC) and closes each day at
+00:20/00:25 (`cb_rollup_day`, `cb_rollup_llm_day`). Nothing read them: the
+numbers were in Grafana by way of Postgres, and there was no HTTP surface. This module is that surface's data
 layer, in `cb-core` rather than `cb-api` because a rollup read is not
 HTTP-shaped — `cb-worker`'s own reports and any future console want the same
 rows.
@@ -25,11 +25,24 @@ A date range is the natural bound for a daily rollup, and it is what the index
 (`PRIMARY KEY (group_id, day)`) serves. `cb_api.routers.analytics` clamps the
 range; this module takes the two dates it is given and trusts them, the same
 way every other repository in `cb-core` trusts its arguments.
+
+## Today is read live, from the raw events (`x_live_stats` R2)
+
+The rollups lag: a group admin looking at "today" would see yesterday's numbers
+until the worker's next pass. So when the window includes *today (UTC)*, that
+one day is aggregated straight from `message_events` / `llm_usage` with the
+**same expressions as `cb_rollup_day` / `cb_rollup_llm_day`** (migrations `0001`
+and `0002`), and the rollup tables are read only for days *before* today — a
+row the 1-minute worker has already written for today is ignored, so nothing is
+counted twice. Every live query still opens with `group_id = $1`: one shard,
+`Task Count: 1`. "Today" is a parameter (`today=`, default `datetime.now(UTC)`)
+so tests can pin it.
 """
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 import msgspec
 
@@ -100,7 +113,6 @@ SELECT command,
    AND day <= $3
  GROUP BY command
  ORDER BY invocations DESC, command
- LIMIT $4
 """
 
 _LLM = """
@@ -120,65 +132,189 @@ SELECT provider, model,
 """
 
 
-async def daily(group_id: int, start: date, end: date) -> tuple[DailyStats, ...]:
-    """Every rollup row in `[start, end]`, oldest first.
+# Live-today variants. The aggregate expressions are copied from `cb_rollup_day` /
+# `cb_rollup_llm_day` on purpose: the number a group sees live must equal the
+# number the rollup later stores. `group_daily_stats.llm_*` is summed from
+# `message_events.llm_*` (not `llm_usage`), so the live row does the same.
+_LIVE_DAILY = """
+SELECT count(*) FILTER (WHERE event_type = 'message')                     AS messages,
+       count(*) FILTER (WHERE event_type = 'command')                     AS commands,
+       count(*) FILTER (WHERE event_type = 'join')                        AS joins,
+       count(*) FILTER (WHERE event_type = 'leave')                       AS leaves,
+       count(*) FILTER (WHERE event_type = 'captcha' AND outcome = 'issued') AS captcha_issued,
+       count(*) FILTER (WHERE event_type = 'captcha' AND outcome = 'solved') AS captcha_solved,
+       count(DISTINCT user_id)                                            AS active_users,
+       count(*) FILTER (WHERE outcome = 'error')                          AS errors,
+       percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms)           AS p95_latency_ms,
+       coalesce(sum(llm_tokens), 0)                                       AS llm_tokens,
+       coalesce(sum(llm_cost_usd), 0)                                     AS llm_cost_usd
+  FROM message_events
+ WHERE group_id = $1
+   AND ts >= $2
+   AND ts < $3
+HAVING count(*) > 0
+"""
+
+_LIVE_COMMANDS = """
+SELECT command,
+       count(*)                                  AS invocations,
+       count(*) FILTER (WHERE outcome = 'error') AS errors,
+       percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms
+  FROM message_events
+ WHERE group_id = $1
+   AND ts >= $2
+   AND ts < $3
+   AND command IS NOT NULL
+ GROUP BY command
+"""
+
+_LIVE_LLM = """
+SELECT provider, model,
+       count(*)                                    AS calls,
+       coalesce(sum(input_tokens), 0)::bigint      AS input_tokens,
+       coalesce(sum(output_tokens), 0)::bigint     AS output_tokens,
+       coalesce(sum(cost_usd), 0)                  AS cost_usd,
+       count(*) FILTER (WHERE outcome = 'refusal') AS refusals,
+       count(*) FILTER (WHERE outcome = 'error')   AS errors
+  FROM llm_usage
+ WHERE group_id = $1
+   AND created_at >= $2
+   AND created_at < $3
+ GROUP BY provider, model
+"""
+
+
+def _today_utc(today: date | None) -> date:
+    return today if today is not None else datetime.now(UTC).date()
+
+
+def _live_bounds(today: date) -> tuple[datetime, datetime]:
+    start = datetime(today.year, today.month, today.day, tzinfo=UTC)
+    return start, start + timedelta(days=1)
+
+
+def _split_window(start: date, end: date, today: date) -> tuple[date | None, bool]:
+    """`(rollup_end, include_live)`: the last rolled-up day to read (None when the
+    window has no day before today) and whether today falls inside the window."""
+    rollup_end = min(end, today - timedelta(days=1))
+    return (rollup_end if rollup_end >= start else None), start <= today <= end
+
+
+async def daily(
+    group_id: int, start: date, end: date, *, today: date | None = None
+) -> tuple[DailyStats, ...]:
+    """Every day in `[start, end]` that has data, oldest first.
+
+    Days before today come from the rollup; today (UTC, `today=` to override)
+    is computed live from `message_events`, so it is current to the second.
 
     Days with no activity have no row — `cb_rollup_day` writes only what it
     saw — so a caller drawing a chart fills gaps itself rather than this
     inventing zero rows it cannot distinguish from real ones.
     """
-    rows = await db.fetch(_DAILY, group_id, start, end, name="analytics_daily")
-    return tuple(
-        DailyStats(
-            day=row["day"],
-            messages=row["messages"],
-            commands=row["commands"],
-            joins=row["joins"],
-            leaves=row["leaves"],
-            captcha_issued=row["captcha_issued"],
-            captcha_solved=row["captcha_solved"],
-            active_users=row["active_users"],
-            errors=row["errors"],
-            p95_latency_ms=row["p95_latency_ms"],
-            llm_tokens=row["llm_tokens"],
-            llm_cost_usd=float(row["llm_cost_usd"]),
+    today = _today_utc(today)
+    rollup_end, include_live = _split_window(start, end, today)
+    result: list[DailyStats] = []
+    if rollup_end is not None:
+        rows = await db.fetch(_DAILY, group_id, start, rollup_end, name="analytics_daily")
+        result.extend(_daily_stats(row["day"], row) for row in rows)
+    if include_live:
+        live = await db.fetchrow(
+            _LIVE_DAILY, group_id, *_live_bounds(today), name="analytics_daily_live"
         )
-        for row in rows
+        if live is not None:
+            result.append(_daily_stats(today, live))
+    return tuple(result)
+
+
+def _daily_stats(day: date, row: Any) -> DailyStats:
+    return DailyStats(
+        day=day,
+        messages=row["messages"],
+        commands=row["commands"],
+        joins=row["joins"],
+        leaves=row["leaves"],
+        captcha_issued=row["captcha_issued"],
+        captcha_solved=row["captcha_solved"],
+        active_users=row["active_users"],
+        errors=row["errors"],
+        p95_latency_ms=row["p95_latency_ms"],
+        llm_tokens=row["llm_tokens"],
+        llm_cost_usd=float(row["llm_cost_usd"]),
     )
 
 
 async def commands(
-    group_id: int, start: date, end: date, *, limit: int = 20
+    group_id: int,
+    start: date,
+    end: date,
+    *,
+    limit: int = 20,
+    today: date | None = None,
 ) -> tuple[CommandStats, ...]:
-    """The most-used commands in the window, busiest first."""
-    rows = await db.fetch(_COMMANDS, group_id, start, end, limit, name="analytics_commands")
-    return tuple(
-        CommandStats(
-            command=row["command"],
-            invocations=row["invocations"],
-            errors=row["errors"],
-            p95_latency_ms=row["p95_latency_ms"],
+    """The most-used commands in the window, busiest first (today included live)."""
+    today = _today_utc(today)
+    rollup_end, include_live = _split_window(start, end, today)
+    rows: list[Any] = []
+    if rollup_end is not None:
+        rows.extend(
+            await db.fetch(_COMMANDS, group_id, start, rollup_end, name="analytics_commands")
         )
-        for row in rows
-    )
+    if include_live:
+        rows.extend(
+            await db.fetch(
+                _LIVE_COMMANDS, group_id, *_live_bounds(today), name="analytics_commands_live"
+            )
+        )
+    merged: dict[str, CommandStats] = {}
+    for row in rows:
+        prior = merged.get(row["command"])
+        merged[row["command"]] = CommandStats(
+            command=row["command"],
+            invocations=row["invocations"] + (prior.invocations if prior else 0),
+            errors=row["errors"] + (prior.errors if prior else 0),
+            p95_latency_ms=_max_or_none(
+                row["p95_latency_ms"], prior.p95_latency_ms if prior else None
+            ),
+        )
+    ordered = sorted(merged.values(), key=lambda c: (-c.invocations, c.command))
+    return tuple(ordered[:limit])
 
 
-async def llm_costs(group_id: int, start: date, end: date) -> tuple[LlmCost, ...]:
-    """Per provider/model spend in the window, most expensive first."""
-    rows = await db.fetch(_LLM, group_id, start, end, name="analytics_llm")
-    return tuple(
-        LlmCost(
+def _max_or_none(a: int | None, b: int | None) -> int | None:
+    present = [value for value in (a, b) if value is not None]
+    return max(present) if present else None
+
+
+async def llm_costs(
+    group_id: int, start: date, end: date, *, today: date | None = None
+) -> tuple[LlmCost, ...]:
+    """Per provider/model spend in the window, most expensive first (today live)."""
+    today = _today_utc(today)
+    rollup_end, include_live = _split_window(start, end, today)
+    rows: list[Any] = []
+    if rollup_end is not None:
+        rows.extend(await db.fetch(_LLM, group_id, start, rollup_end, name="analytics_llm"))
+    if include_live:
+        rows.extend(
+            await db.fetch(_LIVE_LLM, group_id, *_live_bounds(today), name="analytics_llm_live")
+        )
+    merged: dict[tuple[str, str], LlmCost] = {}
+    for row in rows:
+        key = (row["provider"], row["model"])
+        prior = merged.get(key)
+        merged[key] = LlmCost(
             provider=row["provider"],
             model=row["model"],
-            calls=row["calls"],
-            input_tokens=row["input_tokens"],
-            output_tokens=row["output_tokens"],
-            cost_usd=float(row["cost_usd"]),
-            refusals=row["refusals"],
-            errors=row["errors"],
+            calls=row["calls"] + (prior.calls if prior else 0),
+            input_tokens=row["input_tokens"] + (prior.input_tokens if prior else 0),
+            output_tokens=row["output_tokens"] + (prior.output_tokens if prior else 0),
+            cost_usd=float(row["cost_usd"]) + (prior.cost_usd if prior else 0.0),
+            refusals=row["refusals"] + (prior.refusals if prior else 0),
+            errors=row["errors"] + (prior.errors if prior else 0),
         )
-        for row in rows
-    )
+    ordered = sorted(merged.values(), key=lambda c: (-c.cost_usd, c.provider, c.model))
+    return tuple(ordered)
 
 
 def summarise(rows: tuple[DailyStats, ...]) -> dict[str, float | int | None]:

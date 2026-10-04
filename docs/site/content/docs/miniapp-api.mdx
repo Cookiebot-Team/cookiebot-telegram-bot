@@ -237,6 +237,11 @@ All eight take `admin:read`; `/admin/audit` also takes `audit:read`. The seven
 analytics and directory routes take the same `?start=`/`?end=` window the
 per-group analytics take.
 
+**Freshness.** Per-group analytics (`/groups/{group_id}/analytics/…`) compute
+today (UTC) live from the raw events, so they are exact; earlier days come from
+the daily rollups. The `/admin/analytics/*` routes read the rollups only, which
+the worker refreshes every minute, so they lag by at most about a minute.
+
 ```http
 GET /admin/overview
 Authorization: Bearer <access_token>
