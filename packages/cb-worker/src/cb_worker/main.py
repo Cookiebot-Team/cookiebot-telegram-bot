@@ -18,7 +18,7 @@ from typing import Any, ClassVar
 from arq import cron
 from arq.connections import RedisSettings
 from opentelemetry.trace import SpanKind
-from whenever import Instant
+from whenever import Date, Instant
 
 from cb_core import cache, db, metrics, storage, tenancy
 from cb_core.bot import build_bot
@@ -94,6 +94,11 @@ async def maintain_partitions(ctx: dict[str, Any]) -> int:
     return await _job("maintain_partitions", ctx, run)
 
 
+def _utc_today() -> Date:
+    """Today's date in UTC — the day boundary the analytics queries use."""
+    return Instant.now().to_tz("UTC").date()
+
+
 async def rollup_yesterday(ctx: dict[str, Any]) -> None:
     """Recompute the last two days of rollups.
 
@@ -102,7 +107,7 @@ async def rollup_yesterday(ctx: dict[str, Any]) -> None:
     """
 
     async def run() -> None:
-        today = Instant.now().to_system_tz().date()
+        today = _utc_today()
         for offset in (1, 0):
             day = today.add(days=-offset)
             await db.execute("SELECT cb_rollup_day($1)", day.to_stdlib(), name="rollup_day")
@@ -119,13 +124,29 @@ async def rollup_llm_costs(ctx: dict[str, Any]) -> None:
     """
 
     async def run() -> None:
-        today = Instant.now().to_system_tz().date()
+        today = _utc_today()
         for offset in (1, 0):
             day = today.add(days=-offset)
             await db.execute("SELECT cb_rollup_llm_day($1)", day.to_stdlib(), name="rollup_llm_day")
             log.info("llm.rollup.done", day=str(day))
 
     await _job("rollup_llm_costs", ctx, run)
+
+
+async def rollup_today(ctx: dict[str, Any]) -> None:
+    """Refresh today's (UTC) rollups so live stats lag by at most a minute.
+
+    Idempotent upserts, same functions the nightly jobs use.
+    """
+
+    async def run() -> None:
+        start = time.perf_counter()
+        day = _utc_today().to_stdlib()
+        await db.execute("SELECT cb_rollup_day($1)", day, name="rollup_day")
+        await db.execute("SELECT cb_rollup_llm_day($1)", day, name="rollup_llm_day")
+        log.debug("rollup.today.done", day=str(day), seconds=time.perf_counter() - start)
+
+    await _job("rollup_today", ctx, run)
 
 
 async def collect_media_garbage(ctx: dict[str, Any]) -> int:
@@ -230,6 +251,7 @@ class WorkerSettings:
         maintain_partitions,
         rollup_yesterday,
         rollup_llm_costs,
+        rollup_today,
         collect_media_garbage,
         expire_captchas,
     ]
@@ -237,6 +259,12 @@ class WorkerSettings:
         cron(maintain_partitions, minute=5),  # hourly at :05
         cron(rollup_yesterday, hour=0, minute=20),  # daily, after midnight
         cron(rollup_llm_costs, hour=0, minute=25),
+        # Every minute. arq's default `unique=True` only dedupes per scheduled
+        # tick (job id = name:tick), so a slow run would not stop the next
+        # tick. A fixed job_id does: enqueue is refused while that job is
+        # queued or running, and keep_result=0 leaves no result key behind.
+        # timeout < 60s so a hung run is killed before the next tick.
+        cron(rollup_today, second=0, job_id="rollup_today", timeout=55),
         cron(collect_media_garbage, hour=3, minute=40),  # off-peak
         # util_birthday's daily broadcast. v1 fired it opportunistically from
         # the message handler on the first update of a new UTC day
