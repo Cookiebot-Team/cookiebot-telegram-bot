@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-08-30",
-  "commit": "1aa8c83",
-  "test_summary": "2 failed, 3445 passed, 44 skipped, 232 deselected, 2 warnings in 32.19s",
+  "generated_at": "2026-10-04",
+  "commit": "153454c",
+  "test_summary": "3162 passed, 85 skipped, 357 deselected, 2 warnings, 281 errors in 26.51s",
   "totals": {
-    "features": 66,
-    "done": 66,
+    "features": 67,
+    "done": 67,
     "partial": 0,
     "planned": 0,
     "blocked": 0,
@@ -13,8 +13,8 @@
     "spec_files": 31,
     "spec_files_covered": 31,
     "new_specs": 114,
-    "green": 369,
-    "failing": 0
+    "green": 96,
+    "failing": 253
   },
   "milestones": [
     {
@@ -44,8 +44,8 @@
     {
       "id": "M4",
       "title": "Analytics surface, web console, data migration",
-      "done": 7,
-      "total": 7
+      "done": 8,
+      "total": 8
     }
   ],
   "features": [
@@ -313,8 +313,8 @@
       "scenarios": {
         "spec": 2,
         "ported": 4,
-        "green": 4,
-        "failing": 0
+        "green": 0,
+        "failing": 4
       },
       "url": "/docs/features/util_isalive"
     },
@@ -426,8 +426,8 @@
       "scenarios": {
         "spec": 3,
         "ported": 10,
-        "green": 18,
-        "failing": 0
+        "green": 0,
+        "failing": 18
       },
       "url": "/docs/features/core_welcome"
     },
@@ -464,8 +464,8 @@
       "scenarios": {
         "spec": 2,
         "ported": 6,
-        "green": 9,
-        "failing": 0
+        "green": 0,
+        "failing": 7
       },
       "url": "/docs/features/core_stickerspam"
     },
@@ -506,8 +506,8 @@
       "scenarios": {
         "spec": 2,
         "ported": 5,
-        "green": 6,
-        "failing": 0
+        "green": 0,
+        "failing": 6
       },
       "url": "/docs/features/util_config"
     },
@@ -525,8 +525,8 @@
       "scenarios": {
         "spec": 1,
         "ported": 6,
-        "green": 4,
-        "failing": 0
+        "green": 0,
+        "failing": 4
       },
       "url": "/docs/features/util_doomlist"
     },
@@ -586,8 +586,8 @@
       "scenarios": {
         "spec": 3,
         "ported": 8,
-        "green": 9,
-        "failing": 0
+        "green": 0,
+        "failing": 9
       },
       "url": "/docs/features/fun_dice"
     },
@@ -609,8 +609,8 @@
       "scenarios": {
         "spec": 3,
         "ported": 7,
-        "green": 8,
-        "failing": 0
+        "green": 0,
+        "failing": 8
       },
       "url": "/docs/features/fun_ship"
     },
@@ -632,8 +632,8 @@
       "scenarios": {
         "spec": 2,
         "ported": 7,
-        "green": 8,
-        "failing": 0
+        "green": 0,
+        "failing": 8
       },
       "url": "/docs/features/fun_death"
     },
@@ -653,8 +653,8 @@
       "scenarios": {
         "spec": 2,
         "ported": 4,
-        "green": 4,
-        "failing": 0
+        "green": 0,
+        "failing": 4
       },
       "url": "/docs/features/fun_meme"
     },
@@ -676,8 +676,8 @@
       "scenarios": {
         "spec": 1,
         "ported": 10,
-        "green": 10,
-        "failing": 0
+        "green": 0,
+        "failing": 10
       },
       "url": "/docs/features/fun_battle"
     },
@@ -698,8 +698,8 @@
       "scenarios": {
         "spec": 1,
         "ported": 5,
-        "green": 33,
-        "failing": 0
+        "green": 29,
+        "failing": 4
       },
       "url": "/docs/features/fun_random"
     },
@@ -721,8 +721,8 @@
       "scenarios": {
         "spec": 1,
         "ported": 2,
-        "green": 2,
-        "failing": 0
+        "green": 0,
+        "failing": 2
       },
       "url": "/docs/features/fun_firecracker"
     },
@@ -746,8 +746,8 @@
       "scenarios": {
         "spec": 2,
         "ported": 4,
-        "green": 4,
-        "failing": 0
+        "green": 0,
+        "failing": 4
       },
       "url": "/docs/features/fun_complaint"
     },
@@ -772,8 +772,8 @@
       "scenarios": {
         "spec": 7,
         "ported": 10,
-        "green": 10,
-        "failing": 0
+        "green": 0,
+        "failing": 10
       },
       "url": "/docs/features/fun_partneredcons"
     },
@@ -795,8 +795,8 @@
       "scenarios": {
         "spec": 1,
         "ported": 3,
-        "green": 3,
-        "failing": 0
+        "green": 0,
+        "failing": 3
       },
       "url": "/docs/features/util_birthday"
     },
@@ -817,8 +817,8 @@
       "scenarios": {
         "spec": 1,
         "ported": 2,
-        "green": 2,
-        "failing": 0
+        "green": 0,
+        "failing": 2
       },
       "url": "/docs/features/util_nextbirthday"
     },
@@ -839,8 +839,8 @@
       "scenarios": {
         "spec": 2,
         "ported": 3,
-        "green": 3,
-        "failing": 0
+        "green": 0,
+        "failing": 3
       },
       "url": "/docs/features/util_everyone"
     },
@@ -862,8 +862,8 @@
       "scenarios": {
         "spec": 1,
         "ported": 4,
-        "green": 7,
-        "failing": 0
+        "green": 0,
+        "failing": 7
       },
       "url": "/docs/features/util_calladms"
     },
@@ -881,8 +881,8 @@
       "scenarios": {
         "spec": 2,
         "ported": 9,
-        "green": 16,
-        "failing": 0
+        "green": 0,
+        "failing": 16
       },
       "url": "/docs/features/util_embedder"
     },
@@ -902,8 +902,8 @@
       "scenarios": {
         "spec": 1,
         "ported": 1,
-        "green": 1,
-        "failing": 0
+        "green": 0,
+        "failing": 1
       },
       "url": "/docs/features/util_youtube"
     },
@@ -947,7 +947,7 @@
       "scenarios": {
         "spec": 2,
         "ported": 8,
-        "green": 8,
+        "green": 0,
         "failing": 0
       },
       "url": "/docs/features/util_postforwarder"
@@ -966,8 +966,8 @@
       "scenarios": {
         "spec": 1,
         "ported": 4,
-        "green": 4,
-        "failing": 0
+        "green": 0,
+        "failing": 4
       },
       "url": "/docs/features/util_postgetter"
     },
@@ -989,8 +989,8 @@
       "scenarios": {
         "spec": 2,
         "ported": 2,
-        "green": 2,
-        "failing": 0
+        "green": 0,
+        "failing": 2
       },
       "url": "/docs/features/util_deletereposts"
     },
@@ -1010,7 +1010,7 @@
       "scenarios": {
         "spec": 0,
         "ported": 10,
-        "green": 10,
+        "green": 0,
         "failing": 0
       },
       "url": "/docs/features/x_giveaways"
@@ -1029,8 +1029,8 @@
       "scenarios": {
         "spec": 0,
         "ported": 7,
-        "green": 7,
-        "failing": 0
+        "green": 0,
+        "failing": 7
       },
       "url": "/docs/features/x_conversational_ai"
     },
@@ -1052,8 +1052,8 @@
       "scenarios": {
         "spec": 0,
         "ported": 6,
-        "green": 6,
-        "failing": 0
+        "green": 0,
+        "failing": 6
       },
       "url": "/docs/features/x_speech_to_text"
     },
@@ -1075,8 +1075,8 @@
       "scenarios": {
         "spec": 0,
         "ported": 6,
-        "green": 6,
-        "failing": 0
+        "green": 0,
+        "failing": 6
       },
       "url": "/docs/features/x_reverse_search"
     },
@@ -1098,8 +1098,8 @@
       "scenarios": {
         "spec": 0,
         "ported": 10,
-        "green": 12,
-        "failing": 0
+        "green": 0,
+        "failing": 12
       },
       "url": "/docs/features/x_distortion"
     },
@@ -1126,8 +1126,8 @@
       "scenarios": {
         "spec": 0,
         "ported": 8,
-        "green": 9,
-        "failing": 0
+        "green": 0,
+        "failing": 9
       },
       "url": "/docs/features/x_owner_commands"
     },
@@ -1145,8 +1145,8 @@
       "scenarios": {
         "spec": 0,
         "ported": 6,
-        "green": 6,
-        "failing": 0
+        "green": 0,
+        "failing": 6
       },
       "url": "/docs/features/x_custom_commands"
     },
@@ -1168,8 +1168,8 @@
       "scenarios": {
         "spec": 0,
         "ported": 5,
-        "green": 7,
-        "failing": 0
+        "green": 0,
+        "failing": 7
       },
       "url": "/docs/features/x_age_guess"
     },
@@ -1191,8 +1191,8 @@
       "scenarios": {
         "spec": 0,
         "ported": 6,
-        "green": 8,
-        "failing": 0
+        "green": 0,
+        "failing": 8
       },
       "url": "/docs/features/x_gender_guess"
     },
@@ -1213,8 +1213,8 @@
       "scenarios": {
         "spec": 0,
         "ported": 5,
-        "green": 6,
-        "failing": 0
+        "green": 0,
+        "failing": 6
       },
       "url": "/docs/features/x_unearth"
     },
@@ -1236,8 +1236,8 @@
       "scenarios": {
         "spec": 0,
         "ported": 3,
-        "green": 5,
-        "failing": 0
+        "green": 0,
+        "failing": 5
       },
       "url": "/docs/features/x_fortune_cookie"
     },
@@ -1259,8 +1259,8 @@
       "scenarios": {
         "spec": 0,
         "ported": 10,
-        "green": 10,
-        "failing": 0
+        "green": 0,
+        "failing": 10
       },
       "url": "/docs/features/x_image_search"
     },
@@ -1282,8 +1282,8 @@
       "scenarios": {
         "spec": 0,
         "ported": 3,
-        "green": 5,
-        "failing": 0
+        "green": 0,
+        "failing": 5
       },
       "url": "/docs/features/x_drawing_idea"
     },
@@ -1305,8 +1305,8 @@
       "scenarios": {
         "spec": 0,
         "ported": 4,
-        "green": 7,
-        "failing": 0
+        "green": 0,
+        "failing": 7
       },
       "url": "/docs/features/x_analysis"
     },
@@ -1324,8 +1324,8 @@
       "scenarios": {
         "spec": 0,
         "ported": 6,
-        "green": 6,
-        "failing": 0
+        "green": 0,
+        "failing": 6
       },
       "url": "/docs/features/x_sticker_autoreply"
     },
@@ -1442,6 +1442,25 @@
         "failing": 0
       },
       "url": "/docs/features/x_audit_log"
+    },
+    {
+      "id": "x_admin_audit",
+      "title": "Audit trail viewer API: filters and the fleet-wide trail",
+      "area": "platform",
+      "layer": "api",
+      "milestone": "M4",
+      "status": "done",
+      "triggers": [],
+      "v1_source": "",
+      "notes": "net-new: the per-group audit gains surface/since/until filters and an exact next cursor (no trailing empty page). GET /admin/audit is owner-only (admin:read + audit:read), tenant-scoped via groups.tenant_id, and is the second deliberate cross-shard read (keyset + LIMIT, migration 0011 index on id DESC). WebHub consumes both",
+      "contract": "docs/contracts/x_admin_audit.md",
+      "scenarios": {
+        "spec": 0,
+        "ported": 0,
+        "green": 0,
+        "failing": 0
+      },
+      "url": "/docs/features/x_admin_audit"
     }
   ],
   "commands": [
@@ -2053,16 +2072,16 @@
       "stem": "core_llm_provider",
       "spec": 0,
       "ported": 9,
-      "green": 9,
-      "failing": 0,
+      "green": 0,
+      "failing": 9,
       "state": "v2-only spec"
     },
     {
       "stem": "core_media_storage",
       "spec": 0,
       "ported": 8,
-      "green": 8,
-      "failing": 0,
+      "green": 0,
+      "failing": 8,
       "state": "v2-only spec"
     },
     {
@@ -2117,255 +2136,255 @@
       "stem": "core_stickerspam",
       "spec": 2,
       "ported": 6,
-      "green": 9,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 7,
+      "state": "failing"
     },
     {
       "stem": "core_welcome",
       "spec": 3,
       "ported": 10,
-      "green": 18,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 18,
+      "state": "failing"
     },
     {
       "stem": "fun_battle",
       "spec": 1,
       "ported": 10,
-      "green": 10,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 10,
+      "state": "failing"
     },
     {
       "stem": "fun_complaint",
       "spec": 2,
       "ported": 4,
-      "green": 4,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 4,
+      "state": "failing"
     },
     {
       "stem": "fun_death",
       "spec": 2,
       "ported": 7,
-      "green": 8,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 8,
+      "state": "failing"
     },
     {
       "stem": "fun_dice",
       "spec": 3,
       "ported": 8,
-      "green": 9,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 9,
+      "state": "failing"
     },
     {
       "stem": "fun_firecracker",
       "spec": 1,
       "ported": 2,
-      "green": 2,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 2,
+      "state": "failing"
     },
     {
       "stem": "fun_meme",
       "spec": 2,
       "ported": 4,
-      "green": 4,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 4,
+      "state": "failing"
     },
     {
       "stem": "fun_partneredcons",
       "spec": 7,
       "ported": 10,
-      "green": 10,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 10,
+      "state": "failing"
     },
     {
       "stem": "fun_random",
       "spec": 1,
       "ported": 5,
-      "green": 33,
-      "failing": 0,
-      "state": "green"
+      "green": 29,
+      "failing": 4,
+      "state": "failing"
     },
     {
       "stem": "fun_ship",
       "spec": 3,
       "ported": 7,
-      "green": 8,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 8,
+      "state": "failing"
     },
     {
       "stem": "util_birthday",
       "spec": 1,
       "ported": 3,
-      "green": 3,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 3,
+      "state": "failing"
     },
     {
       "stem": "util_calladms",
       "spec": 1,
       "ported": 4,
-      "green": 7,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 7,
+      "state": "failing"
     },
     {
       "stem": "util_config",
       "spec": 2,
       "ported": 5,
-      "green": 6,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 6,
+      "state": "failing"
     },
     {
       "stem": "util_deletereposts",
       "spec": 2,
       "ported": 2,
-      "green": 2,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 2,
+      "state": "failing"
     },
     {
       "stem": "util_doomlist",
       "spec": 1,
       "ported": 6,
-      "green": 4,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 4,
+      "state": "failing"
     },
     {
       "stem": "util_embedder",
       "spec": 2,
       "ported": 9,
-      "green": 16,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 16,
+      "state": "failing"
     },
     {
       "stem": "util_everyone",
       "spec": 2,
       "ported": 3,
-      "green": 3,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 3,
+      "state": "failing"
     },
     {
       "stem": "util_isalive",
       "spec": 2,
       "ported": 4,
-      "green": 4,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 4,
+      "state": "failing"
     },
     {
       "stem": "util_nextbirthday",
       "spec": 1,
       "ported": 2,
-      "green": 2,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 2,
+      "state": "failing"
     },
     {
       "stem": "util_postforwarder",
       "spec": 2,
       "ported": 8,
-      "green": 8,
+      "green": 0,
       "failing": 0,
-      "state": "green"
+      "state": "no step definitions"
     },
     {
       "stem": "util_postgetter",
       "spec": 1,
       "ported": 4,
-      "green": 4,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 4,
+      "state": "failing"
     },
     {
       "stem": "util_youtube",
       "spec": 1,
       "ported": 1,
-      "green": 1,
-      "failing": 0,
-      "state": "green"
+      "green": 0,
+      "failing": 1,
+      "state": "failing"
     },
     {
       "stem": "x_age_guess",
       "spec": 0,
       "ported": 5,
-      "green": 7,
-      "failing": 0,
+      "green": 0,
+      "failing": 7,
       "state": "v2-only spec"
     },
     {
       "stem": "x_analysis",
       "spec": 0,
       "ported": 4,
-      "green": 7,
-      "failing": 0,
+      "green": 0,
+      "failing": 7,
       "state": "v2-only spec"
     },
     {
       "stem": "x_conversational_ai",
       "spec": 0,
       "ported": 7,
-      "green": 7,
-      "failing": 0,
+      "green": 0,
+      "failing": 7,
       "state": "v2-only spec"
     },
     {
       "stem": "x_custom_commands",
       "spec": 0,
       "ported": 6,
-      "green": 6,
-      "failing": 0,
+      "green": 0,
+      "failing": 6,
       "state": "v2-only spec"
     },
     {
       "stem": "x_distortion",
       "spec": 0,
       "ported": 10,
-      "green": 12,
-      "failing": 0,
+      "green": 0,
+      "failing": 12,
       "state": "v2-only spec"
     },
     {
       "stem": "x_drawing_idea",
       "spec": 0,
       "ported": 3,
-      "green": 5,
-      "failing": 0,
+      "green": 0,
+      "failing": 5,
       "state": "v2-only spec"
     },
     {
       "stem": "x_fortune_cookie",
       "spec": 0,
       "ported": 3,
-      "green": 5,
-      "failing": 0,
+      "green": 0,
+      "failing": 5,
       "state": "v2-only spec"
     },
     {
       "stem": "x_gender_guess",
       "spec": 0,
       "ported": 6,
-      "green": 8,
-      "failing": 0,
+      "green": 0,
+      "failing": 8,
       "state": "v2-only spec"
     },
     {
       "stem": "x_giveaways",
       "spec": 0,
       "ported": 10,
-      "green": 10,
+      "green": 0,
       "failing": 0,
       "state": "v2-only spec"
     },
@@ -2373,48 +2392,48 @@
       "stem": "x_image_search",
       "spec": 0,
       "ported": 10,
-      "green": 10,
-      "failing": 0,
+      "green": 0,
+      "failing": 10,
       "state": "v2-only spec"
     },
     {
       "stem": "x_owner_commands",
       "spec": 0,
       "ported": 8,
-      "green": 9,
-      "failing": 0,
+      "green": 0,
+      "failing": 9,
       "state": "v2-only spec"
     },
     {
       "stem": "x_reverse_search",
       "spec": 0,
       "ported": 6,
-      "green": 6,
-      "failing": 0,
+      "green": 0,
+      "failing": 6,
       "state": "v2-only spec"
     },
     {
       "stem": "x_speech_to_text",
       "spec": 0,
       "ported": 6,
-      "green": 6,
-      "failing": 0,
+      "green": 0,
+      "failing": 6,
       "state": "v2-only spec"
     },
     {
       "stem": "x_sticker_autoreply",
       "spec": 0,
       "ported": 6,
-      "green": 6,
-      "failing": 0,
+      "green": 0,
+      "failing": 6,
       "state": "v2-only spec"
     },
     {
       "stem": "x_unearth",
       "spec": 0,
       "ported": 5,
-      "green": 6,
-      "failing": 0,
+      "green": 0,
+      "failing": 6,
       "state": "v2-only spec"
     }
   ],
@@ -2485,5 +2504,79 @@
       "addressed": true
     }
   ],
-  "problems": []
+  "problems": [
+    "util_isalive: marked done but no scenario executed green",
+    "util_isalive: 4 scenario(s) failing",
+    "core_welcome: marked done but no scenario executed green",
+    "core_welcome: 18 scenario(s) failing",
+    "core_stickerspam: marked done but no scenario executed green",
+    "core_stickerspam: 7 scenario(s) failing",
+    "util_config: marked done but no scenario executed green",
+    "util_config: 6 scenario(s) failing",
+    "util_doomlist: marked done but no scenario executed green",
+    "util_doomlist: 4 scenario(s) failing",
+    "fun_dice: marked done but no scenario executed green",
+    "fun_dice: 9 scenario(s) failing",
+    "fun_ship: marked done but no scenario executed green",
+    "fun_ship: 8 scenario(s) failing",
+    "fun_death: marked done but no scenario executed green",
+    "fun_death: 8 scenario(s) failing",
+    "fun_meme: marked done but no scenario executed green",
+    "fun_meme: 4 scenario(s) failing",
+    "fun_battle: marked done but no scenario executed green",
+    "fun_battle: 10 scenario(s) failing",
+    "fun_random: 4 scenario(s) failing",
+    "fun_firecracker: marked done but no scenario executed green",
+    "fun_firecracker: 2 scenario(s) failing",
+    "fun_complaint: marked done but no scenario executed green",
+    "fun_complaint: 4 scenario(s) failing",
+    "fun_partneredcons: marked done but no scenario executed green",
+    "fun_partneredcons: 10 scenario(s) failing",
+    "util_birthday: marked done but no scenario executed green",
+    "util_birthday: 3 scenario(s) failing",
+    "util_nextbirthday: marked done but no scenario executed green",
+    "util_nextbirthday: 2 scenario(s) failing",
+    "util_everyone: marked done but no scenario executed green",
+    "util_everyone: 3 scenario(s) failing",
+    "util_calladms: marked done but no scenario executed green",
+    "util_calladms: 7 scenario(s) failing",
+    "util_embedder: marked done but no scenario executed green",
+    "util_embedder: 16 scenario(s) failing",
+    "util_youtube: marked done but no scenario executed green",
+    "util_youtube: 1 scenario(s) failing",
+    "util_postforwarder: marked done but no scenario executed green",
+    "util_postgetter: marked done but no scenario executed green",
+    "util_postgetter: 4 scenario(s) failing",
+    "util_deletereposts: marked done but no scenario executed green",
+    "util_deletereposts: 2 scenario(s) failing",
+    "x_giveaways: marked done but no scenario executed green",
+    "x_conversational_ai: marked done but no scenario executed green",
+    "x_conversational_ai: 7 scenario(s) failing",
+    "x_speech_to_text: marked done but no scenario executed green",
+    "x_speech_to_text: 6 scenario(s) failing",
+    "x_reverse_search: marked done but no scenario executed green",
+    "x_reverse_search: 6 scenario(s) failing",
+    "x_distortion: marked done but no scenario executed green",
+    "x_distortion: 12 scenario(s) failing",
+    "x_owner_commands: marked done but no scenario executed green",
+    "x_owner_commands: 9 scenario(s) failing",
+    "x_custom_commands: marked done but no scenario executed green",
+    "x_custom_commands: 6 scenario(s) failing",
+    "x_age_guess: marked done but no scenario executed green",
+    "x_age_guess: 7 scenario(s) failing",
+    "x_gender_guess: marked done but no scenario executed green",
+    "x_gender_guess: 8 scenario(s) failing",
+    "x_unearth: marked done but no scenario executed green",
+    "x_unearth: 6 scenario(s) failing",
+    "x_fortune_cookie: marked done but no scenario executed green",
+    "x_fortune_cookie: 5 scenario(s) failing",
+    "x_image_search: marked done but no scenario executed green",
+    "x_image_search: 10 scenario(s) failing",
+    "x_drawing_idea: marked done but no scenario executed green",
+    "x_drawing_idea: 5 scenario(s) failing",
+    "x_analysis: marked done but no scenario executed green",
+    "x_analysis: 7 scenario(s) failing",
+    "x_sticker_autoreply: marked done but no scenario executed green",
+    "x_sticker_autoreply: 6 scenario(s) failing"
+  ]
 }

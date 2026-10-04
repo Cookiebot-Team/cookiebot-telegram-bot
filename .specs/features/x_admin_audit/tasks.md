@@ -8,11 +8,11 @@ stage only the paths in **Where**.
 
 | Task | Status | Notes |
 |------|--------|-------|
-| T1 — Migration 0011 audit indexes | ⏳ not started | R2 |
-| T2 — Query layer: filters, over-fetch, fleet_page | ⏳ not started | R1 |
-| T3 [P] — Group endpoint filters + cursor fix | ⏳ not started | R3 |
-| T4 [P] — GET /admin/audit | ⏳ not started | R4 |
-| T-final — Close out | ⏳ not started | spec row, contract doc |
+| T1 — Migration 0011 audit indexes | ✅ done | R2; up→down→up verified on Citus 13 |
+| T2 — Query layer: filters, over-fetch, fleet_page | ✅ done | R1; fleet_page has no conn arg (db.fetch idiom) |
+| T3 [P] — Group endpoint filters + cursor fix | ✅ done | R3; naive/aware window normalised, BAD_AUDIT_WINDOW |
+| T4 [P] — GET /admin/audit | ✅ done | R4; tenant = DEFAULT_TENANT like other /admin routes |
+| T-final — Close out | ✅ done | spec row, contract doc, docs-sync, cb.py check |
 
 ## Tasks
 

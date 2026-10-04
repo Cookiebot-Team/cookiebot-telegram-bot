@@ -360,6 +360,13 @@ FEATURES: tuple[Feature, ...] = (
             "one shard. Written by both surfaces - the Mini App's config endpoints and "
             "the Telegram config menu, /newrules and /newwelcome - and a failed audit "
             "write never fails the action it describes"),
+    Feature("x_admin_audit", "platform", "Audit trail viewer API: filters and the fleet-wide trail",
+            "M4", Status.DONE, Layer.API, "", (),
+            "net-new: the per-group audit gains surface/since/until filters and an exact "
+            "next cursor (no trailing empty page). GET /admin/audit is owner-only "
+            "(admin:read + audit:read), tenant-scoped via groups.tenant_id, and is the "
+            "second deliberate cross-shard read (keyset + LIMIT, migration 0011 index on "
+            "id DESC). WebHub consumes both"),
 )
 # fmt: on
 
