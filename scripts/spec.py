@@ -367,6 +367,13 @@ FEATURES: tuple[Feature, ...] = (
             "(admin:read + audit:read), tenant-scoped via groups.tenant_id, and is the "
             "second deliberate cross-shard read (keyset + LIMIT, migration 0011 index on "
             "id DESC). WebHub consumes both"),
+    Feature("x_live_stats", "platform", "Live stats: today's numbers within about a minute",
+            "M4", Status.DONE, Layer.API, "", (),
+            "net-new: the worker rolls up today (UTC) every minute instead of nightly, "
+            "and the per-group analytics endpoints compute today live from the raw "
+            "message_events/llm_usage (rollups only for earlier days, so no double "
+            "count). /admin analytics stay on the rollups: <= ~1 min stale, no "
+            "cross-shard raw scans. Output shapes unchanged"),
 )
 # fmt: on
 

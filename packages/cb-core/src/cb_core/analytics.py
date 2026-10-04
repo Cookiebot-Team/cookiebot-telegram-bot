@@ -2,9 +2,9 @@
 
 The rollups themselves have existed since migration `0001`
 (`group_daily_stats`, `command_daily_stats`) and `0002` (`llm_daily_cost`), and
-`cb-worker` has been filling them nightly (`cb_rollup_day`,
-`cb_rollup_llm_day`). Nothing read them: the numbers were in Grafana by way of
-Postgres, and there was no HTTP surface. This module is that surface's data
+`cb-worker` fills them every minute for today (UTC) and closes each day at
+00:20/00:25 (`cb_rollup_day`, `cb_rollup_llm_day`). Nothing read them: the
+numbers were in Grafana by way of Postgres, and there was no HTTP surface. This module is that surface's data
 layer, in `cb-core` rather than `cb-api` because a rollup read is not
 HTTP-shaped — `cb-worker`'s own reports and any future console want the same
 rows.

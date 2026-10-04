@@ -7,9 +7,9 @@ Branch: `feat/live-stats`. Stage only the paths in **Where** (the tree has unrel
 
 | Task | Status | Notes |
 |------|--------|-------|
-| T1 [P] — Minute rollup for today, UTC days | ⏳ not started | R1 |
-| T2 [P] — Live today in per-group analytics | ⏳ not started | R2 |
-| T-final — Close out | ⏳ not started | |
+| T1 [P] — Minute rollup for today, UTC days | ✅ done | R1; fixed job_id + 55s timeout for no-overlap |
+| T2 [P] — Live today in per-group analytics | ✅ done | R2; daily LLM tokens/cost from message_events (matches cb_rollup_day), not llm_usage |
+| T-final — Close out | ✅ done | spec row, docs-sync, contract, freshness notes |
 
 ## Tasks
 

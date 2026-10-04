@@ -20,7 +20,7 @@
   tomorrow_utc`, using **the same aggregate expressions as `cb_rollup_day`** (copy them
   from `migrations/versions/0001_initial_schema.py:421-479` so the numbers match the
   rollup exactly: messages, commands, joins, leaves, captcha_issued, captcha_solved,
-  active_users, errors, p95_latency_ms). LLM tokens/cost for today come from
+  active_users, errors, p95_latency_ms). LLM tokens/cost in `daily()` come from `message_events.llm_tokens`/`llm_cost_usd` (what `cb_rollup_day` sums, for parity); the per-model `llm_costs()` live rows come from
   `llm_usage` with the same expressions as `cb_rollup_llm_day` (0002:166-198).
 - **R2.2** `commands()` and `llm_costs()` merge today's live rows into the rollup rows
   for days < today (sum per command / per provider+model; p95 = max of the per-day p95s,
